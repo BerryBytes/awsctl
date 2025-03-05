@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: check-vcs-permalinks
+      - id: check-symlinks
+      - id: destroyed-symlinks
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.0
+    hooks:
+      - id: go-fmt
+        args: ["-w"]
+      - id: go-imports
+        args: ["-w"]
+      - id: no-go-testing
+      - id: golangci-lint
+        args: ["--issues-exit-code=1"]
+      - id: go-unit-tests
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.5
+    hooks:
+      - id: codespell
+        files: ^.*\.(py|c|h|md|rst|yml|go|sh|sql|tf|yaml)$
+        args: ["--write-changes", "--ignore-words-list", "hist,nd"]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.0
+    hooks:
+      - id: gitleaks
+        args: ["detect", "--verbose"]
