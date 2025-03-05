@@ -1,4 +1,4 @@
 package aws
 
-// Placeholder file to ensure folder is tracked by Git
+// Placeholder to track folder structure
 func InitSso() {}
