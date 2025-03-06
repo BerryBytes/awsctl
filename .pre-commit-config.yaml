@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.1.1
+    rev: v4.0.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: [feat, fix, ci, chore, test]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
@@ -16,7 +16,7 @@ repos:
       - id: check-symlinks
       - id: destroyed-symlinks
   - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.0
+    rev: v0.5.1
     hooks:
       - id: go-fmt
         args: ["-w"]
@@ -27,13 +27,13 @@ repos:
         args: ["--issues-exit-code=1"]
       - id: go-unit-tests
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.5
+    rev: v2.4.1
     hooks:
       - id: codespell
         files: ^.*\.(py|c|h|md|rst|yml|go|sh|sql|tf|yaml)$
         args: ["--write-changes", "--ignore-words-list", "hist,nd"]
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.0
+    rev: v8.24.0
     hooks:
       - id: gitleaks
-        args: ["detect", "--verbose"]
+        # args: ["detect", "--verbose"]
