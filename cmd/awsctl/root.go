@@ -16,11 +16,9 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Checking if AWS CLI is installed...")
 		aws.InitAWSSetup()
 	},
-	// Define the Run function to show help when no subcommand is provided
-	Run: func(cmd *cobra.Command, args []string) {
-		// Print a message before showing the help
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("No subcommand provided. Showing help...")
-		cmd.Help() // Display the help message for the root command
+		return cmd.Help() // Return the error instead of ignoring it
 	},
 }
 
