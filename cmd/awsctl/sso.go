@@ -1,6 +1,7 @@
 package awsctl
 
 import (
+	"awsctl/internal/aws"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -28,7 +29,13 @@ var ssoSetupCmd = &cobra.Command{
 	Short: "Setup AWS SSO in ~/.aws/config",
 	Long:  "This command configures AWS SSO authentication by adding profiles to ~/.aws/config.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Setup command run successfully!!!")
+		fmt.Println("🔧 Setting up AWS SSO...")
+
+		if err := aws.SetupSSO(); err != nil {
+			return fmt.Errorf("❌ Error setting up AWS SSO: %w", err)
+		}
+
+		fmt.Println("✅ AWS SSO setup completed successfully!")
 		return nil
 	},
 }
