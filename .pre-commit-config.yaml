@@ -36,4 +36,4 @@ repos:
     rev: v8.24.0
     hooks:
       - id: gitleaks
-        # args: ["detect", "--verbose"]
+        args: ["--verbose"]
