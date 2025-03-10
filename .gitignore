@@ -23,7 +23,3 @@ go.work.sum
 
 # env file
 .env
-config.json
-config.yaml
-config.yml
-config.yaml.bkup
