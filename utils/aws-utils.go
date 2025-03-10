@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"awsctl/models"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,14 +10,6 @@ import (
 	"strings"
 	"time"
 )
-
-// AWS Credentials struct
-type AWSCredentials struct {
-	AccessKeyID     string
-	SecretAccessKey string
-	SessionToken    string
-	Expiration      string
-}
 
 // Get available AWS CLI profiles
 func ValidProfiles() ([]string, error) {
@@ -51,26 +44,30 @@ func AwsConfigureGet(key, profile string) (string, error) {
 }
 
 // Save AWS credentials in AWS config
-func SaveAWSCredentials(profile string, creds *AWSCredentials) {
-	errAccessKeyId := AwsConfigureSet("aws_access_key_id", creds.AccessKeyID, profile)
-	if errAccessKeyId != nil {
-		fmt.Println("Error setting AWS access key:", errAccessKeyId)
-		// Handle the error (e.g., return, exit, or retry)
-	}
-	// AwsConfigureSet("aws_access_key_id", creds.AccessKeyID, profile)
-	// AwsConfigureSet("aws_secret_access_key", creds.SecretAccessKey, profile)
-	errSecretKey := AwsConfigureSet("aws_secret_access_key", creds.SecretAccessKey, profile)
-	if errSecretKey != nil {
-		fmt.Println("Error setting AWS access key:", errSecretKey)
-		// Handle the error (e.g., return, exit, or retry)
-	}
-	// AwsConfigureSet("aws_session_token", creds.SessionToken, profile)
-	errSessionToken := AwsConfigureSet("aws_session_token", creds.SessionToken, profile)
-	if errSessionToken != nil {
-		fmt.Println("Error setting AWS access key:", errSessionToken)
-		// Handle the error (e.g., return, exit, or retry)
+func SaveAWSCredentials(profile string, creds *models.AWSCredentials) error {
+	// Define a helper function to avoid code repetition for error handling
+	saveCredential := func(name, value string) error {
+		err := AwsConfigureSet(name, value, profile)
+		if err != nil {
+			return fmt.Errorf("failed to set %s for profile %s: %w", name, profile, err)
+		}
+		return nil
 	}
 
+	// Save each credential and handle errors
+	if err := saveCredential("aws_access_key_id", creds.AccessKeyID); err != nil {
+		return err
+	}
+
+	if err := saveCredential("aws_secret_access_key", creds.SecretAccessKey); err != nil {
+		return err
+	}
+
+	if err := saveCredential("aws_session_token", creds.SessionToken); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Read AWS SSO access token from cache
@@ -121,7 +118,7 @@ func GetSsoAccessTokenFromCache() (string, error) {
 // }
 
 // Fetch AWS Role Credentials using SSO
-func GetRoleCredentials(accessToken, roleName, accountID string) (*AWSCredentials, error) {
+func GetRoleCredentials(accessToken, roleName, accountID string) (*models.AWSCredentials, error) {
 	cmd := exec.Command("aws", "sso", "get-role-credentials",
 		"--access-token", accessToken,
 		"--role-name", roleName,
@@ -131,19 +128,12 @@ func GetRoleCredentials(accessToken, roleName, accountID string) (*AWSCredential
 		return nil, fmt.Errorf("failed to get role credentials: %w", err)
 	}
 
-	var response struct {
-		RoleCredentials struct {
-			AccessKeyID     string `json:"accessKeyId"`
-			SecretAccessKey string `json:"secretAccessKey"`
-			SessionToken    string `json:"sessionToken"`
-			Expiration      int64  `json:"expiration"`
-		} `json:"roleCredentials"`
-	}
+	var response models.RoleCredentialsResponse
 	if err := json.Unmarshal(output, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse credentials JSON: %w", err)
 	}
 
-	return &AWSCredentials{
+	return &models.AWSCredentials{
 		AccessKeyID:     response.RoleCredentials.AccessKeyID,
 		SecretAccessKey: response.RoleCredentials.SecretAccessKey,
 		SessionToken:    response.RoleCredentials.SessionToken,

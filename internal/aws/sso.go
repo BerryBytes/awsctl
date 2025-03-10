@@ -54,8 +54,13 @@ func SsoRun(refresh bool, noBrowser bool) error {
 	}
 
 	// Step 6: Save credentials in AWS CLI awsProfiles
-	utils.SaveAWSCredentials(awsProfile, creds)
-	utils.SaveAWSCredentials("default", creds)
+	if err := utils.SaveAWSCredentials(awsProfile, creds); err != nil {
+		return fmt.Errorf("failed to save credentials for profile %s: %w", awsProfile, err)
+	}
+
+	if err := utils.SaveAWSCredentials("default", creds); err != nil {
+		return fmt.Errorf("failed to save credentials for default profile: %w", err)
+	}
 
 	// Step 7: Get role ARN
 	roleARN, err := utils.AwsSTSGetCallerIdentity(awsProfile)
