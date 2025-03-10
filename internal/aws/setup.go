@@ -14,15 +14,14 @@ func InitAWSSetup() {
 	checkAWSCLI()
 }
 
-// handleSignals ensures child processes are cleaned up on exit
 func handleSignals() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigs
-		fmt.Println("Received termination signal. Cleaning up...")
-		os.Exit(1)
+		fmt.Println("\nReceived termination signal. Cleaning up...")
+		os.Exit(1) // Ensure immediate exit
 	}()
 }
 

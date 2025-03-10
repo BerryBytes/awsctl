@@ -26,9 +26,9 @@ func PromptForSelection(label string, options []string) string {
 
 // AWS Region selection
 
-func PromptForRegion() string {
+func PromptForRegion() (string, error) {
 	regions := []string{"us-east-1", "us-west-2", "eu-central-1"}
-	defaultRegion := "us-east-1"
+	// defaultRegion := "us-east-1"
 
 	prompt := promptui.Select{
 		Label: "Choose region",
@@ -37,18 +37,21 @@ func PromptForRegion() string {
 	}
 
 	_, selectedRegion, err := prompt.Run()
+	// if err != nil {
+	// 	return defaultRegion // If selection fails, return default
+	// }
 	if err != nil {
-		return defaultRegion // If selection fails, return default
+		return "", fmt.Errorf("selection aborted")
 	}
 
-	return selectedRegion
+	return selectedRegion, nil
 }
 
 // PromptForRole prompts the user to select an AWS IAM role interactively.
 
-func PromptForRole() string {
+func PromptForRole() (string, error) {
 	roles := []string{"AdministratorAccess", "Billing", "PowerUserAccess", "ViewOnlyAccess", "LogsReadOnlyPermissionSet", "S3FullAccess"}
-	defaultRole := "AdministratorAccess"
+	// defaultRole := "AdministratorAccess"
 
 	prompt := promptui.Select{
 		Label: "Choose role",
@@ -57,19 +60,22 @@ func PromptForRole() string {
 	}
 
 	_, selectedRole, err := prompt.Run()
+	// if err != nil {
+	// 	return defaultRole // If selection fails, return default
+	// }
 	if err != nil {
-		return defaultRole // If selection fails, return default
+		return "", fmt.Errorf("selection aborted")
 	}
 
-	return selectedRole
+	return selectedRole, nil
 }
 
 // PromptForAccount prompts the user to select an AWS account interactively.
 
-func PromptForAccount() string {
+func PromptForAccount() (string, error) {
 	// accounts := []string{"Ls", "NP", "on", "ty", "ices", "berg"}
 	accounts := []string{"Logs", "NonProd", "Security", "Production", "Shared Services", "MarcRosenberg"}
-	defaultAccount := "Production"
+	// defaultAccount := "Production"
 
 	prompt := promptui.Select{
 		Label: "Choose account",
@@ -78,11 +84,14 @@ func PromptForAccount() string {
 	}
 
 	_, selected, err := prompt.Run()
+	// if err != nil {
+	// 	return defaultAccount // If selection fails, return default
+	// }
 	if err != nil {
-		return defaultAccount // If selection fails, return default
+		return "", fmt.Errorf("selection aborted")
 	}
 
-	return selected
+	return selected, nil
 }
 
 // PromptForProfile lets the user choose an AWS profile interactively

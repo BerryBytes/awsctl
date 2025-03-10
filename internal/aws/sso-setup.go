@@ -8,7 +8,7 @@ import (
 
 // SetupSSO guides the user through setting up AWS SSO and config file creation
 func SetupSSO() error {
-
+	handleSignals()
 	configPath, err := config.FindConfigFile()
 
 	// If no config file is found, prompt for configuration
@@ -17,8 +17,21 @@ func SetupSSO() error {
 		fmt.Println("No custom configuration found on the project root directory. Please provide the following details:")
 
 		// Step 1: Prompt user for AWS account and role
-		account := utils.PromptForAccount()
-		role := utils.PromptForRole()
+		// account := utils.PromptForAccount()
+		account, err := utils.PromptForAccount() // Handle error from PromptForAccount
+		if err != nil {
+			// If the user aborted the selection, return immediately without making changes
+			fmt.Println("Setup aborted. No changes made.")
+			return err
+		}
+
+		// role := utils.PromptForRole()
+		role, err := utils.PromptForRole() // Handle error from PromptForAccount
+		if err != nil {
+			// If the user aborted the selection, return immediately without making changes
+			fmt.Println("Setup aborted. No changes made.")
+			return err
+		}
 
 		// Step 2: Map account name to AWS account ID
 		accountID := utils.GetAccountID(account)
@@ -27,10 +40,21 @@ func SetupSSO() error {
 		}
 
 		// Step 3: Prompt for AWS region
-		region := utils.PromptForRegion() // Using the PromptForRegion function
+		region, err := utils.PromptForRegion()
+		if err != nil {
+			// If the user aborted the selection, return immediately without making changes
+			fmt.Println("Setup aborted. No changes made.")
+			return err
+		}
+
+		// ✅ Check if user completed the setup (avoid partial writes)
+		if account == "" || role == "" || region == "" {
+			fmt.Println("Setup was not completed. No changes were made.")
+			return fmt.Errorf("setup aborted")
+		}
 
 		// Step 4: Configure Default Profile
-		err := utils.AwsConfigureSet("region", region, "default")
+		err = utils.AwsConfigureSet("region", region, "default")
 		if err != nil {
 			fmt.Println("Error setting region:", err)
 			return err
