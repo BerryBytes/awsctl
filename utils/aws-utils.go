@@ -98,25 +98,6 @@ func GetSsoAccessTokenFromCache() (string, error) {
 	return accessToken.(string), nil
 }
 
-// GetAccount returns the account name based on the account ID
-// func GetAccount(accountID string) string {
-// 	accountMap := map[string]string{
-// 		"05882":  "Ls",
-// 		"3252":   "Nood",
-// 		"702":    "Prion",
-// 		"913699": "ity",
-// 		"8165":   "vices",
-// 		"79144":  "berg",
-// 	}
-
-// 	if accountName, exists := accountMap[accountID]; exists {
-// 		return accountName
-// 	}
-
-// 	fmt.Printf("Unknown Account Id: %s\n", accountID)
-// 	return "Unknown"
-// }
-
 // Fetch AWS Role Credentials using SSO
 func GetRoleCredentials(accessToken, roleName, accountID string) (*models.AWSCredentials, error) {
 	cmd := exec.Command("aws", "sso", "get-role-credentials",
@@ -161,7 +142,8 @@ func AwsSTSGetCallerIdentity(profile string) (string, error) {
 
 // Print AWS Role details
 func PrintCurrentRole(profile, accountID, roleName, roleARN, expiration string) {
-	accountName := GetAccountName(accountID) // Get the friendly account name
+	// accountName := GetAccountName(accountID) // Get the friendly account name
+	accountName := "Development" // Get the friendly account name
 
 	fmt.Printf(`
 📌 AWS Session Details:
@@ -174,34 +156,6 @@ func PrintCurrentRole(profile, accountID, roleName, roleARN, expiration string) 
 ⌛ Expiration   : %s
 ---------------------------------
 `, profile, accountID, accountName, roleName, roleARN, expiration)
-}
-
-// Get accountID with account
-func GetAccountID(account string) string {
-	accountMap := map[string]string{
-		"Logs":            "058821512442",
-		"NonProd":         "325313491802",
-		"Security":        "915416153699",
-		"Production":      "709693661542",
-		"Shared Services": "811108753365",
-		"MarcRosenberg":   "791543727244",
-	}
-
-	return accountMap[account]
-}
-
-// Get account with accountID
-func GetAccountName(accountID string) string {
-	accountMap := map[string]string{
-		"058821512442": "Logs",
-		"325313491802": "NonProd",
-		"915416153699": "Security",
-		"709693661542": "Production",
-		"811108753365": "Shared Services",
-		"791543727244": "MarcRosenberg",
-	}
-
-	return accountMap[accountID]
 }
 
 // Check if the caller identity is valid

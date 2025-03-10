@@ -34,10 +34,12 @@ func setupNewConfiguration() error {
 	}
 
 	// Step 2: Map account name to AWS account ID
-	accountID := utils.GetAccountID(account)
-	if accountID == "" {
-		return fmt.Errorf("unknown account selected: %s", account)
-	}
+	// accountID := utils.GetAccountID(account)
+	accountID := "123456789" // placeholder account Id
+
+	// if accountID == "" {
+	// 	return fmt.Errorf("unknown account selected: %s", account)
+	// }
 
 	// Step 3: Prompt for AWS region
 	region, err := utils.PromptForRegion()
@@ -73,10 +75,12 @@ func updateCustomConfiguration(configPath string) error {
 	fmt.Printf("SsoStartUrl: %s\n", cfg.Aws.SsoStartUrl)
 
 	// Validate account ID
-	account := utils.GetAccountName(cfg.Aws.AccountID)
-	if account == "" {
-		return fmt.Errorf("unknown accountID: %s", cfg.Aws.AccountID)
-	}
+	// account := utils.GetAccountName(cfg.Aws.AccountID)
+	account := "Development" // placeholder account name
+
+	// if account == "" {
+	// 	return fmt.Errorf("unknown accountID: %s", cfg.Aws.AccountID)
+	// }
 
 	// Configure AWS profiles
 	if err := configureDefaultProfile(cfg.Aws.Region); err != nil {
