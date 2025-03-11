@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -10,22 +9,50 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-// Generic prompt function
-func PromptForSelection(label string, options []string) string {
+// promptForSelection is a generic function to prompt the user to select from a list of options
+func PromptForSelection(label string, items []string) (string, error) {
 	prompt := promptui.Select{
 		Label: label,
-		Items: options,
+		Items: items,
 	}
 
-	_, result, err := prompt.Run()
+	_, selected, err := prompt.Run()
 	if err != nil {
-		log.Fatalf("Prompt failed: %v\n", err)
+		return "", fmt.Errorf("failed to select %s: %v", label, err)
 	}
-	return result
+	return selected, nil
+}
+
+// Prompt for SSO configuration inputs
+func PromptSSOConfiguration() (string, string, string, error) {
+	prompt := promptui.Prompt{
+		Label: "Enter Profile Name",
+	}
+	profileName, err := prompt.Run()
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get profile name: %v", err)
+	}
+
+	prompt = promptui.Prompt{
+		Label: "Enter SSO Start URL",
+	}
+	ssoStartURL, err := prompt.Run()
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get SSO start URL: %v", err)
+	}
+
+	prompt = promptui.Prompt{
+		Label: "Enter SSO Region",
+	}
+	ssoRegion, err := prompt.Run()
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get SSO region: %v", err)
+	}
+
+	return profileName, ssoStartURL, ssoRegion, nil
 }
 
 // AWS Region selection
-
 func PromptForRegion() (string, error) {
 	regions := []string{"us-east-1", "us-west-2", "eu-central-1"}
 	// defaultRegion := "us-east-1"
@@ -48,7 +75,6 @@ func PromptForRegion() (string, error) {
 }
 
 // PromptForRole prompts the user to select an AWS IAM role interactively.
-
 func PromptForRole() (string, error) {
 	roles := []string{"AdministratorAccess", "Billing", "PowerUserAccess", "ViewOnlyAccess", "LogsReadOnlyPermissionSet", "S3FullAccess"}
 	// defaultRole := "AdministratorAccess"
@@ -71,7 +97,6 @@ func PromptForRole() (string, error) {
 }
 
 // PromptForAccount prompts the user to select an AWS account interactively.
-
 func PromptForAccount() (string, error) {
 	// accounts := []string{"Ls", "NP", "on", "ty", "ices", "berg"}
 	accounts := []string{"Logs", "NonProd", "Security", "Production", "Shared Services", "MarcRosenberg"}
@@ -149,6 +174,7 @@ func PromptForProfile() string {
 	return selectedProfile
 }
 
+// this function is not used till now need to look
 func PromptForConfirmation(prompt string) bool {
 	promptInstance := promptui.Prompt{
 		Label:     prompt,
