@@ -12,13 +12,11 @@ import (
 
 // LoadConfig loads the configuration from a file (either .yaml or .json)
 func LoadConfig() (*models.Config, error) {
-	// Step 1: Find the config file in the current directory
 	configFilePath, err := FindConfigFile()
 	if err != nil {
 		return nil, fmt.Errorf("config file not found: %w", err)
 	}
 
-	// Step 2: Read the configuration file
 	fileData, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -41,7 +39,6 @@ func LoadConfig() (*models.Config, error) {
 func FindConfigFile() (string, error) {
 	extensions := []string{"config.yml", "config.yaml", "config.json"}
 
-	// Get the path to the ~/.config/aws directory
 	configDir := filepath.Join(os.Getenv("HOME"), ".config", "aws")
 
 	// Check if the ~/.config/aws directory exists

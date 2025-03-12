@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// findProfile searches for a profile by name in the configuration
+// Searches for a profile by name in the configuration
 func FindProfile(cfg *models.Config, profileName string) (*models.SSOProfile, error) {
 	for _, profile := range cfg.Aws.Profiles {
 		if profile.ProfileName == profileName {
@@ -21,7 +21,7 @@ func FindProfile(cfg *models.Config, profileName string) (*models.SSOProfile, er
 	return nil, fmt.Errorf("profile %s not found", profileName)
 }
 
-// findAccount searches for an account by name in the profile
+// Searches for an account by name in the profile
 func FindAccount(profile *models.SSOProfile, accountName string) (*models.SSOAccount, error) {
 	for _, account := range profile.Accounts {
 		if account.AccountName == accountName {
@@ -31,7 +31,7 @@ func FindAccount(profile *models.SSOProfile, accountName string) (*models.SSOAcc
 	return nil, fmt.Errorf("account %s not found in profile %s", accountName, profile.ProfileName)
 }
 
-// extractAccountNames returns the account names from a profile
+// Returns the account names from a profile
 func ExtractAccountNames(profile *models.SSOProfile) []string {
 	accounts := []string{}
 	for _, account := range profile.Accounts {
@@ -40,7 +40,7 @@ func ExtractAccountNames(profile *models.SSOProfile) []string {
 	return accounts
 }
 
-// getUniqueProfiles returns a list of unique profile names from the configuration
+// Returns a list of unique profile names from the configuration
 func GetUniqueProfiles(cfg *models.Config) ([]string, error) {
 	profiles := []string{}
 	for _, profile := range cfg.Aws.Profiles {
@@ -53,8 +53,6 @@ func GetUniqueProfiles(cfg *models.Config) ([]string, error) {
 	}
 	return profiles, nil
 }
-
-// Get AWS SSO profiles
 
 // GetSSOProfiles lists all profiles that are configured with SSO sessions.
 func GetSSOProfiles() ([]string, error) {
@@ -102,30 +100,25 @@ func GetSSOProfiles() ([]string, error) {
 func ConfigureSSO() error {
 	cmd := exec.Command("aws", "configure", "sso")
 
-	// Set up input/output streams
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Run the command
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to configure AWS SSO: %v", err)
 	}
 
-	// fmt.Println("\n✅ AWS SSO configuration completed!")
 	return nil
 }
 
 // Get SSO start URL for a profile
 func GetSSOStartURL(profile string) (string, error) {
-	// Get the path to the AWS config file
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %v", err)
 	}
 	configPath := filepath.Join(homeDir, ".aws", "config")
 
-	// Open the AWS config file
 	file, err := os.Open(configPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open AWS config file: %v", err)
@@ -162,7 +155,7 @@ func GetSSOStartURL(profile string) (string, error) {
 	}
 
 	// Reopen the file to search for the sso-session section
-	_, err = file.Seek(0, 0) // Reset file pointer to the beginning
+	_, err = file.Seek(0, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to reset file pointer: %v", err)
 	}
@@ -189,7 +182,6 @@ func GetSSOStartURL(profile string) (string, error) {
 		return "", fmt.Errorf("failed to read AWS config file: %v", err)
 	}
 
-	// If no sso_start_url is found, return an error
 	return "", fmt.Errorf("no sso_start_url found for sso_session %s", ssoSession)
 }
 
@@ -211,20 +203,17 @@ func EnsureSSOLogin(profile, region string) error {
 // GetSSOAccounts retrieves the list of AWS accounts accessible via SSO for the given profile.
 func GetSSOAccounts(profile string) ([]models.SSOAccount, error) {
 
-	// Retrieve the SSO access token
 	accessToken, err := GetSsoAccessTokenFromCache(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
 
-	// Run the aws sso list-accounts command with the access token
 	cmd := exec.Command("aws", "sso", "list-accounts", "--access-token", accessToken, "--profile", profile, "--output", "json")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list AWS accounts: %v", err)
 	}
 
-	// Parse the output
 	var response struct {
 		Accounts []models.SSOAccount `json:"accountList"`
 	}
@@ -241,7 +230,6 @@ func GetSSOAccounts(profile string) ([]models.SSOAccount, error) {
 
 // Get account name with account ID
 func GetSSOAccountName(accountID, profile string) (string, error) {
-	// Retrieve the SSO access token
 	accessToken, err := GetSsoAccessTokenFromCache(profile)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
@@ -283,13 +271,11 @@ func SelectProfile(profiles []string) (string, error) {
 }
 
 func SelectAccount(accounts []models.SSOAccount) (string, error) {
-	// Create a slice of account names from the SSOAccount structs
 	accountNames := make([]string, len(accounts))
 	for i, account := range accounts {
 		accountNames[i] = account.AccountName
 	}
 
-	// Prompt the user to select an account from the list
 	accountName, err := PromptForSelection("Select an AWS Account", accountNames)
 	if err != nil {
 		return "", fmt.Errorf("account selection aborted: %v", err)
@@ -325,7 +311,6 @@ func GetAWSRegion(profile string) (string, error) {
 
 // Get roles for the selected account
 func GetSSORoles(profile, accountID string) ([]string, error) {
-	// Retrieve the SSO access token
 	accessToken, err := GetSsoAccessTokenFromCache(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)

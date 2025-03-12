@@ -21,7 +21,7 @@ func handleSignals() {
 	go func() {
 		<-sigs
 		fmt.Println("\nReceived termination signal. Cleaning up...")
-		os.Exit(1) // Ensure immediate exit
+		os.Exit(1)
 	}()
 }
 

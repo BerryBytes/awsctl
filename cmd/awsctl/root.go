@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("No subcommand provided. Showing help...")
-		return cmd.Help() // Return the error instead of ignoring it
+		return cmd.Help()
 	},
 }
 

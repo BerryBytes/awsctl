@@ -36,11 +36,10 @@ func SetupSSO() error {
 	return updateCustomConfiguration(configPath)
 }
 
-// setupNewConfiguration handles the case where no config file is found
+// Handles the case where no config file is found
 func setupNewConfiguration() error {
 	profiles, err := utils.GetSSOProfiles()
 	if err != nil || len(profiles) == 0 {
-		// If no profiles found, prompt for SSO configuration
 		fmt.Println("No AWS SSO profiles found. Configuring SSO...")
 
 		// Configure AWS SSO
@@ -54,12 +53,12 @@ func setupNewConfiguration() error {
 			return utils.AbortSetup(fmt.Errorf("failed to refresh AWS SSO profiles: %v", err))
 		}
 	}
-	// Let user select a profile
+
 	profile, err := utils.SelectProfile(profiles)
 	if err != nil {
 		return utils.AbortSetup(fmt.Errorf("profile selection aborted: %v", err))
 	}
-	// Get region for selected profile
+
 	region, err := utils.GetAWSRegion(profile)
 	if err != nil {
 		return utils.AbortSetup(fmt.Errorf("failed to get AWS Region: %v", err))
@@ -72,8 +71,7 @@ func setupNewConfiguration() error {
 	return nil
 }
 
-// handles custom config in the case where an existing config file is found on ~/.config/aws/
-
+// Handles custom config in the case where an existing config file is found on ~/.config/aws/
 func updateCustomConfiguration(configPath string) error {
 	fmt.Printf("📂 Loaded existing configuration from '%s':\n", configPath)
 	cfg, err := config.LoadConfig()
@@ -143,7 +141,7 @@ func selectRole(account *models.SSOAccount) (string, error) {
 	return utils.SelectRole(account.Roles)
 }
 
-// configure sso profile based on the custom config
+// Configure sso profile based on the custom config
 func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
 	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
 	fmt.Printf("Selected Account: %s\n", account.AccountName)

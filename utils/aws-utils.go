@@ -45,7 +45,6 @@ func AwsConfigureGet(key, profile string) (string, error) {
 
 // Save AWS credentials in AWS config
 func SaveAWSCredentials(profile string, creds *models.AWSCredentials) error {
-	// Define a helper function to avoid code repetition for error handling
 	saveCredential := func(name, value string) error {
 		err := AwsConfigureSet(name, value, profile)
 		if err != nil {
@@ -54,7 +53,6 @@ func SaveAWSCredentials(profile string, creds *models.AWSCredentials) error {
 		return nil
 	}
 
-	// Save each credential and handle errors
 	if err := saveCredential("aws_access_key_id", creds.AccessKeyID); err != nil {
 		return err
 	}

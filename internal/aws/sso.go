@@ -28,7 +28,6 @@ func SsoInit(refresh bool, noBrowser bool) error {
 		awsProfile = utils.PromptForProfile()
 	}
 
-	// Verify Profiles
 	validProfiles, err := utils.ValidProfiles()
 	if err != nil {
 		return fmt.Errorf("error verifying profiles: %w", err)
@@ -38,7 +37,6 @@ func SsoInit(refresh bool, noBrowser bool) error {
 		return fmt.Errorf("not a valid profile: %s", os.Getenv("AWS_PROFILE"))
 	}
 
-	// Perform SSO Login
 	if err := ssoLogin(awsProfile, refresh, noBrowser); err != nil {
 		return fmt.Errorf("error during SSO login: %w", err)
 	}
@@ -54,13 +52,11 @@ func SsoInit(refresh bool, noBrowser bool) error {
 		return err
 	}
 
-	// Read AWS SSO Access Token
 	accessToken, err := utils.GetSsoAccessTokenFromCache(awsProfile)
 	if err != nil {
 		return err
 	}
 
-	// Fetch AWS Credentials using SSO
 	creds, err := utils.GetRoleCredentials(accessToken, roleName, accountID)
 	if err != nil {
 		return err
@@ -86,13 +82,12 @@ func SsoInit(refresh bool, noBrowser bool) error {
 		return err
 	}
 
-	// Print Role Details
 	utils.PrintCurrentRole(awsProfile, accountID, accountName, roleName, roleARN, creds.Expiration)
 
 	return nil
 }
 
-// ssoLogin performs AWS SSO login if necessary
+// Performs AWS SSO login if necessary
 func ssoLogin(awsProfile string, refresh, noBrowser bool) error {
 	if refresh || !utils.IsCallerIdentityValid(awsProfile) {
 		args := []string{"sso", "login"}
