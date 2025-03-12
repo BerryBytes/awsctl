@@ -33,12 +33,12 @@ type SSOProfile struct {
 	AccountID   string       `json:"accountId" yaml:"accountId"`
 	Role        string       `json:"role" yaml:"role"`
 	SsoStartUrl string       `json:"ssoStartUrl,omitempty" yaml:"ssoStartUrl,omitempty"`
-	Accounts    []SSOAccount `json:"accounts" yaml:"accounts"` // List of accounts under this profile
+	Accounts    []SSOAccount `json:"accounts" yaml:"accounts"`
 }
 
 // Config represents the root configuration containing all profiles
 type Config struct {
 	Aws struct {
-		Profiles []SSOProfile `json:"profiles" yaml:"profiles"` // List of profiles
+		Profiles []SSOProfile `json:"profiles" yaml:"profiles"`
 	} `json:"aws" yaml:"aws"`
 }
