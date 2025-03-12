@@ -23,7 +23,7 @@ type SSOAccount struct {
 	AccountName string   `json:"accountName" yaml:"accountName"`
 	SSORegion   string   `json:"ssoRegion" yaml:"ssoRegion"`
 	Email       string   `json:"email" yaml:"email"`
-	Roles       []string `json:"roles" yaml:"roles"`
+	Roles       []string `json:"roles,omitempty" yaml:"roles,omitempty"`
 }
 
 // SSOProfile represents a profile configuration, which can contain multiple accounts
@@ -32,7 +32,7 @@ type SSOProfile struct {
 	Region      string       `json:"region" yaml:"region"`
 	AccountID   string       `json:"accountId" yaml:"accountId"`
 	Role        string       `json:"role" yaml:"role"`
-	SsoStartUrl string       `json:"ssoStartUrl" yaml:"ssoStartUrl"`
+	SsoStartUrl string       `json:"ssoStartUrl,omitempty" yaml:"ssoStartUrl,omitempty"`
 	Accounts    []SSOAccount `json:"accounts" yaml:"accounts"` // List of accounts under this profile
 }
 

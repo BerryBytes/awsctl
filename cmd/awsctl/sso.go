@@ -29,7 +29,7 @@ var ssoInitCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("could not get no-browser flag: %w", err)
 		}
-		return aws.SsoRun(refreshFlag, noBrowserFlag)
+		return aws.SsoInit(refreshFlag, noBrowserFlag)
 	},
 }
 
@@ -44,7 +44,7 @@ var ssoSetupCmd = &cobra.Command{
 			return fmt.Errorf("❌ Error setting up AWS SSO: %w", err)
 		}
 
-		fmt.Println("✅ AWS SSO setup completed successfully!")
+		fmt.Println("✅ AWS SSO setup completed successfully!!!")
 		return nil
 	},
 }

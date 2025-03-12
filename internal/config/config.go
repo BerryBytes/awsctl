@@ -24,9 +24,6 @@ func LoadConfig() (*models.Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	// Print the raw config data to debug
-	// fmt.Println("Raw config file content:", string(fileData))
-
 	// Try to unmarshal YAML first
 	var cfg models.Config
 	if err := yaml.Unmarshal(fileData, &cfg); err != nil {
@@ -36,9 +33,6 @@ func LoadConfig() (*models.Config, error) {
 			return nil, fmt.Errorf("failed to parse config file: %w", err)
 		}
 	}
-
-	// Debugging: Print the unmarshaled config
-	// fmt.Printf("Unmarshaled Config: %+v\n", cfg)
 
 	return &cfg, nil
 }

@@ -26,7 +26,7 @@ func SetupSSO() error {
 
 	_, userChoice, err := prompt.Run()
 	if err != nil {
-		return abortSetup(fmt.Errorf("failed to select an option: %v", err))
+		return utils.AbortSetup(fmt.Errorf("failed to select an option: %v", err))
 	}
 
 	if userChoice == "Set up a new configuration" {
@@ -36,97 +36,37 @@ func SetupSSO() error {
 	return updateCustomConfiguration(configPath)
 }
 
-// handleManualSetup handles the case where no config file is found
+// setupNewConfiguration handles the case where no config file is found
 func setupNewConfiguration() error {
 	profiles, err := utils.GetSSOProfiles()
 	if err != nil || len(profiles) == 0 {
 		// If no profiles found, prompt for SSO configuration
 		fmt.Println("No AWS SSO profiles found. Configuring SSO...")
-		profileName, ssoStartURL, ssoRegion, err := utils.PromptSSOConfiguration()
-		if err != nil {
-			return abortSetup(fmt.Errorf("SSO configuration failed: %v", err))
-		}
 
 		// Configure AWS SSO
-		if err := utils.ConfigureSSO(ssoStartURL, ssoRegion, profileName); err != nil {
-			return abortSetup(fmt.Errorf("failed to configure AWS SSO: %v", err))
+		if err := utils.ConfigureSSO(); err != nil {
+			return utils.AbortSetup(fmt.Errorf("failed to configure AWS SSO: %v", err))
 		}
 
 		// Refresh profiles after configuration
 		profiles, err = utils.GetSSOProfiles()
 		if err != nil {
-			return abortSetup(fmt.Errorf("failed to refresh AWS SSO profiles: %v", err))
+			return utils.AbortSetup(fmt.Errorf("failed to refresh AWS SSO profiles: %v", err))
 		}
 	}
 	// Let user select a profile
 	profile, err := utils.SelectProfile(profiles)
 	if err != nil {
-		return abortSetup(fmt.Errorf("profile selection aborted: %v", err))
+		return utils.AbortSetup(fmt.Errorf("profile selection aborted: %v", err))
 	}
-
-	// Get SSO start URL for the selected profile
-	ssoStartURL, err := utils.GetSSOStartURL(profile)
-	if err != nil {
-		return abortSetup(fmt.Errorf("failed to get SSO Start URL: %v", err))
-	}
-
 	// Get region for selected profile
 	region, err := utils.GetAWSRegion(profile)
 	if err != nil {
-		return abortSetup(fmt.Errorf("failed to get AWS Region: %v", err))
+		return utils.AbortSetup(fmt.Errorf("failed to get AWS Region: %v", err))
 	}
 
-	// Ensure SSO login
-	if err := utils.EnsureSSOLogin(profile, region); err != nil {
-		return abortSetup(fmt.Errorf("SSO login failed: %v", err))
-	}
-
-	// Get available accounts
-	accounts, err := utils.GetSSOAccounts(profile)
-	if err != nil {
-		return abortSetup(fmt.Errorf("failed to retrieve AWS SSO accounts: %v", err))
-	}
-
-	// Let user select an account
-	accountName, err := utils.SelectAccount(accounts)
-	if err != nil {
-		return abortSetup(fmt.Errorf("account selection aborted: %v", err))
-	}
-
-	// Find the selected account's ID
-	var selectedAccount *models.SSOAccount
-	for _, account := range accounts {
-		if account.AccountName == accountName {
-			selectedAccount = &account
-			break
-		}
-	}
-
-	if selectedAccount == nil {
-		return abortSetup(fmt.Errorf("selected account not found"))
-	}
-
-	accountID := selectedAccount.AccountID // Now you have the accountID
-
-	// Get available roles for the account
-	roles, err := utils.GetSSORoles(profile, accountName)
-	if err != nil {
-		return abortSetup(fmt.Errorf("failed to retrieve roles for the selected account: %v", err))
-	}
-
-	// Let user select a role
-	role, err := utils.SelectRole(roles)
-	if err != nil {
-		return abortSetup(fmt.Errorf("role selection aborted: %v", err))
-	}
-	fmt.Printf("Selected Role: %s", role)
-
-	// Step 4: Configure AWS profiles
 	if err := utils.ConfigureDefaultProfile(region); err != nil {
-		return abortSetup(fmt.Errorf("failed to configure default profile: %v", err))
-	}
-	if err := utils.ConfigureSSOProfile(profile, region, accountID, role, ssoStartURL); err != nil {
-		return abortSetup(fmt.Errorf("failed to configure AWS SSO profile: %v", err))
+		return utils.AbortSetup(fmt.Errorf("failed to configure default profile: %v", err))
 	}
 
 	return nil
@@ -162,6 +102,7 @@ func updateCustomConfiguration(configPath string) error {
 	return nil
 }
 
+// Get profiles from custom config and prompt for selection
 func selectProfile(cfg *models.Config) (*models.SSOProfile, error) {
 	profiles, err := utils.GetUniqueProfiles(cfg)
 	if err != nil {
@@ -181,6 +122,7 @@ func selectProfile(cfg *models.Config) (*models.SSOProfile, error) {
 	return selectedProfileObj, nil
 }
 
+// Retrieves and displays the available AWS accounts for the given profile
 func selectAccount(profile *models.SSOProfile) (*models.SSOAccount, error) {
 	accounts := utils.ExtractAccountNames(profile)
 	selectedAccount, err := utils.PromptForSelection("Select AWS Account", accounts)
@@ -196,16 +138,12 @@ func selectAccount(profile *models.SSOProfile) (*models.SSOAccount, error) {
 	return selectedAccountObj, nil
 }
 
+// Retrieves and displays the available role on the selected account
 func selectRole(account *models.SSOAccount) (string, error) {
-	roles := account.Roles
-	selectedRole, err := utils.PromptForSelection("Select AWS Role", roles)
-	if err != nil {
-		return "", err
-	}
-
-	return selectedRole, nil
+	return utils.SelectRole(account.Roles)
 }
 
+// configure sso profile based on the custom config
 func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
 	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
 	fmt.Printf("Selected Account: %s\n", account.AccountName)
@@ -228,10 +166,4 @@ func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, ro
 
 	fmt.Printf("Successfully configured profile: %s\n", ssoProfile)
 	return nil
-}
-
-// handles setup abortion
-func abortSetup(err error) error {
-	fmt.Println("Setup aborted. No changes made.")
-	return err
 }

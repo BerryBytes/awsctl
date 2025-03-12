@@ -70,32 +70,60 @@ func SaveAWSCredentials(profile string, creds *models.AWSCredentials) error {
 	return nil
 }
 
-// Read AWS SSO access token from cache
-func GetSsoAccessTokenFromCache() (string, error) {
-	// Compute the cache filename using shasum
-	cacheFilename := shasum("https://osm.awsapps.com/start")
+// Retrieves the SSO access token from the cache.
+func GetSsoAccessTokenFromCache(profile string) (string, error) {
+	// Get the path to the SSO cache directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %v", err)
+	}
+	cacheDir := filepath.Join(homeDir, ".aws", "sso", "cache")
 
-	// Construct the full path to the cache file
-	cachePath := filepath.Join(os.Getenv("HOME"), ".aws/sso/cache", cacheFilename+".json")
+	// Find the latest cache file
+	files, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read SSO cache directory: %v", err)
+	}
+
+	var latestFile string
+	var latestModTime time.Time
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".json") {
+			info, err := file.Info()
+			if err != nil {
+				continue
+			}
+			if info.ModTime().After(latestModTime) {
+				latestFile = file.Name()
+				latestModTime = info.ModTime()
+			}
+		}
+	}
+
+	if latestFile == "" {
+		return "", fmt.Errorf("no SSO cache files found")
+	}
 
 	// Read the cache file
-	data, err := os.ReadFile(cachePath)
+	cacheFilePath := filepath.Join(cacheDir, latestFile)
+	cacheFile, err := os.ReadFile(cacheFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read SSO cache file: %w", err)
+		return "", fmt.Errorf("failed to read SSO cache file: %v", err)
 	}
 
-	// Parse the cache file to extract the access token
-	var cache map[string]interface{}
-	if err := json.Unmarshal(data, &cache); err != nil {
-		return "", fmt.Errorf("failed to parse SSO cache file: %w", err)
+	// Parse the cache file
+	var cache struct {
+		AccessToken string `json:"accessToken"`
+	}
+	if err := json.Unmarshal(cacheFile, &cache); err != nil {
+		return "", fmt.Errorf("failed to unmarshal SSO cache file: %v", err)
 	}
 
-	accessToken, exists := cache["accessToken"]
-	if !exists {
-		return "", fmt.Errorf("access token not found in SSO cache file")
+	if cache.AccessToken == "" {
+		return "", fmt.Errorf("no access token found in SSO cache file")
 	}
 
-	return accessToken.(string), nil
+	return cache.AccessToken, nil
 }
 
 // Fetch AWS Role Credentials using SSO
@@ -141,9 +169,7 @@ func AwsSTSGetCallerIdentity(profile string) (string, error) {
 }
 
 // Print AWS Role details
-func PrintCurrentRole(profile, accountID, roleName, roleARN, expiration string) {
-	// accountName := GetAccountName(accountID) // Get the friendly account name
-	accountName := "Development" // Get the friendly account name
+func PrintCurrentRole(profile, accountID, accountName, roleName, roleARN, expiration string) {
 
 	fmt.Printf(`
 📌 AWS Session Details:
@@ -166,6 +192,7 @@ func IsCallerIdentityValid(profile string) bool {
 		return false
 	}
 
+	// Parse the output into a struct
 	var identity struct {
 		UserID string `json:"UserId"`
 	}
@@ -173,7 +200,8 @@ func IsCallerIdentityValid(profile string) bool {
 		return false
 	}
 
-	return strings.Contains(identity.UserID, "mbm")
+	// Check if UserID is valid (non-empty)
+	return identity.UserID != ""
 }
 
 func Contains(slice []string, item string) bool {
@@ -183,17 +211,6 @@ func Contains(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-func shasum(input string) string {
-	cmd := exec.Command("shasum")
-	cmd.Stdin = strings.NewReader(input)
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println("Error calculating shasum:", err)
-		os.Exit(1)
-	}
-	return strings.Split(string(output), " ")[0]
 }
 
 // configures the default AWS profile
@@ -227,4 +244,10 @@ func ConfigureSSOProfile(profile, region, accountID, role, ssoStartUrl string) e
 		}
 	}
 	return nil
+}
+
+// handles setup abortion
+func AbortSetup(err error) error {
+	fmt.Println("Setup aborted. No changes made.")
+	return err
 }

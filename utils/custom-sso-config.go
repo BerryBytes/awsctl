@@ -2,10 +2,12 @@ package utils
 
 import (
 	"awsctl/models"
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -53,46 +55,142 @@ func GetUniqueProfiles(cfg *models.Config) ([]string, error) {
 }
 
 // Get AWS SSO profiles
+
+// GetSSOProfiles lists all profiles that are configured with SSO sessions.
 func GetSSOProfiles() ([]string, error) {
-	cmd := exec.Command("aws", "configure", "list-profiles")
-	output, err := cmd.Output()
+	// Get the path to the AWS config file
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list AWS profiles: %v", err)
+		return nil, fmt.Errorf("failed to get user home directory: %v", err)
+	}
+	configPath := filepath.Join(homeDir, ".aws", "config")
+
+	// Open the AWS config file
+	file, err := os.Open(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open AWS config file: %v", err)
+	}
+	defer file.Close()
+
+	// Parse the config file
+	var ssoProfiles []string
+	scanner := bufio.NewScanner(file)
+	var currentProfile string
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Check for profile sections
+		if strings.HasPrefix(line, "[profile ") {
+			currentProfile = strings.TrimPrefix(line, "[profile ")
+			currentProfile = strings.TrimSuffix(currentProfile, "]")
+		}
+
+		// Check for sso_session key
+		if strings.HasPrefix(line, "sso_session = ") && currentProfile != "" {
+			ssoProfiles = append(ssoProfiles, currentProfile)
+		}
 	}
 
-	profiles := strings.Split(strings.TrimSpace(string(output)), "\n")
-	var ssoProfiles []string
-	for _, profile := range profiles {
-		checkCmd := exec.Command("aws", "configure", "get", "sso_start_url", "--profile", profile)
-		checkOutput, _ := checkCmd.Output()
-		if strings.TrimSpace(string(checkOutput)) != "" {
-			ssoProfiles = append(ssoProfiles, profile)
-		}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read AWS config file: %v", err)
 	}
 
 	return ssoProfiles, nil
 }
 
-// Configure AWS SSO programmatically
-func ConfigureSSO(ssoStartURL, ssoRegion, profileName string) error {
-	cmd := exec.Command("aws", "configure", "sso", "--sso-start-url", ssoStartURL, "--sso-region", ssoRegion, "--profile", profileName)
+func ConfigureSSO() error {
+	cmd := exec.Command("aws", "configure", "sso")
+
+	// Set up input/output streams
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Run the command
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to configure AWS SSO: %v", err)
 	}
+
+	// fmt.Println("\n✅ AWS SSO configuration completed!")
 	return nil
 }
 
 // Get SSO start URL for a profile
 func GetSSOStartURL(profile string) (string, error) {
-	cmd := exec.Command("aws", "configure", "get", "sso_start_url", "--profile", profile)
-	output, err := cmd.Output()
+	// Get the path to the AWS config file
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get SSO start URL for profile %s: %v", profile, err)
+		return "", fmt.Errorf("failed to get user home directory: %v", err)
 	}
-	return strings.TrimSpace(string(output)), nil
+	configPath := filepath.Join(homeDir, ".aws", "config")
+
+	// Open the AWS config file
+	file, err := os.Open(configPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open AWS config file: %v", err)
+	}
+	defer file.Close()
+
+	// Parse the config file
+	scanner := bufio.NewScanner(file)
+	var currentProfile string
+	var ssoSession string
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Check for profile sections
+		if strings.HasPrefix(line, "[profile ") {
+			currentProfile = strings.TrimPrefix(line, "[profile ")
+			currentProfile = strings.TrimSuffix(currentProfile, "]")
+		}
+
+		// Check for sso_session key in the current profile
+		if currentProfile == profile && strings.HasPrefix(line, "sso_session = ") {
+			ssoSession = strings.TrimPrefix(line, "sso_session = ")
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read AWS config file: %v", err)
+	}
+
+	// If no sso_session is found for the profile, return an error
+	if ssoSession == "" {
+		return "", fmt.Errorf("no sso_session found for profile %s", profile)
+	}
+
+	// Reopen the file to search for the sso-session section
+	_, err = file.Seek(0, 0) // Reset file pointer to the beginning
+	if err != nil {
+		return "", fmt.Errorf("failed to reset file pointer: %v", err)
+	}
+	scanner = bufio.NewScanner(file)
+	var inSessionSection bool
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Check for sso-session sections
+		if strings.HasPrefix(line, "[sso-session ") {
+			sessionName := strings.TrimPrefix(line, "[sso-session ")
+			sessionName = strings.TrimSuffix(sessionName, "]")
+			inSessionSection = (sessionName == ssoSession)
+		}
+
+		// Check for sso_start_url in the current sso-session section
+		if inSessionSection && strings.HasPrefix(line, "sso_start_url = ") {
+			return strings.TrimPrefix(line, "sso_start_url = "), nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read AWS config file: %v", err)
+	}
+
+	// If no sso_start_url is found, return an error
+	return "", fmt.Errorf("no sso_start_url found for sso_session %s", ssoSession)
 }
 
 // Ensure SSO login
@@ -110,24 +208,69 @@ func EnsureSSOLogin(profile, region string) error {
 	return nil
 }
 
-// Get available accounts
+// GetSSOAccounts retrieves the list of AWS accounts accessible via SSO for the given profile.
 func GetSSOAccounts(profile string) ([]models.SSOAccount, error) {
-	cmd := exec.Command("aws", "sso", "list-accounts", "--profile", profile, "--output", "json")
+
+	// Retrieve the SSO access token
+	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
+	}
+
+	// Run the aws sso list-accounts command with the access token
+	cmd := exec.Command("aws", "sso", "list-accounts", "--access-token", accessToken, "--profile", profile, "--output", "json")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list AWS accounts: %v", err)
 	}
 
-	var accounts []models.SSOAccount
-	if err := json.Unmarshal(output, &accounts); err != nil {
+	// Parse the output
+	var response struct {
+		Accounts []models.SSOAccount `json:"accountList"`
+	}
+	if err := json.Unmarshal(output, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal accounts: %v", err)
 	}
 
-	if len(accounts) == 0 {
+	if len(response.Accounts) == 0 {
 		return nil, fmt.Errorf("no AWS accounts found for SSO")
 	}
 
-	return accounts, nil
+	return response.Accounts, nil
+}
+
+// Get account name with account ID
+func GetSSOAccountName(accountID, profile string) (string, error) {
+	// Retrieve the SSO access token
+	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
+	}
+
+	cmd := exec.Command("aws", "sso", "list-accounts", "--access-token", accessToken, "--output", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to list AWS accounts: %v", err)
+	}
+
+	var response struct {
+		AccountList []struct {
+			AccountID   string `json:"accountId"`
+			AccountName string `json:"accountName"`
+		} `json:"accountList"`
+	}
+
+	if err := json.Unmarshal(output, &response); err != nil {
+		return "", fmt.Errorf("failed to unmarshal accounts: %v", err)
+	}
+
+	for _, account := range response.AccountList {
+		if account.AccountID == accountID {
+			return account.AccountName, nil
+		}
+	}
+
+	return "", fmt.Errorf("account ID %s not found", accountID)
 }
 
 // Select a profile using the generic PromptForSelection utility
@@ -166,7 +309,7 @@ func SelectRole(roles []string) (string, error) {
 
 // Get region for selected profile
 func GetAWSRegion(profile string) (string, error) {
-	cmd := exec.Command("aws", "configure", "get", "sso_region", "--profile", profile)
+	cmd := exec.Command("aws", "configure", "get", "region", "--profile", profile)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get AWS region: %v", err)
@@ -182,7 +325,12 @@ func GetAWSRegion(profile string) (string, error) {
 
 // Get roles for the selected account
 func GetSSORoles(profile, accountID string) ([]string, error) {
-	cmd := exec.Command("aws", "sso", "list-account-roles", "--profile", profile, "--account-id", accountID, "--output", "json")
+	// Retrieve the SSO access token
+	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
+	}
+	cmd := exec.Command("aws", "sso", "list-account-roles", "--profile", profile, "--account-id", accountID, "--access-token", accessToken, "--output", "json")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list AWS SSO roles: %v", err)
@@ -197,6 +345,8 @@ func GetSSORoles(profile, accountID string) ([]string, error) {
 	if err := json.Unmarshal(output, &roles); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal roles: %v", err)
 	}
+
+	fmt.Printf("Parsed JSON Struct: %+v\n", roles)
 
 	var roleNames []string
 	for _, role := range roles.RoleList {

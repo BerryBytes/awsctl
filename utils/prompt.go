@@ -131,32 +131,16 @@ func PromptForProfile() string {
 
 	// Convert output into a slice of profile names
 	profiles := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(profiles) == 0 {
-		fmt.Println("❌ No AWS profiles found. Run `aws configure` to set up.")
-		os.Exit(1)
+	if len(profiles) == 0 || profiles[0] == "" {
+		// If no profiles are found, return an empty string
+		return ""
 	}
 
-	// Define a default profile (ensure it exists in the list)
-	defaultProfile := "NonProd"
-	defaultIndex := 0
-	for i, profile := range profiles {
-		if profile == defaultProfile {
-			defaultIndex = i
-			break
-		}
-	}
-
-	// Ensure CursorPos is within the valid range
-	if defaultIndex >= len(profiles) {
-		defaultIndex = 0
-	}
-
-	// Prompt user to select a profile with the default selected
+	// Prompt user to select a profile (no default selected)
 	prompt := promptui.Select{
-		Label:     "Choose AWS Profile",
-		Items:     profiles,
-		Size:      15,
-		CursorPos: defaultIndex,
+		Label: "Choose AWS Profile",
+		Items: profiles,
+		Size:  15, // Limit the list size in the prompt
 	}
 
 	_, selectedProfile, err := prompt.Run()
@@ -167,9 +151,8 @@ func PromptForProfile() string {
 
 	// Set AWS_PROFILE environment variable
 	os.Setenv("AWS_PROFILE", selectedProfile)
-	fmt.Println("Run this command in your shell to persist the profile:")
+	fmt.Println("Run below command in your shell to persist the profile:")
 	fmt.Printf("export AWS_PROFILE=%s\n", selectedProfile)
-	// fmt.Printf("✅ AWS Profile set: %s (Index: %d)\n", selectedProfile, selectedIndex)
 
 	return selectedProfile
 }

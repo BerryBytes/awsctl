@@ -8,11 +8,23 @@ import (
 )
 
 // Run AWS SSO login and fetch credentials
-func SsoRun(refresh bool, noBrowser bool) error {
+func SsoInit(refresh bool, noBrowser bool) error {
 
 	awsProfile := os.Getenv("AWS_PROFILE")
 
 	if awsProfile == "" {
+		awsProfile = utils.PromptForProfile()
+	}
+
+	// If still no profile, run the SSO setup
+	if awsProfile == "" {
+		fmt.Println("No AWS profile found. Running SSO setup...")
+		err := SetupSSO()
+		if err != nil {
+			return fmt.Errorf("failed to set up AWS SSO: %w", err)
+		}
+
+		// After setting up SSO, prompt the user to select a profile again
 		awsProfile = utils.PromptForProfile()
 	}
 
@@ -31,29 +43,30 @@ func SsoRun(refresh bool, noBrowser bool) error {
 		return fmt.Errorf("error during SSO login: %w", err)
 	}
 
-	// Step 3: Retrieve Role Name & Account ID from AWS config
+	// Retrieve Role Name & Account ID from AWS config
 	roleName, err := utils.AwsConfigureGet("sso_role_name", awsProfile)
 	if err != nil {
 		return err
 	}
+
 	accountID, err := utils.AwsConfigureGet("sso_account_id", awsProfile)
 	if err != nil {
 		return err
 	}
 
-	// Step 4: Read AWS SSO Access Token
-	accessToken, err := utils.GetSsoAccessTokenFromCache()
+	// Read AWS SSO Access Token
+	accessToken, err := utils.GetSsoAccessTokenFromCache(awsProfile)
 	if err != nil {
 		return err
 	}
 
-	// Step 5: Fetch AWS Credentials using SSO
+	// Fetch AWS Credentials using SSO
 	creds, err := utils.GetRoleCredentials(accessToken, roleName, accountID)
 	if err != nil {
 		return err
 	}
 
-	// Step 6: Save credentials in AWS CLI awsProfiles
+	// Save credentials in AWS CLI awsProfiles
 	if err := utils.SaveAWSCredentials(awsProfile, creds); err != nil {
 		return fmt.Errorf("failed to save credentials for profile %s: %w", awsProfile, err)
 	}
@@ -62,14 +75,19 @@ func SsoRun(refresh bool, noBrowser bool) error {
 		return fmt.Errorf("failed to save credentials for default profile: %w", err)
 	}
 
-	// Step 7: Get role ARN
+	// Get role ARN
 	roleARN, err := utils.AwsSTSGetCallerIdentity(awsProfile)
 	if err != nil {
 		return err
 	}
 
-	// Step 8: Print Role Details
-	utils.PrintCurrentRole(awsProfile, accountID, roleName, roleARN, creds.Expiration)
+	accountName, err := utils.GetSSOAccountName(accountID, awsProfile)
+	if err != nil {
+		return err
+	}
+
+	// Print Role Details
+	utils.PrintCurrentRole(awsProfile, accountID, accountName, roleName, roleARN, creds.Expiration)
 
 	return nil
 }
