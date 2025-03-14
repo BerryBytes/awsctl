@@ -134,9 +134,13 @@ func GetRoleCredentials(accessToken, roleName, accountID string) (*models.AWSCre
 		"--access-token", accessToken,
 		"--role-name", roleName,
 		"--account-id", accountID)
-	output, err := cmd.Output()
+	// Capture both stdout and stderr
+	output, err := cmd.CombinedOutput()
+
+	// Check if the command execution resulted in an error
 	if err != nil {
-		return nil, fmt.Errorf("failed to get role credentials: %w", err)
+		// Return the combined output and the error
+		return nil, fmt.Errorf("failed to get role credentials: %w, output: %s", err, string(output))
 	}
 
 	var response models.RoleCredentialsResponse
