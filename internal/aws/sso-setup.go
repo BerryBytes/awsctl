@@ -143,6 +143,11 @@ func selectAccount(profile *models.SSOProfile) (*models.SSOAccount, error) {
 
 // Retrieves and displays the available role on the selected account
 func selectRole(account *models.SSOAccount) (string, error) {
+	if len(account.Roles) == 0 {
+		fmt.Println("No roles available for this account.")
+		return "", nil
+	}
+
 	return utils.SelectRole(account.Roles)
 }
 
@@ -150,7 +155,9 @@ func selectRole(account *models.SSOAccount) (string, error) {
 func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
 	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
 	fmt.Printf("Selected Account: %s\n", account.AccountName)
-	fmt.Printf("Selected Role: %s\n", role)
+	if role != "" {
+		fmt.Printf("Selected Role: %s\n", role)
+	}
 
 	if err := utils.ConfigureDefaultProfile(profile.Region, "json"); err != nil {
 		return err
