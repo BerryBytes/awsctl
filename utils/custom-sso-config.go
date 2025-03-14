@@ -9,7 +9,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+var tokenCache = &models.TokenCache{}
+
+func GetCachedSsoAccessToken(profile string) (string, error) {
+	tokenCache.Mu.Lock()
+	defer tokenCache.Mu.Unlock()
+
+	// Check if the token is still valid
+	if tokenCache.AccessToken != "" && time.Now().Before(tokenCache.Expiry) {
+		return tokenCache.AccessToken, nil
+	}
+
+	// Fetch a new token from the cache
+	accessToken, expiry, err := GetSsoAccessTokenFromCache(profile)
+	if err != nil {
+		return "", err
+	}
+
+	// Update the cache
+	tokenCache.AccessToken = accessToken
+	tokenCache.Expiry = expiry
+
+	return accessToken, nil
+}
 
 // Searches for a profile by name in the configuration
 func FindProfile(cfg *models.Config, profileName string) (*models.SSOProfile, error) {
@@ -203,7 +228,7 @@ func EnsureSSOLogin(profile, region string) error {
 // GetSSOAccounts retrieves the list of AWS accounts accessible via SSO for the given profile.
 func GetSSOAccounts(profile string) ([]models.SSOAccount, error) {
 
-	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	accessToken, err := GetCachedSsoAccessToken(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
@@ -230,7 +255,7 @@ func GetSSOAccounts(profile string) ([]models.SSOAccount, error) {
 
 // Get account name with account ID
 func GetSSOAccountName(accountID, profile string) (string, error) {
-	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	accessToken, err := GetCachedSsoAccessToken(profile)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
@@ -309,9 +334,25 @@ func GetAWSRegion(profile string) (string, error) {
 	return region, nil
 }
 
+// Get region for selected profile
+func GetAWSOutput(profile string) (string, error) {
+	cmd := exec.Command("aws", "configure", "get", "output", "--profile", profile)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get AWS output: %v", err)
+	}
+
+	outputFormat := strings.TrimSpace(string(output))
+	if outputFormat == "" {
+		return "", fmt.Errorf("AWS output not found in profile %s", profile)
+	}
+
+	return outputFormat, nil
+}
+
 // Get roles for the selected account
 func GetSSORoles(profile, accountID string) ([]string, error) {
-	accessToken, err := GetSsoAccessTokenFromCache(profile)
+	accessToken, err := GetCachedSsoAccessToken(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}

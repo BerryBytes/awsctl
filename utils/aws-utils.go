@@ -69,18 +69,18 @@ func SaveAWSCredentials(profile string, creds *models.AWSCredentials) error {
 }
 
 // Retrieves the SSO access token from the cache.
-func GetSsoAccessTokenFromCache(profile string) (string, error) {
+func GetSsoAccessTokenFromCache(profile string) (string, time.Time, error) {
 	// Get the path to the SSO cache directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %v", err)
+		return "", time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
 	}
 	cacheDir := filepath.Join(homeDir, ".aws", "sso", "cache")
 
 	// Find the latest cache file
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read SSO cache directory: %v", err)
+		return "", time.Time{}, fmt.Errorf("failed to read SSO cache directory: %v", err)
 	}
 
 	var latestFile string
@@ -99,29 +99,33 @@ func GetSsoAccessTokenFromCache(profile string) (string, error) {
 	}
 
 	if latestFile == "" {
-		return "", fmt.Errorf("no SSO cache files found")
+		return "", time.Time{}, fmt.Errorf("no SSO cache files found")
 	}
 
-	// Read the cache file
 	cacheFilePath := filepath.Join(cacheDir, latestFile)
 	cacheFile, err := os.ReadFile(cacheFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read SSO cache file: %v", err)
+		return "", time.Time{}, fmt.Errorf("failed to read SSO cache file: %v", err)
 	}
 
-	// Parse the cache file
 	var cache struct {
 		AccessToken string `json:"accessToken"`
+		ExpiresAt   string `json:"expiresAt"`
 	}
 	if err := json.Unmarshal(cacheFile, &cache); err != nil {
-		return "", fmt.Errorf("failed to unmarshal SSO cache file: %v", err)
+		return "", time.Time{}, fmt.Errorf("failed to unmarshal SSO cache file: %v", err)
 	}
 
 	if cache.AccessToken == "" {
-		return "", fmt.Errorf("no access token found in SSO cache file")
+		return "", time.Time{}, fmt.Errorf("no access token found in SSO cache file")
 	}
 
-	return cache.AccessToken, nil
+	expiryTime, err := time.Parse(time.RFC3339, cache.ExpiresAt)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("invalid expiration time format: %v", err)
+	}
+
+	return cache.AccessToken, expiryTime, nil
 }
 
 // Fetch AWS Role Credentials using SSO
@@ -212,12 +216,13 @@ func Contains(slice []string, item string) bool {
 }
 
 // configures the default AWS profile
-func ConfigureDefaultProfile(region string) error {
+func ConfigureDefaultProfile(region, output string) error {
+	fmt.Println("Default CLI profile added")
 	if err := AwsConfigureSet("region", region, "default"); err != nil {
 		fmt.Println("Error setting region:", err)
 		return err
 	}
-	if err := AwsConfigureSet("output", "json", "default"); err != nil {
+	if err := AwsConfigureSet("output", output, "default"); err != nil {
 		fmt.Println("Error setting output format:", err)
 		return err
 	}

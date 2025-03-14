@@ -1,5 +1,10 @@
 package models
 
+import (
+	"sync"
+	"time"
+)
+
 // AWSCredentials holds the credentials returned by AWS SSO
 type AWSCredentials struct {
 	AccessKeyID     string
@@ -21,8 +26,8 @@ type RoleCredentialsResponse struct {
 type SSOAccount struct {
 	AccountID   string   `json:"accountId" yaml:"accountId"`
 	AccountName string   `json:"accountName" yaml:"accountName"`
-	SSORegion   string   `json:"ssoRegion" yaml:"ssoRegion"`
-	Email       string   `json:"email" yaml:"email"`
+	SSORegion   string   `json:"ssoRegion,omitempty" yaml:"ssoRegion,omitempty"`
+	Email       string   `json:"emailAddress" yaml:"emailAddress"`
 	Roles       []string `json:"roles,omitempty" yaml:"roles,omitempty"`
 }
 
@@ -32,8 +37,8 @@ type SSOProfile struct {
 	Region      string       `json:"region" yaml:"region"`
 	AccountID   string       `json:"accountId" yaml:"accountId"`
 	Role        string       `json:"role" yaml:"role"`
-	SsoStartUrl string       `json:"ssoStartUrl,omitempty" yaml:"ssoStartUrl,omitempty"`
-	Accounts    []SSOAccount `json:"accounts" yaml:"accounts"`
+	SsoStartUrl string       `json:"ssoStartUrl" yaml:"ssoStartUrl"`
+	Accounts    []SSOAccount `json:"accountList" yaml:"accountList"`
 }
 
 // Config represents the root configuration containing all profiles
@@ -41,4 +46,10 @@ type Config struct {
 	Aws struct {
 		Profiles []SSOProfile `json:"profiles" yaml:"profiles"`
 	} `json:"aws" yaml:"aws"`
+}
+
+type TokenCache struct {
+	AccessToken string
+	Expiry      time.Time
+	Mu          sync.Mutex
 }

@@ -64,7 +64,12 @@ func setupNewConfiguration() error {
 		return utils.AbortSetup(fmt.Errorf("failed to get AWS Region: %v", err))
 	}
 
-	if err := utils.ConfigureDefaultProfile(region); err != nil {
+	output, err := utils.GetAWSOutput(profile)
+	if err != nil {
+		return utils.AbortSetup(fmt.Errorf("failed to get AWS Region: %v", err))
+	}
+
+	if err := utils.ConfigureDefaultProfile(region, output); err != nil {
 		return utils.AbortSetup(fmt.Errorf("failed to configure default profile: %v", err))
 	}
 
@@ -147,7 +152,7 @@ func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, ro
 	fmt.Printf("Selected Account: %s\n", account.AccountName)
 	fmt.Printf("Selected Role: %s\n", role)
 
-	if err := utils.ConfigureDefaultProfile(profile.Region); err != nil {
+	if err := utils.ConfigureDefaultProfile(profile.Region, "json"); err != nil {
 		return err
 	}
 

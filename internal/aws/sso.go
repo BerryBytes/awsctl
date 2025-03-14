@@ -52,7 +52,7 @@ func SsoInit(refresh bool, noBrowser bool) error {
 		return err
 	}
 
-	accessToken, err := utils.GetSsoAccessTokenFromCache(awsProfile)
+	accessToken, err := utils.GetCachedSsoAccessToken(awsProfile)
 	if err != nil {
 		return err
 	}
