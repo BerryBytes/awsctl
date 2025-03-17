@@ -163,7 +163,7 @@ func configureProfile(profile *models.SSOProfile, account *models.SSOAccount, ro
 		return err
 	}
 
-	ssoProfile := fmt.Sprintf("sso-%s-%s", account.AccountName, profile.Role)
+	ssoProfile := fmt.Sprintf("sso-%s-%s", account.AccountName, role)
 	if err := utils.ConfigureSSOProfile(
 		ssoProfile,
 		profile.Region,
