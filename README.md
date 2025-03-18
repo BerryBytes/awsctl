@@ -51,11 +51,6 @@ chmod +x install-awsctl.sh
 ```
 ./install-awsctl.sh
 ```
-4. Verify Installation
-
-```
-awsctl
-```
 
 ### Usage
 
