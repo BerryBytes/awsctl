@@ -53,8 +53,8 @@ func init() {
 	// Add the subcommands to the sso command
 	ssoCmd.AddCommand(ssoInitCmd)
 	ssoCmd.AddCommand(ssoSetupCmd)
-	ssoCmd.PersistentFlags().BoolVarP(&refresh, "refresh", "r", false, "Force SSO re-login")
-	ssoCmd.PersistentFlags().BoolVar(&noBrowser, "no-browser", false, "Disable the browser-based login flow")
+	ssoInitCmd.Flags().BoolVarP(&refresh, "refresh", "r", false, "Force SSO re-login")
+	ssoInitCmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Disable the browser-based login flow")
 
 	// Add the ssoCmd to the root command
 	rootCmd.AddCommand(ssoCmd)
