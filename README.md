@@ -61,7 +61,7 @@ Start with `awsctl --help` OR `awsctl -h` to get started.
 ```bash
 awsctl sso setup
 ```
-**Note**: This will check if the custom config is available on the path `$HOME/.config/aws/` with the names `config.json`, `config.yml` or `config.yaml`
+**Note**: This will check if the custom config is available on the path `$HOME/.config/awsctl/` with the names `config.json`, `config.yml` or `config.yaml`
 
 - Below is sample `config.yaml` file in:
 ```
