@@ -95,7 +95,7 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
 
-	accessToken, err := c.AWSClient.SSOClient.GetCachedSsoAccessToken()
+	accessToken, err := c.AWSClient.SSOClient.GetCachedSsoAccessToken(awsProfile)
 	if err != nil {
 		return fmt.Errorf("failed to get cached SSO access token: %w", err)
 	}

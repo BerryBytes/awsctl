@@ -13,10 +13,12 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"gopkg.in/ini.v1"
 )
 
 type AWSSSOClient interface {
-	GetCachedSsoAccessToken() (string, error)
+	GetCachedSsoAccessToken(string) (string, error)
 	ConfigureSSO() error
 	GetSSOProfiles() ([]string, error)
 	GetSSOAccountName(accountID, profile string) (string, error)
@@ -55,64 +57,84 @@ func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *mo
 	return nil
 }
 
-func getSsoAccessTokenFromCache() (string, time.Time, error) {
+func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*models.SSOCache, time.Time, error) {
+	sessionName, err := getSessionName(profile)
+	// fmt.Printf("Session Name: %s\n", sessionName)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
+		return nil, time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
 	}
+
 	cacheDir := filepath.Join(homeDir, ".aws", "sso", "cache")
 
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
-		return "", time.Time{}, fmt.Errorf("failed to read SSO cache directory: %v", err)
+		return nil, time.Time{}, fmt.Errorf("failed to read SSO cache directory: %v", err)
 	}
 
-	var latestFile string
+	var selectedCache *models.SSOCache
 	var latestModTime time.Time
+
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".json") {
-			info, err := file.Info()
+			cacheFilePath := filepath.Join(cacheDir, file.Name())
+
+			fileInfo, err := os.Stat(cacheFilePath)
 			if err != nil {
 				continue
 			}
-			if info.ModTime().After(latestModTime) {
-				latestFile = file.Name()
-				latestModTime = info.ModTime()
+
+			cacheFile, err := os.Open(cacheFilePath)
+			if err != nil {
+				continue
+			}
+			defer cacheFile.Close()
+
+			var cache models.SSOCache
+			if err := json.NewDecoder(cacheFile).Decode(&cache); err != nil {
+				continue
+			}
+
+			if (cache.SessionName != nil && *cache.SessionName == sessionName) || (cache.StartURL != nil && strings.TrimSuffix(*cache.StartURL, "#") == sessionName) {
+
+				if fileInfo.ModTime().After(latestModTime) {
+					latestModTime = fileInfo.ModTime()
+					selectedCache = &cache
+				}
 			}
 		}
 	}
 
-	if latestFile == "" {
-		return "", time.Time{}, fmt.Errorf("no SSO cache files found")
+	if selectedCache == nil {
+		return nil, time.Time{}, fmt.Errorf("no matching SSO cache file found")
 	}
 
-	cacheFilePath := filepath.Join(cacheDir, latestFile)
-	cacheFile, err := os.ReadFile(cacheFilePath)
-	if err != nil {
-		return "", time.Time{}, fmt.Errorf("failed to read SSO cache file: %v", err)
+	var expiryTime time.Time
+	if selectedCache.ExpiresAt != nil {
+		expiryTime, err = time.Parse(time.RFC3339, *selectedCache.ExpiresAt)
+		if err != nil {
+			return nil, time.Time{}, fmt.Errorf("invalid expiration time format: %v", err)
+		}
 	}
 
-	var cache struct {
-		AccessToken string `json:"accessToken"`
-		ExpiresAt   string `json:"expiresAt"`
-	}
-	if err := json.Unmarshal(cacheFile, &cache); err != nil {
-		return "", time.Time{}, fmt.Errorf("failed to unmarshal SSO cache file: %v", err)
+	if expiryTime.Before(time.Now()) {
+		fmt.Println("Token Expired. Re-login")
+		err := client.SSOLogin(profile, true, false)
+		if err != nil {
+			return nil, time.Time{}, fmt.Errorf("SSO login failed: %v", err)
+		}
+
+		return getSsoAccessTokenFromCache(profile, client)
 	}
 
-	if cache.AccessToken == "" {
-		return "", time.Time{}, fmt.Errorf("no access token found in SSO cache file")
-	}
-
-	expiryTime, err := time.Parse(time.RFC3339, cache.ExpiresAt)
-	if err != nil {
-		return "", time.Time{}, fmt.Errorf("invalid expiration time format: %v", err)
-	}
-
-	return cache.AccessToken, expiryTime, nil
+	return selectedCache, expiryTime, nil
 }
 
-func (c *RealAWSSSOClient) GetCachedSsoAccessToken() (string, error) {
+func (c *RealAWSSSOClient) GetCachedSsoAccessToken(profile string) (string, error) {
 	c.TokenCache.Mu.Lock()
 	defer c.TokenCache.Mu.Unlock()
 
@@ -120,15 +142,16 @@ func (c *RealAWSSSOClient) GetCachedSsoAccessToken() (string, error) {
 		return c.TokenCache.AccessToken, nil
 	}
 
-	accessToken, expiry, err := getSsoAccessTokenFromCache()
+	cachedSSO, expiry, err := getSsoAccessTokenFromCache(profile, c)
 	if err != nil {
 		return "", err
 	}
 
-	c.TokenCache.AccessToken = accessToken
+	// c.TokenCache.AccessToken = accessToken
+	accessToken := cachedSSO.AccessToken
 	c.TokenCache.Expiry = expiry
 
-	return accessToken, nil
+	return *accessToken, nil
 }
 
 func (c *RealAWSSSOClient) ConfigureSSO() error {
@@ -190,7 +213,7 @@ func (c *RealAWSSSOClient) GetSSOProfiles() ([]string, error) {
 }
 
 func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string, error) {
-	accessToken, err := c.GetCachedSsoAccessToken()
+	accessToken, err := c.GetCachedSsoAccessToken(profile)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
@@ -222,7 +245,7 @@ func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string,
 }
 
 func (c *RealAWSSSOClient) GetSSORoles(profile, accountID string) ([]string, error) {
-	accessToken, err := c.GetCachedSsoAccessToken()
+	accessToken, err := c.GetCachedSsoAccessToken(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
@@ -285,4 +308,55 @@ func (c *RealAWSSSOClient) SSOLogin(awsProfile string, refresh, noBrowser bool) 
 		}
 	}
 	return nil
+}
+
+func getSessionName(profile string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to find home directory: %v", err)
+	}
+
+	configFilePath := fmt.Sprintf("%s/.aws/config", homeDir)
+
+	cfg, err := ini.Load(configFilePath)
+	if err != nil {
+		return "", fmt.Errorf("unable to load AWS config file: %v", err)
+	}
+
+	// Get the profile section
+	sectionName := fmt.Sprintf("profile %s", profile)
+	section, err := cfg.GetSection(sectionName)
+	if err != nil {
+		return "", fmt.Errorf("profile '%s' not found in the config file", profile)
+	}
+
+	// Get the session name from the profile section
+	sessionName := section.Key("sso_session").String()
+
+	// If a session name is found, check the [sso-session <session-name>] section for sso_start_url
+	if sessionName != "" {
+		ssoSessionSectionName := fmt.Sprintf("sso-session %s", sessionName)
+		ssoSessionSection, err := cfg.GetSection(ssoSessionSectionName)
+		if err != nil {
+			return "", fmt.Errorf("sso-session section '%s' not found in the config file", ssoSessionSectionName)
+		}
+
+		// Retrieve the sso_start_url from the sso-session section
+		ssoStartURL := ssoSessionSection.Key("sso_start_url").String()
+		if ssoStartURL == "" {
+			return "", fmt.Errorf("sso_start_url not found in sso-session section '%s'", ssoSessionSectionName)
+		}
+
+		// Return the sso_start_url instead of the session name
+		return ssoStartURL, nil
+	}
+
+	// If there's no sso_session, check for sso_start_url in the profile section
+	startURL := section.Key("sso_start_url").String()
+	if startURL == "" {
+		return "", fmt.Errorf("no sso_session or sso_start_url found for profile '%s'", profile)
+	}
+
+	// Return sso_start_url from the profile section
+	return startURL, nil
 }

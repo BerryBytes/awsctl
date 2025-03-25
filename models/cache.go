@@ -11,3 +11,15 @@ type TokenCache struct {
 	Expiry      time.Time `json:"expiry" yaml:"expiry"`
 	Mu          sync.Mutex
 }
+
+type SSOCache struct {
+	AccessToken           *string `json:"accessToken"`
+	ExpiresAt             *string `json:"expiresAt"`
+	StartURL              *string `json:"startUrl"`
+	SessionName           *string `json:"sessionName,omitempty"`
+	AccountID             *string `json:"accountId,omitempty"`
+	Region                *string `json:"region"`
+	ClientID              *string `json:"clientId,omitempty"`
+	ClientSecret          *string `json:"clientSecret,omitempty"`
+	RegistrationExpiresAt *string `json:"registrationExpiresAt,omitempty"`
+}
