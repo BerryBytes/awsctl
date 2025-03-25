@@ -1,10 +1,11 @@
 package main
 
 import (
-	"awsctl/cmd/root"
-	"awsctl/internal/sso"
 	"fmt"
 	"os"
+
+	"github.com/BerryBytes/awsctl/cmd/root"
+	"github.com/BerryBytes/awsctl/internal/sso"
 )
 
 func main() {

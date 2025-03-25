@@ -1,8 +1,6 @@
 package sso
 
 import (
-	"awsctl/models"
-	promptutils "awsctl/utils/prompt"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/BerryBytes/awsctl/models"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"gopkg.in/ini.v1"
 )

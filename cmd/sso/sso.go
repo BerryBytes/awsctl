@@ -1,9 +1,10 @@
 package sso
 
 import (
-	"awsctl/internal/sso"
-	generalutils "awsctl/utils/general"
 	"fmt"
+
+	"github.com/BerryBytes/awsctl/internal/sso"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
 
 	"github.com/spf13/cobra"
 )

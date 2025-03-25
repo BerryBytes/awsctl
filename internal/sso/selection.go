@@ -1,11 +1,12 @@
 package sso
 
 import (
-	"awsctl/models"
-	promptutils "awsctl/utils/prompt"
 	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/BerryBytes/awsctl/models"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
 type AWSSelectionClient interface {

@@ -5,8 +5,9 @@
 package mock_sso
 
 import (
-	models "awsctl/models"
 	reflect "reflect"
+
+	models "github.com/BerryBytes/awsctl/models"
 
 	gomock "github.com/golang/mock/gomock"
 )

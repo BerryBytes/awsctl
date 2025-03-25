@@ -1,10 +1,11 @@
 package sso
 
 import (
-	"awsctl/internal/sso"
-	promptutils "awsctl/utils/prompt"
 	"errors"
 	"fmt"
+
+	"github.com/BerryBytes/awsctl/internal/sso"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/spf13/cobra"
 )

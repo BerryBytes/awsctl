@@ -1,11 +1,12 @@
 package root
 
 import (
-	cmdSSO "awsctl/cmd/sso"
-	mock_sso "awsctl/tests/mocks"
 	"bytes"
 	"errors"
 	"testing"
+
+	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

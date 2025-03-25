@@ -1,11 +1,12 @@
 package config
 
 import (
-	"awsctl/models"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/BerryBytes/awsctl/models"
 
 	"gopkg.in/yaml.v2"
 )

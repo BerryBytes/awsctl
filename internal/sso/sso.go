@@ -1,12 +1,13 @@
 package sso
 
 import (
-	"awsctl/internal/config"
-	promptutils "awsctl/utils/prompt"
 	"errors"
 	"fmt"
 	"os"
 	"slices"
+
+	"github.com/BerryBytes/awsctl/internal/config"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/manifoldco/promptui"
 )

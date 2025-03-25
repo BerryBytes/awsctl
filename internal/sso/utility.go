@@ -1,8 +1,9 @@
 package sso
 
 import (
-	generalutils "awsctl/utils/general"
 	"fmt"
+
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
 )
 
 type AWSUtilityClient interface {

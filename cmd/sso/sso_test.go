@@ -1,12 +1,13 @@
 package sso
 
 import (
-	mock_sso "awsctl/tests/mocks"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"testing"
+
+	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/manifoldco/promptui"

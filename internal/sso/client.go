@@ -1,8 +1,8 @@
 package sso
 
 import (
-	generalutils "awsctl/utils/general"
-	promptutils "awsctl/utils/prompt"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
 type AWSClient struct {

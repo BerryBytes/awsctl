@@ -1,8 +1,9 @@
 package root
 
 import (
-	cmdSSO "awsctl/cmd/sso"
-	"awsctl/internal/sso"
+	"github.com/BerryBytes/awsctl/internal/sso"
+
+	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
 
 	"github.com/spf13/cobra"
 )

@@ -1,4 +1,4 @@
-module awsctl
+module github.com/BerryBytes/awsctl
 
 go 1.24.0
 

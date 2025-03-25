@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	mock_sso "awsctl/tests/mocks"
-	promptutils "awsctl/utils/prompt"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ func TestSetupCmd(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl) // Ensure mock is created
+	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
 
 	tests := []struct {
 		name          string

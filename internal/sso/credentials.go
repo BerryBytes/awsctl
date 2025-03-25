@@ -1,10 +1,11 @@
 package sso
 
 import (
-	"awsctl/models"
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/BerryBytes/awsctl/models"
 )
 
 type AWSCredentialsClient interface {

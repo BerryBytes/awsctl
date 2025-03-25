@@ -1,10 +1,11 @@
 package sso_test
 
 import (
-	"awsctl/internal/sso"
-	"awsctl/models"
-	mock_sso "awsctl/tests/mocks"
 	"testing"
+
+	"github.com/BerryBytes/awsctl/internal/sso"
+	"github.com/BerryBytes/awsctl/models"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
