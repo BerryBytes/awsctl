@@ -60,7 +60,6 @@ func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *mo
 
 func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*models.SSOCache, time.Time, error) {
 	sessionName, err := getSessionName(profile)
-	// fmt.Printf("Session Name: %s\n", sessionName)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -148,7 +147,6 @@ func (c *RealAWSSSOClient) GetCachedSsoAccessToken(profile string) (string, erro
 		return "", err
 	}
 
-	// c.TokenCache.AccessToken = accessToken
 	accessToken := cachedSSO.AccessToken
 	c.TokenCache.Expiry = expiry
 
@@ -225,12 +223,7 @@ func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string,
 		return "", fmt.Errorf("failed to list AWS accounts: %v", err)
 	}
 
-	var response struct {
-		AccountList []struct {
-			AccountID   string `json:"accountId"`
-			AccountName string `json:"accountName"`
-		} `json:"accountList"`
-	}
+	var response models.AccountNameResponse
 
 	if err := json.Unmarshal(output, &response); err != nil {
 		return "", fmt.Errorf("failed to unmarshal accounts: %v", err)

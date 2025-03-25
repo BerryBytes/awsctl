@@ -79,9 +79,8 @@ func (c *RealAWSCredentialsClient) IsCallerIdentityValid(profile string) bool {
 		return false
 	}
 
-	var identity struct {
-		UserID string `json:"UserId"`
-	}
+	var identity models.Identity
+
 	if err := json.Unmarshal(output, &identity); err != nil {
 		return false
 	}
