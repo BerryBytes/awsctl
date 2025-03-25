@@ -1,8 +1,8 @@
 package sso
 
 import (
-	generalutils "github.com/BerryBytes/awsctl/utils/general"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	generalUtils "github.com/BerryBytes/awsctl/utils/general"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
 type AWSClient struct {
@@ -36,7 +36,7 @@ func DefaultAWSClient() AWSClient {
 		&RealAWSConfigClient{Executor: executor},
 		&RealAWSSSOClient{CredentialsClient: &RealAWSCredentialsClient{configClient: &RealAWSConfigClient{}, executor: executor}},
 		&RealAWSCredentialsClient{configClient: &RealAWSConfigClient{Executor: executor}, executor: executor},
-		&RealAWSSelectionClient{Prompter: promptutils.NewPrompt()},
-		&RealAWSUtilityClient{GeneralManager: generalutils.NewGeneralUtilsManager()},
+		&RealAWSSelectionClient{Prompter: promptUtils.NewPrompt()},
+		&RealAWSUtilityClient{GeneralManager: generalUtils.NewGeneralUtilsManager()},
 	)
 }

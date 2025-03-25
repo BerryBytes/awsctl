@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/BerryBytes/awsctl/internal/sso"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/spf13/cobra"
 )
@@ -23,7 +23,7 @@ func InitCmd(ssoClient sso.SSOClient) *cobra.Command {
 
 			err := ssoClient.InitSSO(refresh, noBrowser)
 			if err != nil {
-				if errors.Is(err, promptutils.ErrInterrupted) {
+				if errors.Is(err, promptUtils.ErrInterrupted) {
 					return nil
 				}
 				return fmt.Errorf("SSO initialization failed: %w", err)

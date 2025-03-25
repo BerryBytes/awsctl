@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/BerryBytes/awsctl/models"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
 type AWSSelectionClient interface {
@@ -23,7 +23,7 @@ type AWSSelectionClient interface {
 }
 
 type RealAWSSelectionClient struct {
-	Prompter promptutils.Prompter
+	Prompter promptUtils.Prompter
 }
 
 func (c *RealAWSSelectionClient) FindProfile(cfg *models.Config, profileName string) (*models.SSOProfile, error) {
@@ -69,9 +69,9 @@ func (c *RealAWSSelectionClient) SelectProfile(profiles []string) (string, error
 
 	profile, err := c.Prompter.PromptForSelection("Select an AWS SSO Profile", profiles)
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
 
-			return "", promptutils.ErrInterrupted
+			return "", promptUtils.ErrInterrupted
 		}
 		return "", fmt.Errorf("profile selection aborted: %v", err)
 	}
@@ -94,8 +94,8 @@ func (c *RealAWSSelectionClient) SelectAccount(accounts []models.SSOAccount) (st
 func (c *RealAWSSelectionClient) SelectRole(roles []string) (string, error) {
 	role, err := c.Prompter.PromptForSelection("Select an AWS Role", roles)
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return "", promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
 		}
 		return "", fmt.Errorf("role selection aborted: %v", err)
 	}
@@ -109,8 +109,8 @@ func (c *RealAWSSelectionClient) SelectProfileFromConfig(cfg *models.Config) (*m
 	}
 	selectedProfile, err := c.SelectProfile(profiles)
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return nil, promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return nil, promptUtils.ErrInterrupted
 		}
 		return nil, fmt.Errorf("profile selection aborted: %v", err)
 	}
@@ -125,8 +125,8 @@ func (c *RealAWSSelectionClient) SelectAccountFromProfile(profile *models.SSOPro
 	accounts := c.ExtractAccountNames(profile)
 	selectedAccount, err := c.Prompter.PromptForSelection("Select AWS Account", accounts)
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return nil, promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return nil, promptUtils.ErrInterrupted
 		}
 		return nil, fmt.Errorf("account selection aborted: %v", err)
 	}
@@ -145,8 +145,8 @@ func (c *RealAWSSelectionClient) SelectRoleFromAccount(account *models.SSOAccoun
 	role, err := c.SelectRole(account.Roles)
 
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return "", promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
 		}
 		return "", fmt.Errorf("role selection aborted: %v", err)
 	}

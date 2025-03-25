@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func TestSetupCmd(t *testing.T) {
 		{
 			name: "interrupted by user",
 			mockSetup: func() {
-				mockSSOClient.EXPECT().SetupSSO().Return(promptutils.ErrInterrupted)
+				mockSSOClient.EXPECT().SetupSSO().Return(promptUtils.ErrInterrupted)
 			},
 			expectedError: "",
 		},

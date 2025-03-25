@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"github.com/BerryBytes/awsctl/internal/config"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/manifoldco/promptui"
 )
@@ -49,8 +49,8 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 		if len(profiles) == 0 {
 			fmt.Println("No profiles found. Configuring SSO Setup...")
 			if err := c.SetupSSO(); err != nil {
-				if errors.Is(err, promptutils.ErrInterrupted) {
-					return promptutils.ErrInterrupted
+				if errors.Is(err, promptUtils.ErrInterrupted) {
+					return promptUtils.ErrInterrupted
 				}
 				return fmt.Errorf("failed to set up AWS SSO: %w", err)
 			}
@@ -64,8 +64,8 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 
 		selectedProfile, err := c.AWSClient.SelectionClient.SelectProfile(profiles)
 		if err != nil {
-			if errors.Is(err, promptutils.ErrInterrupted) {
-				return promptutils.ErrInterrupted
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return promptUtils.ErrInterrupted
 			}
 			return fmt.Errorf("profile selection aborted: %v", err)
 		}
@@ -155,7 +155,7 @@ func (c *RealSSOClient) SetupSSO() error {
 	if err != nil {
 		if errors.Is(err, promptui.ErrInterrupt) {
 			fmt.Println("\nReceived termination signal. Exiting.")
-			return promptutils.ErrInterrupted
+			return promptUtils.ErrInterrupted
 		}
 		return fmt.Errorf("failed to select an option: %w", err)
 	}
@@ -165,8 +165,8 @@ func (c *RealSSOClient) SetupSSO() error {
 	}
 
 	err = c.updateCustomConfiguration(configPath)
-	if errors.Is(err, promptutils.ErrInterrupted) {
-		return promptutils.ErrInterrupted
+	if errors.Is(err, promptUtils.ErrInterrupted) {
+		return promptUtils.ErrInterrupted
 	}
 
 	return err
@@ -180,8 +180,8 @@ func (c *RealSSOClient) setupNewConfiguration() error {
 		// Configure AWS SSO interactively
 		err := c.AWSClient.SSOClient.ConfigureSSO()
 		if err != nil {
-			if errors.Is(err, promptutils.ErrInterrupted) {
-				return promptutils.ErrInterrupted
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return promptUtils.ErrInterrupted
 			}
 			return fmt.Errorf("failed to configure AWS SSO: %v", err)
 		}
@@ -224,8 +224,8 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 
 	profile, err := c.AWSClient.SelectionClient.SelectProfileFromConfig(cfg.RawCustomConfig)
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return promptUtils.ErrInterrupted
 		}
 		return fmt.Errorf("profile selection aborted: %v", err)
 	}
@@ -233,8 +233,8 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 	account, err := c.AWSClient.SelectionClient.SelectAccountFromProfile(profile)
 
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return promptUtils.ErrInterrupted
 		}
 		return fmt.Errorf("failed to select account: %v", err)
 	}
@@ -242,8 +242,8 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 	role, err := c.AWSClient.SelectionClient.SelectRoleFromAccount(account)
 
 	if err != nil {
-		if errors.Is(err, promptutils.ErrInterrupted) {
-			return promptutils.ErrInterrupted
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return promptUtils.ErrInterrupted
 		}
 		return fmt.Errorf("failed to select role: %v", err)
 	}

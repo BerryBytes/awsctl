@@ -3,7 +3,7 @@ package sso
 import (
 	"fmt"
 
-	generalutils "github.com/BerryBytes/awsctl/utils/general"
+	generalUtils "github.com/BerryBytes/awsctl/utils/general"
 )
 
 type AWSUtilityClient interface {
@@ -12,7 +12,7 @@ type AWSUtilityClient interface {
 }
 
 type RealAWSUtilityClient struct {
-	GeneralManager generalutils.GeneralUtilsInterface
+	GeneralManager generalUtils.GeneralUtilsInterface
 }
 
 func (c *RealAWSUtilityClient) AbortSetup(err error) error {

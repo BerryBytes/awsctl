@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/BerryBytes/awsctl/models"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"gopkg.in/ini.v1"
 )
@@ -167,7 +167,7 @@ func (c *RealAWSSSOClient) ConfigureSSO() error {
 			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
 				if status.ExitStatus() == 130 {
 					fmt.Println("\nProcess terminated by user.")
-					return promptutils.ErrInterrupted
+					return promptUtils.ErrInterrupted
 				}
 			}
 		}

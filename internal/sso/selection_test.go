@@ -7,7 +7,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/models"
 	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -228,10 +228,10 @@ func TestSelectProfile_Error(t *testing.T) {
 	profiles := []string{"profile1", "profile2"}
 
 	mockPrompter.EXPECT().PromptForSelection("Select an AWS SSO Profile", profiles).
-		Return("", promptutils.ErrInterrupted)
+		Return("", promptUtils.ErrInterrupted)
 
 	_, err := mockAWSSelectionClient.SelectProfile(profiles)
 
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, promptutils.ErrInterrupted))
+	assert.True(t, errors.Is(err, promptUtils.ErrInterrupted))
 }

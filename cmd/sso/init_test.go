@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +72,7 @@ func TestInitCmd(t *testing.T) {
 			refreshFlag:   false,
 			noBrowserFlag: false,
 			mockSetup: func() {
-				mockSSOClient.EXPECT().InitSSO(false, false).Return(promptutils.ErrInterrupted)
+				mockSSOClient.EXPECT().InitSSO(false, false).Return(promptUtils.ErrInterrupted)
 			},
 			expectedError: "",
 		},
