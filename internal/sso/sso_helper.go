@@ -16,8 +16,7 @@ import (
 )
 
 type AWSSSOClient interface {
-	getSsoAccessTokenFromCache(profile string) (string, time.Time, error)
-	GetCachedSsoAccessToken(profile string) (string, error)
+	GetCachedSsoAccessToken() (string, error)
 	ConfigureSSO() error
 	GetSSOProfiles() ([]string, error)
 	GetSSOAccountName(accountID, profile string) (string, error)
@@ -56,7 +55,7 @@ func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *mo
 	return nil
 }
 
-func (c *RealAWSSSOClient) getSsoAccessTokenFromCache(profile string) (string, time.Time, error) {
+func getSsoAccessTokenFromCache() (string, time.Time, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
@@ -113,7 +112,7 @@ func (c *RealAWSSSOClient) getSsoAccessTokenFromCache(profile string) (string, t
 	return cache.AccessToken, expiryTime, nil
 }
 
-func (c *RealAWSSSOClient) GetCachedSsoAccessToken(profile string) (string, error) {
+func (c *RealAWSSSOClient) GetCachedSsoAccessToken() (string, error) {
 	c.TokenCache.Mu.Lock()
 	defer c.TokenCache.Mu.Unlock()
 
@@ -121,7 +120,7 @@ func (c *RealAWSSSOClient) GetCachedSsoAccessToken(profile string) (string, erro
 		return c.TokenCache.AccessToken, nil
 	}
 
-	accessToken, expiry, err := c.getSsoAccessTokenFromCache(profile)
+	accessToken, expiry, err := getSsoAccessTokenFromCache()
 	if err != nil {
 		return "", err
 	}
@@ -191,7 +190,7 @@ func (c *RealAWSSSOClient) GetSSOProfiles() ([]string, error) {
 }
 
 func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string, error) {
-	accessToken, err := c.GetCachedSsoAccessToken(profile)
+	accessToken, err := c.GetCachedSsoAccessToken()
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
@@ -223,7 +222,7 @@ func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string,
 }
 
 func (c *RealAWSSSOClient) GetSSORoles(profile, accountID string) ([]string, error) {
-	accessToken, err := c.GetCachedSsoAccessToken(profile)
+	accessToken, err := c.GetCachedSsoAccessToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}

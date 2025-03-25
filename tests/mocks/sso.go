@@ -34,17 +34,17 @@ func (m *MockSSOClient) EXPECT() *MockSSOClientMockRecorder {
 }
 
 // InitSSO mocks base method.
-func (m *MockSSOClient) InitSSO(noBrowser, refresh bool) error {
+func (m *MockSSOClient) InitSSO(refresh, noBrowser bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitSSO", noBrowser, refresh)
+	ret := m.ctrl.Call(m, "InitSSO", refresh, noBrowser)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InitSSO indicates an expected call of InitSSO.
-func (mr *MockSSOClientMockRecorder) InitSSO(noBrowser, refresh interface{}) *gomock.Call {
+func (mr *MockSSOClientMockRecorder) InitSSO(refresh, noBrowser interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitSSO", reflect.TypeOf((*MockSSOClient)(nil).InitSSO), noBrowser, refresh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitSSO", reflect.TypeOf((*MockSSOClient)(nil).InitSSO), refresh, noBrowser)
 }
 
 // SetupSSO mocks base method.

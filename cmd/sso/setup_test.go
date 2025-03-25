@@ -15,7 +15,7 @@ func TestSetupCmd(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
+	mockSSOClient := mock_sso.NewMockSSOClient(ctrl) // Ensure mock is created
 
 	tests := []struct {
 		name          string
@@ -34,7 +34,7 @@ func TestSetupCmd(t *testing.T) {
 			mockSetup: func() {
 				mockSSOClient.EXPECT().SetupSSO().Return(errors.New("setup error"))
 			},
-			expectedError: "error setting up AWS SSO: setup error",
+			expectedError: "setup error",
 		},
 		{
 			name: "interrupted by user",

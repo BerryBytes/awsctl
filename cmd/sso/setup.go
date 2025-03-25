@@ -10,22 +10,19 @@ import (
 )
 
 func SetupCmd(ssoClient sso.SSOClient) *cobra.Command {
-	setupCmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "setup",
 		Short: "Setup AWS SSO configuration",
-		Long:  `Configure or modify AWS SSO settings.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Setting up AWS SSO...")
-
-			if err := ssoClient.SetupSSO(); err != nil {
+			err := ssoClient.SetupSSO()
+			if err != nil {
 				if errors.Is(err, promptutils.ErrInterrupted) {
 					return nil
 				}
-				return fmt.Errorf("error setting up AWS SSO: %v", err)
+				return fmt.Errorf("SSO initialization failed: %w", err)
 			}
+			cmd.Println("AWS SSO setup completed successfully.")
 			return nil
-
 		},
 	}
-	return setupCmd
 }

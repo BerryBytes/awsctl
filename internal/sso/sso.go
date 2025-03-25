@@ -25,7 +25,7 @@ func NewSSOClient(awsClient AWSClient) (SSOClient, error) {
 	// Initialize config using NewConfig
 	cfg, err := config.NewConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err) // More specific error message
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	return &RealSSOClient{
@@ -95,7 +95,7 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
 
-	accessToken, err := c.AWSClient.SSOClient.GetCachedSsoAccessToken(awsProfile)
+	accessToken, err := c.AWSClient.SSOClient.GetCachedSsoAccessToken()
 	if err != nil {
 		return fmt.Errorf("failed to get cached SSO access token: %w", err)
 	}
@@ -210,7 +210,6 @@ func (c *RealSSOClient) setupNewConfiguration() error {
 		return fmt.Errorf("failed to configure default profile: %v", err)
 	}
 
-	fmt.Println("New AWS SSO setup completed successfully.")
 	return nil
 }
 
@@ -251,6 +250,5 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 		return fmt.Errorf("failed to configure profile: %v", err)
 	}
 
-	fmt.Println("AWS SSO setup completed successfully.")
 	return nil
 }

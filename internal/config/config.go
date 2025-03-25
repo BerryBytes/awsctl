@@ -16,7 +16,6 @@ type Config struct {
 	RawCustomConfig *models.Config
 }
 
-// NewConfig initializes and returns a Config instance.
 func NewConfig() (*Config, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
