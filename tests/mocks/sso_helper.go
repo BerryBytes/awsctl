@@ -48,18 +48,18 @@ func (mr *MockAWSSSOClientMockRecorder) ConfigureSSO() *gomock.Call {
 }
 
 // GetCachedSsoAccessToken mocks base method.
-func (m *MockAWSSSOClient) GetCachedSsoAccessToken() (string, error) {
+func (m *MockAWSSSOClient) GetCachedSsoAccessToken(arg0 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCachedSsoAccessToken")
+	ret := m.ctrl.Call(m, "GetCachedSsoAccessToken", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCachedSsoAccessToken indicates an expected call of GetCachedSsoAccessToken.
-func (mr *MockAWSSSOClientMockRecorder) GetCachedSsoAccessToken() *gomock.Call {
+func (mr *MockAWSSSOClientMockRecorder) GetCachedSsoAccessToken(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCachedSsoAccessToken", reflect.TypeOf((*MockAWSSSOClient)(nil).GetCachedSsoAccessToken))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCachedSsoAccessToken", reflect.TypeOf((*MockAWSSSOClient)(nil).GetCachedSsoAccessToken), arg0)
 }
 
 // GetSSOAccountName mocks base method.

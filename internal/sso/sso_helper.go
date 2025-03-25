@@ -323,17 +323,14 @@ func getSessionName(profile string) (string, error) {
 		return "", fmt.Errorf("unable to load AWS config file: %v", err)
 	}
 
-	// Get the profile section
 	sectionName := fmt.Sprintf("profile %s", profile)
 	section, err := cfg.GetSection(sectionName)
 	if err != nil {
 		return "", fmt.Errorf("profile '%s' not found in the config file", profile)
 	}
 
-	// Get the session name from the profile section
 	sessionName := section.Key("sso_session").String()
 
-	// If a session name is found, check the [sso-session <session-name>] section for sso_start_url
 	if sessionName != "" {
 		ssoSessionSectionName := fmt.Sprintf("sso-session %s", sessionName)
 		ssoSessionSection, err := cfg.GetSection(ssoSessionSectionName)
@@ -341,22 +338,18 @@ func getSessionName(profile string) (string, error) {
 			return "", fmt.Errorf("sso-session section '%s' not found in the config file", ssoSessionSectionName)
 		}
 
-		// Retrieve the sso_start_url from the sso-session section
 		ssoStartURL := ssoSessionSection.Key("sso_start_url").String()
 		if ssoStartURL == "" {
 			return "", fmt.Errorf("sso_start_url not found in sso-session section '%s'", ssoSessionSectionName)
 		}
 
-		// Return the sso_start_url instead of the session name
 		return ssoStartURL, nil
 	}
 
-	// If there's no sso_session, check for sso_start_url in the profile section
 	startURL := section.Key("sso_start_url").String()
 	if startURL == "" {
 		return "", fmt.Errorf("no sso_session or sso_start_url found for profile '%s'", profile)
 	}
 
-	// Return sso_start_url from the profile section
 	return startURL, nil
 }
