@@ -64,11 +64,21 @@ func TestNewSSOCommands(t *testing.T) {
 				Use: "test",
 				PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 					if err := tt.generalUtils.CheckAWSCLI(); err != nil {
-						fmt.Fprintln(cmd.ErrOrStderr(), "Error:", err)
-						fmt.Fprintln(cmd.ErrOrStderr(), "Please install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
+						if _, err1 := fmt.Fprintln(cmd.ErrOrStderr(), "Error:", err); err1 != nil {
+							return err1
+						}
+
+						if _, err2 := fmt.Fprintln(cmd.ErrOrStderr(), "Please install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"); err2 != nil {
+							return err2
+						}
+
 						return err
 					}
-					fmt.Fprintln(cmd.OutOrStdout(), "AWS CLI is installed and available in PATH.")
+
+					if _, err := fmt.Fprintln(cmd.OutOrStdout(), "AWS CLI is installed and available in PATH."); err != nil {
+						return err
+					}
+
 					return nil
 				},
 			}

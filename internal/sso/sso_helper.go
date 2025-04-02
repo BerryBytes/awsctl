@@ -92,7 +92,11 @@ func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*mode
 			if err != nil {
 				continue
 			}
-			defer cacheFile.Close()
+			defer func() {
+				if err := cacheFile.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Error closing cache file: %v\n", err)
+				}
+			}()
 
 			var cache models.SSOCache
 			if err := json.NewDecoder(cacheFile).Decode(&cache); err != nil {
@@ -185,7 +189,11 @@ func (c *RealAWSSSOClient) GetSSOProfiles() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open AWS config file: %v", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing file: %v\n", err)
+		}
+	}()
 
 	var ssoProfiles []string
 	scanner := bufio.NewScanner(file)
