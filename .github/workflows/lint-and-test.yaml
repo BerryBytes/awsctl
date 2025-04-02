@@ -36,7 +36,7 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-          
+
     - name: Cache pre-commit
       uses: actions/cache@v3
       with:
@@ -48,7 +48,9 @@ jobs:
       
     - name: Install pre-commit
       run: pip install pre-commit
-      
+
+    - run: pre-commit install && pip install --upgrade pre-commit && pre-commit install-hooks
+
     - name: Run pre-commit
       run: pre-commit run --all-files --show-diff-on-failure
       
