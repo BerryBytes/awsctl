@@ -20,8 +20,6 @@ repos:
     hooks:
       - id: go-fmt
         args: ["-w"]
-      - id: go-imports
-        args: ["-w"]
       - id: no-go-testing
       - id: golangci-lint
         args: ["--issues-exit-code=1"]
