@@ -1,58 +1,69 @@
-name: CI Lint And Test with Pre-commit
+name: CI Lint and Test
 
 on:
   push:
     branches:
       - main
+      - master
       - develop
   pull_request:
-    branches: 
+    branches:
       - main
+      - master
       - develop
+
+permissions:
+  contents: read
 
 jobs:
   ci-checks:
+    name: Lint and Test
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
-        
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
 
-    - name: Cache pre-commit
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pre-commit
-        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-        
-    - name: Install Go dependencies
-      run: go mod download
-      
-    - name: Install pre-commit
-      run: pip install pre-commit
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - run: pre-commit install && pip install --upgrade pre-commit && pre-commit install-hooks
+      - name: Cache pre-commit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
-    - name: Run pre-commit
-      run: pre-commit run --all-files --show-diff-on-failure
-      
-    - name: Run Go tests
-      run: go test ./... -v -coverprofile=coverage.txt -covermode=atomic -race
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.0
+
+      - name: Install and update pre-commit
+        run: pre-commit install && pip install --upgrade pre-commit && pre-commit install-hooks
+
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run Go tests
+        run: go test ./... -v -coverprofile=coverage.txt -covermode=atomic -race
