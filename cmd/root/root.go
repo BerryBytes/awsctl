@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/BerryBytes/awsctl/internal/sso"
 
+	bastionCmd "github.com/BerryBytes/awsctl/cmd/bastion"
 	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
 
 	"github.com/spf13/cobra"
@@ -19,5 +20,6 @@ func NewRootCmd(ssoClient sso.SSOClient) *cobra.Command {
 	}
 
 	rootCmd.AddCommand(cmdSSO.NewSSOCommands(ssoClient))
+	rootCmd.AddCommand(bastionCmd.NewBastionCmd())
 	return rootCmd
 }
