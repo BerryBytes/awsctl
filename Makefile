@@ -11,9 +11,13 @@ GO_WINDOWS=windows
 GO_DARWIN=darwin
 
 # Default
-run:
+run-sso:
 	@echo "Running the project locally..."
-	go run main.go sso setup
+	go run main.go sso init
+
+run-bast:
+	@echo "Running the project locally..."
+	go run main.go bastion
 
 # Build binaries for Linux
 .PHONY: build-linux
@@ -38,14 +42,6 @@ build-darwin:
 # Target to build the binaries for all platforms
 .PHONY: all
 all: build-linux build-windows build-darwin
-
-run-ssosetup:
-	@echo "Running the project locally..."
-	go run main.go sso setup
-
-run-ssoinit:
-	@echo "Running the project locally..."
-	go run main.go sso init
 
 .PHONY: fmt
 fmt:

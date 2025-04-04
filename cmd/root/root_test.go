@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,10 @@ func TestNewRootCmd(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-			rootCmd := NewRootCmd(mockSSOClient)
+			mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
+			mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+
+			rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
 
 			assert.Equal(t, tt.expectedUse, rootCmd.Use)
 			assert.Equal(t, tt.expectedShort, rootCmd.Short)
@@ -47,8 +49,10 @@ func TestRootCommandStructure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-	rootCmd := NewRootCmd(mockSSOClient)
+	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
+	mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+
+	rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
 
 	ssoCmd := cmdSSO.NewSSOCommands(mockSSOClient)
 	found := false
@@ -95,8 +99,10 @@ func TestRootCmd_Execution(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-			rootCmd := NewRootCmd(mockSSOClient)
+			mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
+			mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+
+			rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
 
 			var outBuf bytes.Buffer
 			rootCmd.SetOut(&outBuf)
@@ -123,10 +129,11 @@ func TestRootCmd_SubcommandExecution(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
+	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 	mockSSOClient.EXPECT().SetupSSO().Return(nil)
+	mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 
-	rootCmd := NewRootCmd(mockSSOClient)
+	rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
 
 	rootCmd.SetArgs([]string{"sso", "setup"})
 

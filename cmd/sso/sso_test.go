@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 
 	"github.com/golang/mock/gomock"
 	"github.com/manifoldco/promptui"
@@ -107,7 +107,7 @@ func TestSetupSSO_Interrupt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSO := mock_sso.NewMockSSOClient(ctrl)
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
 	mockSSO.EXPECT().SetupSSO().Return(promptui.ErrInterrupt)
 
 	cmd := SetupCmd(mockSSO)
@@ -127,7 +127,7 @@ func TestSetupCmd_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
+	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 	mockSSOClient.EXPECT().SetupSSO().Return(nil)
 
 	// Create the command

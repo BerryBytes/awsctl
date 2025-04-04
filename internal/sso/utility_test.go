@@ -3,8 +3,7 @@ package sso
 import (
 	"testing"
 
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
-
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,7 +12,7 @@ func TestAbortSetup(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := mock_sso.NewMockAWSUtilityClient(ctrl)
+	mockClient := mock_awsctl.NewMockAWSUtilityClient(ctrl)
 
 	mockClient.EXPECT().AbortSetup(gomock.Any()).Return(nil).Times(1)
 
@@ -26,7 +25,7 @@ func TestPrintCurrentRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := mock_sso.NewMockAWSUtilityClient(ctrl)
+	mockClient := mock_awsctl.NewMockAWSUtilityClient(ctrl)
 
 	profile := "myProfile"
 	accountID := "123456789012"

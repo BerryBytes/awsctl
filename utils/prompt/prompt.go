@@ -1,23 +1,22 @@
-package promptutils
+package promptUtils
 
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/manifoldco/promptui"
 )
 
 type Prompter interface {
 	PromptForSelection(label string, items []string) (string, error)
-	PromptForConfirmation(prompt string) bool
+	PromptForInput(label, defaultValue string) (string, error)
 }
 
 type RealPrompter struct{}
 
 var ErrInterrupted = errors.New("operation interrupted")
 
-func (p *RealPrompter) HandlePromptError(err error) error {
+func handlePromptError(err error) error {
 	if err != nil {
 		if errors.Is(err, promptui.ErrInterrupt) {
 			fmt.Println("\nReceived termination signal. Exiting.")
@@ -35,7 +34,7 @@ func (p *RealPrompter) PromptForSelection(label string, items []string) (string,
 	}
 	_, selected, err := prompt.Run()
 
-	err = p.HandlePromptError(err)
+	err = handlePromptError(err)
 	if err != nil {
 		if errors.Is(err, ErrInterrupted) {
 			return "", ErrInterrupted
@@ -46,16 +45,23 @@ func (p *RealPrompter) PromptForSelection(label string, items []string) (string,
 	return selected, nil
 }
 
-func (p *RealPrompter) PromptForConfirmation(prompt string) bool {
-	promptInstance := promptui.Prompt{
-		Label:     prompt,
-		IsConfirm: true,
+func (p *RealPrompter) PromptForInput(label, defaultValue string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:   label,
+		Default: defaultValue,
 	}
-	result, err := promptInstance.Run()
+
+	result, err := prompt.Run()
+
+	err = handlePromptError(err)
 	if err != nil {
-		return false
+		if errors.Is(err, ErrInterrupted) {
+			return "", ErrInterrupted
+		}
+		return "", fmt.Errorf("input prompt failed: %w", err)
 	}
-	return strings.HasPrefix(strings.ToLower(result), "y")
+
+	return result, nil
 }
 
 func NewPrompt() Prompter {

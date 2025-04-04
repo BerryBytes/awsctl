@@ -1,11 +1,12 @@
 package sso_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,8 @@ func TestGetRoleCredentials(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockExecutor := mock_sso.NewMockCommandExecutor(ctrl)
-	mockConfigClient := mock_sso.NewMockAWSConfigClient(ctrl)
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
 	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
 
@@ -42,8 +43,8 @@ func TestSaveAWSCredentials(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockExecutor := mock_sso.NewMockCommandExecutor(ctrl)
-	mockConfigClient := mock_sso.NewMockAWSConfigClient(ctrl)
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
 	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
 
@@ -66,8 +67,8 @@ func TestIsCallerIdentityValid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockExecutor := mock_sso.NewMockCommandExecutor(ctrl)
-	mockConfigClient := mock_sso.NewMockAWSConfigClient(ctrl)
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
 	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
 
@@ -83,8 +84,8 @@ func TestAwsSTSGetCallerIdentity(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockExecutor := mock_sso.NewMockCommandExecutor(ctrl)
-	mockConfigClient := mock_sso.NewMockAWSConfigClient(ctrl)
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
 	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
 
@@ -95,4 +96,129 @@ func TestAwsSTSGetCallerIdentity(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:sts::123456789012:assumed-role/mockRole/mockSession", arn)
+}
+
+func TestGetRoleCredentials_ErrorHandling_RunCommandFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	accessToken := "mockAccessToken"
+	roleName := "mockRoleName"
+	accountID := "mockAccountID"
+
+	mockExecutor.EXPECT().RunCommand("aws", "sso", "get-role-credentials",
+		"--access-token", accessToken,
+		"--role-name", roleName,
+		"--account-id", accountID).Return([]byte(""), fmt.Errorf("command error"))
+
+	creds, err := client.GetRoleCredentials(accessToken, roleName, accountID)
+
+	assert.Error(t, err)
+	assert.Nil(t, creds)
+	assert.Contains(t, err.Error(), "failed to get role credentials")
+}
+
+func TestGetRoleCredentials_ErrorHandling_JSONParseFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	accessToken := "mockAccessToken"
+	roleName := "mockRoleName"
+	accountID := "mockAccountID"
+
+	mockExecutor.EXPECT().RunCommand("aws", "sso", "get-role-credentials",
+		"--access-token", accessToken,
+		"--role-name", roleName,
+		"--account-id", accountID).Return([]byte(`{"invalidJson"`), nil)
+
+	creds, err := client.GetRoleCredentials(accessToken, roleName, accountID)
+
+	assert.Error(t, err)
+	assert.Nil(t, creds)
+	assert.Contains(t, err.Error(), "failed to parse credentials JSON")
+}
+
+func TestSaveAWSCredentials_ErrorHandling(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	creds := &models.AWSCredentials{
+		AccessKeyID:     "AKIA...",
+		SecretAccessKey: "secret...",
+		SessionToken:    "session_token",
+	}
+
+	mockConfigClient.EXPECT().ConfigureSet("aws_access_key_id", "AKIA...", "mockProfile").Return(fmt.Errorf("config error"))
+
+	err := client.SaveAWSCredentials("mockProfile", creds)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to set aws_access_key_id for profile mockProfile")
+}
+
+func TestIsCallerIdentityValid_RunCommandFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	mockExecutor.EXPECT().RunCommand("aws", "sts", "get-caller-identity", "--profile", "mockProfile").Return(nil, fmt.Errorf("command error"))
+
+	isValid := client.IsCallerIdentityValid("mockProfile")
+
+	assert.False(t, isValid)
+}
+
+func TestAwsSTSGetCallerIdentity_RunCommandFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	mockExecutor.EXPECT().RunCommand("aws", "sts", "get-caller-identity", "--profile", "mockProfile").Return(nil, fmt.Errorf("command error"))
+
+	arn, err := client.AwsSTSGetCallerIdentity("mockProfile")
+
+	assert.Error(t, err)
+	assert.Empty(t, arn)
+	assert.Contains(t, err.Error(), "failed to get caller identity")
+}
+
+func TestAwsSTSGetCallerIdentity_JSONParseFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	client := sso.NewRealAWSCredentialsClient(mockConfigClient, mockExecutor)
+
+	mockExecutor.EXPECT().RunCommand("aws", "sts", "get-caller-identity", "--profile", "mockProfile").Return([]byte(`{"invalidJson"`), nil)
+
+	arn, err := client.AwsSTSGetCallerIdentity("mockProfile")
+
+	assert.Error(t, err)
+	assert.Empty(t, arn)
+	assert.Contains(t, err.Error(), "failed to parse identity JSON")
 }

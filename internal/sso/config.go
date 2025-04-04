@@ -1,13 +1,16 @@
 package sso
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
 
 type CommandExecutor interface {
 	RunCommand(name string, args ...string) ([]byte, error)
+	RunInteractiveCommand(ctx context.Context, name string, args ...string) error
 }
 
 type RealCommandExecutor struct{}
@@ -15,6 +18,15 @@ type RealCommandExecutor struct{}
 func (e *RealCommandExecutor) RunCommand(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
 	return cmd.Output()
+}
+
+func (e *RealCommandExecutor) RunInteractiveCommand(ctx context.Context, name string, args ...string) error {
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 type AWSConfigClient interface {

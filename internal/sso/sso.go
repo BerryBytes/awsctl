@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/BerryBytes/awsctl/internal/config"
+	"github.com/BerryBytes/awsctl/models"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/manifoldco/promptui"
@@ -23,7 +24,6 @@ type RealSSOClient struct {
 }
 
 func NewSSOClient(awsClient AWSClient) (SSOClient, error) {
-	// Initialize config using NewConfig
 	cfg, err := config.NewConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
@@ -251,5 +251,31 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 		return fmt.Errorf("failed to configure profile: %v", err)
 	}
 
+	return nil
+}
+
+func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
+	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
+	fmt.Printf("Selected Account: %s\n", account.AccountName)
+	if role != "" {
+		fmt.Printf("Selected Role: %s\n", role)
+	}
+
+	if err := c.AWSClient.ConfigClient.ConfigureDefaultProfile(profile.Region, "json"); err != nil {
+		return fmt.Errorf("failed to configure default profile: %v", err)
+	}
+
+	ssoProfile := fmt.Sprintf("sso-%s-%s", account.AccountName, role)
+	if err := c.AWSClient.ConfigClient.ConfigureSSOProfile(
+		ssoProfile,
+		profile.Region,
+		account.AccountID,
+		role,
+		profile.SsoStartUrl,
+	); err != nil {
+		return fmt.Errorf("failed to configure SSO profile: %v", err)
+	}
+
+	fmt.Printf("Successfully configured profile: %s\n", ssoProfile)
 	return nil
 }

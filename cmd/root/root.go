@@ -5,11 +5,12 @@ import (
 
 	bastionCmd "github.com/BerryBytes/awsctl/cmd/bastion"
 	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
+	"github.com/BerryBytes/awsctl/internal/bastion"
 
 	"github.com/spf13/cobra"
 )
 
-func NewRootCmd(ssoClient sso.SSOClient) *cobra.Command {
+func NewRootCmd(ssoClient sso.SSOClient, bastionSvc bastion.BastionServiceInterface) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "awsctl",
 		Short: "AWS CLI Tool",
@@ -20,6 +21,7 @@ func NewRootCmd(ssoClient sso.SSOClient) *cobra.Command {
 	}
 
 	rootCmd.AddCommand(cmdSSO.NewSSOCommands(ssoClient))
-	rootCmd.AddCommand(bastionCmd.NewBastionCmd())
+	rootCmd.AddCommand(bastionCmd.NewBastionCmd(bastionSvc))
+
 	return rootCmd
 }
