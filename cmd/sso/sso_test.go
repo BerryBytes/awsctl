@@ -130,18 +130,13 @@ func TestSetupCmd_Success(t *testing.T) {
 	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 	mockSSOClient.EXPECT().SetupSSO().Return(nil)
 
-	// Create the command
 	cmd := SetupCmd(mockSSOClient)
 
-	// Capture output
 	var outBuf bytes.Buffer
 	cmd.SetOut(&outBuf)
 
-	// Execute
 	err := cmd.Execute()
 
-	// Verify
 	assert.NoError(t, err)
-	// assert.Contains(t, outBuf.String(), "New AWS SSO setup completed successfully.")
 	assert.Contains(t, outBuf.String(), "AWS SSO setup completed successfully.")
 }

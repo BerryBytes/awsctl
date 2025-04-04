@@ -750,13 +750,11 @@ func TestPromptForConfirmation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
 			mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 
-			// Simulate the mocked selection
 			if tt.mockSelection != "" {
 				mockPrompter.EXPECT().
 					PromptForSelection("Proceed with action?", []string{"y", "n"}).
@@ -771,10 +769,8 @@ func TestPromptForConfirmation(t *testing.T) {
 				Prompter: mockPrompter,
 			}
 
-			// Act
 			result, err := bpTest.PromptForConfirmation("Proceed with action?")
 
-			// Assert
 			assert.Equal(t, tt.expected, result)
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError, err)

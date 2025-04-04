@@ -55,7 +55,6 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 				return fmt.Errorf("failed to set up AWS SSO: %w", err)
 			}
 
-			// Fetch profiles again after SSO setup
 			profiles, err = c.AWSClient.ConfigClient.ValidProfiles()
 			if err != nil {
 				return fmt.Errorf("error verifying profiles after SSO setup: %w", err)

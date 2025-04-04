@@ -609,10 +609,7 @@ func TestWithAWSConfig_ErrorCases(t *testing.T) {
 			s.configLoader = mockLoader
 		}, WithAWSConfig(context.Background()))
 
-		// No AWS config loaded successfully
 		assert.False(t, service.AwsConfigured)
-		// If no logging happens, we check the service's configuration directly
-		// Adjust according to how your service is behaving with errors
 	})
 
 	t.Run("AWS region not set", func(t *testing.T) {
@@ -631,7 +628,6 @@ func TestWithAWSConfig_ErrorCases(t *testing.T) {
 		}, WithAWSConfig(context.Background()))
 
 		assert.False(t, service.AwsConfigured)
-		// Since the region is empty, the service should not configure successfully
 	})
 
 	t.Run("failed to retrieve credentials", func(t *testing.T) {
@@ -655,7 +651,6 @@ func TestWithAWSConfig_ErrorCases(t *testing.T) {
 		}, WithAWSConfig(context.Background()))
 
 		assert.False(t, service.AwsConfigured)
-		// Check if credentials retrieval failed, no EC2Client will be created
 		assert.Nil(t, service.EC2Client)
 	})
 

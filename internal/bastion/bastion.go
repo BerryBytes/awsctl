@@ -50,12 +50,10 @@ func WithAWSConfig(ctx context.Context) func(*BastionService) {
 
 		awsCfg, err := s.configLoader(ctx)
 		if err != nil {
-			// log.Printf("Failed to load AWS config: %v", err)
 			return
 		}
 
 		if awsCfg.Region == "" {
-			// log.Println("AWS region is not set in the configuration")
 			return
 		}
 
@@ -172,13 +170,6 @@ func (s *BastionService) getConnectionDetails() (host, user, keyPath string, err
 		return "", "", "", fmt.Errorf("failed to get key path: %w", err)
 	}
 
-	// if strings.HasPrefix(keyPath, "~/") {
-	// 	homeDir, err := os.UserHomeDir()
-	// 	if err != nil {
-	// 		return "", "", "", fmt.Errorf("failed to get home directory: %w", err)
-	// 	}
-	// 	keyPath = filepath.Join(homeDir, keyPath[2:])
-	// }
 	if strings.HasPrefix(keyPath, "~/") {
 		var homeDir string
 		if s.homeDir != nil {
