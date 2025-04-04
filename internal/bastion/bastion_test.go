@@ -105,7 +105,6 @@ func TestBastionService_Run_PortForwardFlow(t *testing.T) {
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 	mockSSH := mock_awsctl.NewMockSSHExecutorInterface(ctrl)
 
-	// Setup expectations
 	mockPrompter.EXPECT().SelectAction().Return(PortForwarding, nil)
 	mockPrompter.EXPECT().SelectAction().Return(ExitBastion, nil).Times(1)
 	mockPrompter.EXPECT().PromptForLocalPort("port forwarding", 3500).Return(3500, nil)
@@ -125,7 +124,6 @@ func TestBastionService_Run_PortForwardFlow(t *testing.T) {
 	err = os.WriteFile(keyPath, keyContent, 0600)
 	require.NoError(t, err)
 
-	// Mock file system interactions with the temporary file
 	mockFS.EXPECT().Stat("/test/key").Return(&mockFileInfo{mode: 0600}, nil)
 	mockFS.EXPECT().ReadFile("/test/key").Return(keyContent, nil)
 
