@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/BerryBytes/awsctl/models"
@@ -724,27 +725,51 @@ func TestBastionPrompter_PromptForBastionInstance(t *testing.T) {
 func TestPromptForConfirmation(t *testing.T) {
 	tests := []struct {
 		name          string
-		mockSelection string
+		mockInput     string
 		expected      bool
 		expectedError error
 	}{
 		{
-			name:          "User selects 'y' for yes",
-			mockSelection: "y",
+			name:          "User enters 'y' for yes",
+			mockInput:     "y",
 			expected:      true,
 			expectedError: nil,
 		},
 		{
-			name:          "User selects 'n' for no",
-			mockSelection: "n",
+			name:          "User enters 'yes' for yes",
+			mockInput:     "yes",
+			expected:      true,
+			expectedError: nil,
+		},
+		{
+			name:          "User enters 'n' for no",
+			mockInput:     "n",
+			expected:      false,
+			expectedError: nil,
+		},
+		{
+			name:          "User enters 'no' for no",
+			mockInput:     "no",
+			expected:      false,
+			expectedError: nil,
+		},
+		{
+			name:          "User presses Enter (defaults to no)",
+			mockInput:     "",
 			expected:      false,
 			expectedError: nil,
 		},
 		{
 			name:          "Prompt interrupted",
-			mockSelection: "",
+			mockInput:     "",
 			expected:      false,
 			expectedError: promptUtils.ErrInterrupted,
+		},
+		{
+			name:          "Invalid input followed by valid 'y'",
+			mockInput:     "invalid\ny",
+			expected:      true,
+			expectedError: nil,
 		},
 	}
 
@@ -755,14 +780,19 @@ func TestPromptForConfirmation(t *testing.T) {
 
 			mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 
-			if tt.mockSelection != "" {
-				mockPrompter.EXPECT().
-					PromptForSelection("Proceed with action?", []string{"y", "n"}).
-					Return(tt.mockSelection, nil)
-			} else {
-				mockPrompter.EXPECT().
-					PromptForSelection("Proceed with action?", []string{"y", "n"}).
-					Return("", promptUtils.ErrInterrupted)
+			// Handle multiple inputs (e.g., "invalid\ny")
+			inputs := strings.Split(tt.mockInput, "\n")
+
+			for _, input := range inputs {
+				if tt.expectedError != nil && input == "" {
+					mockPrompter.EXPECT().
+						PromptForInput("Proceed with action? (y/N)", "n").
+						Return("", promptUtils.ErrInterrupted)
+				} else {
+					mockPrompter.EXPECT().
+						PromptForInput("Proceed with action? (y/N)", "n").
+						Return(input, nil)
+				}
 			}
 
 			bpTest := &BastionPrompter{

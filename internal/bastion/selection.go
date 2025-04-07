@@ -223,15 +223,25 @@ func (b *BastionPrompter) PromptForBastionInstance(instances []models.EC2Instanc
 }
 
 func (p *BastionPrompter) PromptForConfirmation(prompt string) (bool, error) {
-
-	result, err := p.Prompter.PromptForSelection(prompt, []string{"y", "n"})
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			fmt.Println("\nReceived termination signal. Exiting.")
-			return false, promptUtils.ErrInterrupted
+	for {
+		fullPrompt := fmt.Sprintf("%s (y/N)", prompt)
+		result, err := p.Prompter.PromptForInput(fullPrompt, "n")
+		if err != nil {
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return false, promptUtils.ErrInterrupted
+			}
+			return false, fmt.Errorf("confirmation failed: %w", err)
 		}
-		return false, fmt.Errorf("confirmation failed: %w", err)
-	}
 
-	return strings.ToLower(result) == "y", nil
+		normalized := strings.ToLower(strings.TrimSpace(result))
+		switch normalized {
+		case "y", "yes":
+			return true, nil
+		case "n", "no", "":
+			return false, nil
+		default:
+			fmt.Printf("Invalid input %q - please enter 'y' or 'n'\n", result)
+			continue
+		}
+	}
 }
