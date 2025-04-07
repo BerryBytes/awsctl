@@ -14,44 +14,112 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestListBastionInstances_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockAPI := mock_awsctl.NewMockEC2DescribeInstancesAPI(ctrl)
-	client := &realEC2Client{client: mockAPI}
-
-	testInstance := types.Instance{
-		InstanceId:       aws.String("i-1234567890"),
-		PublicIpAddress:  aws.String("1.2.3.4"),
-		PrivateIpAddress: aws.String("10.0.0.1"),
-		State:            &types.InstanceState{Name: types.InstanceStateNameRunning},
-		InstanceType:     types.InstanceTypeT2Micro,
-		Placement:        &types.Placement{AvailabilityZone: aws.String("us-east-1a")},
-		Tags: []types.Tag{
-			{Key: aws.String("Name"), Value: aws.String("test-bastion")},
-			{Key: aws.String("Role"), Value: aws.String("bastion")},
+func TestListBastionInstances(t *testing.T) {
+	tests := []struct {
+		name        string
+		instances   []types.Instance
+		wantCount   int
+		wantIDs     []string
+		description string
+	}{
+		{
+			name: "Finds bastion in Role tag",
+			instances: []types.Instance{
+				{
+					InstanceId: aws.String("i-123"),
+					State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+					Tags: []types.Tag{
+						{Key: aws.String("Role"), Value: aws.String("bastion")},
+					},
+				},
+			},
+			wantCount:   1,
+			wantIDs:     []string{"i-123"},
+			description: "Should find instance with 'bastion' in Role tag",
+		},
+		{
+			name: "Finds case-insensitive bastion",
+			instances: []types.Instance{
+				{
+					InstanceId: aws.String("i-456"),
+					State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+					Tags: []types.Tag{
+						{Key: aws.String("Service"), Value: aws.String("BASTION")},
+					},
+				},
+			},
+			wantCount:   1,
+			wantIDs:     []string{"i-456"},
+			description: "Should find instance with 'BASTION' in any tag (case-insensitive)",
+		},
+		{
+			name: "Ignores non-bastion instances",
+			instances: []types.Instance{
+				{
+					InstanceId: aws.String("i-789"),
+					State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+					Tags: []types.Tag{
+						{Key: aws.String("Role"), Value: aws.String("web")},
+					},
+				},
+			},
+			wantCount:   0,
+			wantIDs:     []string{},
+			description: "Should exclude instances without 'bastion' in any tag",
+		},
+		{
+			name: "Multiple bastions with sorting",
+			instances: []types.Instance{
+				{
+					InstanceId: aws.String("i-bbb"),
+					State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+					Tags: []types.Tag{
+						{Key: aws.String("Name"), Value: aws.String("z-bastion")},
+						{Key: aws.String("Role"), Value: aws.String("bastion")},
+					},
+				},
+				{
+					InstanceId: aws.String("i-aaa"),
+					State:      &types.InstanceState{Name: types.InstanceStateNameRunning},
+					Tags: []types.Tag{
+						{Key: aws.String("Name"), Value: aws.String("a-bastion")},
+						{Key: aws.String("Service"), Value: aws.String("bastion")},
+					},
+				},
+			},
+			wantCount:   2,
+			wantIDs:     []string{"i-aaa", "i-bbb"},
+			description: "Should return multiple bastions sorted by Name",
 		},
 	}
 
-	mockAPI.EXPECT().DescribeInstances(gomock.Any(), &ec2.DescribeInstancesInput{
-		Filters: []types.Filter{
-			{Name: aws.String(InstanceStateName), Values: []string{RunningState}},
-			{Name: aws.String(TagRole), Values: []string{BastionWildcard}},
-		},
-	}).Return(&ec2.DescribeInstancesOutput{
-		Reservations: []types.Reservation{
-			{Instances: []types.Instance{testInstance}},
-		},
-	}, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	instances, err := client.ListBastionInstances(context.Background())
+			mockAPI := mock_awsctl.NewMockEC2DescribeInstancesAPI(ctrl)
+			client := &realEC2Client{client: mockAPI}
 
-	assert.NoError(t, err)
-	assert.Len(t, instances, 1)
-	assert.Equal(t, "i-1234567890", instances[0].InstanceID)
-	assert.Equal(t, "test-bastion", instances[0].Name)
-	assert.Equal(t, "1.2.3.4", instances[0].PublicIPAddress)
+			mockAPI.EXPECT().DescribeInstances(gomock.Any(), &ec2.DescribeInstancesInput{
+				Filters: []types.Filter{
+					{Name: aws.String(InstanceStateName), Values: []string{RunningState}},
+				},
+			}).Return(&ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{
+					{Instances: tt.instances},
+				},
+			}, nil)
+
+			got, err := client.ListBastionInstances(context.Background())
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantCount, len(got), tt.description)
+
+			for i, id := range tt.wantIDs {
+				assert.Equal(t, id, got[i].InstanceID)
+			}
+		})
+	}
 }
 
 func TestListBastionInstances_AWSFailure(t *testing.T) {
