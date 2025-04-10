@@ -629,62 +629,100 @@ func TestBastionPrompter_PromptForBastionInstance(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		mockReturn     []interface{}
+		mockReturns    [][]interface{}
 		expectedResult string
 		expectedError  error
 	}{
 		{
-			name: "successful selection with name",
-			mockReturn: []interface{}{
-				"bastion-1 (i-123) - 1.2.3.4", nil,
+			name: "successful selection with name using public IP",
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"bastion-1 (i-123) - 1.2.3.4", nil},
 			},
 			expectedResult: "1.2.3.4",
 			expectedError:  nil,
 		},
 		{
+			name: "successful selection with name using instance ID",
+			mockReturns: [][]interface{}{
+				{"Instance ID (EC2 Instance Connect)", nil},
+				{"bastion-1 (i-123) - 1.2.3.4", nil},
+			},
+			expectedResult: "i-123",
+			expectedError:  nil,
+		},
+		{
 			name: "successful selection without name",
-			mockReturn: []interface{}{
-				"i-456 (i-456) - 5.6.7.8", nil,
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"i-456 (i-456) - 5.6.7.8", nil},
 			},
 			expectedResult: "5.6.7.8",
 			expectedError:  nil,
 		},
 		{
-			name: "no instances",
-			mockReturn: []interface{}{
-				"", errors.New("no instances available"),
-			},
+			name:           "no instances",
+			mockReturns:    [][]interface{}{},
 			expectedResult: "",
 			expectedError:  errors.New("no instances available"),
 		},
 		{
-			name: "no public IP",
-			mockReturn: []interface{}{
-				"no-ip-bastion (i-789) - ", nil,
+			name: "no public IP when public IP method selected",
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"no-ip-bastion (i-789) - ", nil},
 			},
 			expectedResult: "",
 			expectedError:  errors.New("selected instance has no public IP"),
 		},
 		{
-			name: "interrupted",
-			mockReturn: []interface{}{
-				"", promptUtils.ErrInterrupted,
+			name: "instance ID method with no public IP",
+			mockReturns: [][]interface{}{
+				{"Instance ID (EC2 Instance Connect)", nil},
+				{"no-ip-bastion (i-789) - ", nil},
+			},
+			expectedResult: "i-789",
+			expectedError:  nil,
+		},
+		{
+			name: "interrupted at connection method selection",
+			mockReturns: [][]interface{}{
+				{"", promptUtils.ErrInterrupted},
 			},
 			expectedResult: "",
 			expectedError:  promptUtils.ErrInterrupted,
 		},
 		{
-			name: "generic error",
-			mockReturn: []interface{}{
-				"", fmt.Errorf("selection error"),
+			name: "interrupted at instance selection",
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"", promptUtils.ErrInterrupted},
+			},
+			expectedResult: "",
+			expectedError:  promptUtils.ErrInterrupted,
+		},
+		{
+			name: "generic error at connection method selection",
+			mockReturns: [][]interface{}{
+				{"", fmt.Errorf("selection error")},
+			},
+			expectedResult: "",
+			expectedError:  fmt.Errorf("failed to select connection method: selection error"),
+		},
+		{
+			name: "generic error at instance selection",
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"", fmt.Errorf("selection error")},
 			},
 			expectedResult: "",
 			expectedError:  fmt.Errorf("failed to select bastion host: selection error"),
 		},
 		{
-			name: "invalid selection",
-			mockReturn: []interface{}{
-				"invalid-item", nil,
+			name: "invalid instance selection",
+			mockReturns: [][]interface{}{
+				{"Public IP (direct SSH)", nil},
+				{"invalid-item", nil},
 			},
 			expectedResult: "",
 			expectedError:  errors.New("invalid selection"),
@@ -699,16 +737,26 @@ func TestBastionPrompter_PromptForBastionInstance(t *testing.T) {
 				return
 			}
 
-			items := []string{
+			connectionMethods := []string{"Public IP (direct SSH)", "Instance ID (EC2 Instance Connect)"}
+			instanceItems := []string{
 				"bastion-1 (i-123) - 1.2.3.4",
 				"i-456 (i-456) - 5.6.7.8",
 				"no-ip-bastion (i-789) - ",
 			}
 
-			mockPrompter.EXPECT().PromptForSelection(
-				"Select bastion instance:",
-				items,
-			).Return(tt.mockReturn[0], tt.mockReturn[1])
+			if len(tt.mockReturns) > 0 {
+				mockPrompter.EXPECT().PromptForSelection(
+					"Select connection method:",
+					connectionMethods,
+				).Return(tt.mockReturns[0][0], tt.mockReturns[0][1])
+			}
+
+			if len(tt.mockReturns) > 1 && tt.mockReturns[0][1] == nil {
+				mockPrompter.EXPECT().PromptForSelection(
+					"Select bastion instance:",
+					instanceItems,
+				).Return(tt.mockReturns[1][0], tt.mockReturns[1][1])
+			}
 
 			result, err := bp.PromptForBastionInstance(instances)
 
@@ -780,7 +828,6 @@ func TestPromptForConfirmation(t *testing.T) {
 
 			mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 
-			// Handle multiple inputs (e.g., "invalid\ny")
 			inputs := strings.Split(tt.mockInput, "\n")
 
 			for _, input := range inputs {

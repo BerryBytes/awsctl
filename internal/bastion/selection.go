@@ -197,8 +197,16 @@ func (b *BastionPrompter) PromptForBastionInstance(instances []models.EC2Instanc
 		items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID, inst.PublicIPAddress)
 	}
 
-	selected, err := b.Prompter.PromptForSelection("Select bastion instance:", items)
+	connectionMethods := []string{"Public IP (direct SSH)", "Instance ID (EC2 Instance Connect)"}
+	method, err := b.Prompter.PromptForSelection("Select connection method:", connectionMethods)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to select connection method: %w", err)
+	}
 
+	selected, err := b.Prompter.PromptForSelection("Select bastion instance:", items)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return "", promptUtils.ErrInterrupted
@@ -212,10 +220,14 @@ func (b *BastionPrompter) PromptForBastionInstance(instances []models.EC2Instanc
 			name = inst.InstanceID
 		}
 		if strings.Contains(selected, fmt.Sprintf("%s (%s)", name, inst.InstanceID)) {
-			if inst.PublicIPAddress == "" {
-				return "", errors.New("selected instance has no public IP")
+			if method == "Public IP (direct SSH)" {
+				if inst.PublicIPAddress == "" {
+					return "", errors.New("selected instance has no public IP")
+				}
+				return inst.PublicIPAddress, nil
+			} else {
+				return inst.InstanceID, nil
 			}
-			return inst.PublicIPAddress, nil
 		}
 	}
 
