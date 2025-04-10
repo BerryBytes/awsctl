@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -14,14 +15,24 @@ type SSHExecutorInterface interface {
 	Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) error
 }
 
+type OSDetector interface {
+	GetOS() string
+}
+
+type RuntimeOSDetector struct{}
+
+func (r RuntimeOSDetector) GetOS() string {
+	return runtime.GOOS
+}
+
 type RealSSHExecutor struct{}
 
-func (e *RealSSHExecutor) Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	cmd := exec.Command("ssh", args...)
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	return cmd.Run()
+type SOCKSProxyConfig struct {
+	Executor    SSHExecutorInterface
+	Host        string
+	User        string
+	KeyPath     string
+	DefaultPort int
 }
 
 type SSHCommandBuilder struct {
@@ -31,18 +42,44 @@ type SSHCommandBuilder struct {
 	baseArgs []string
 }
 
-func NewSSHCommandBuilder(host, user, keyPath string) *SSHCommandBuilder {
-	return &SSHCommandBuilder{
-		host:    host,
-		user:    user,
-		keyPath: keyPath,
-		baseArgs: []string{
-			"-i", keyPath,
-			"-o", "ConnectTimeout=15",
-			"-o", "BatchMode=yes",
-			"-o", "StrictHostKeyChecking=ask",
-		},
+func NewSSHCommandBuilder(host, user, keyPath string, useInstanceConnect bool) *SSHCommandBuilder {
+	args := []string{
+		"-i", keyPath,
+		"-o", "BatchMode=yes",
 	}
+
+	if useInstanceConnect {
+		args = append(args,
+			"-o", "ConnectTimeout=10",
+			"-o", "ServerAliveInterval=15",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "UserKnownHostsFile=/dev/null",
+		)
+	} else {
+		args = append(args,
+			"-o", "ConnectTimeout=30",
+			"-o", "StrictHostKeyChecking=ask",
+		)
+	}
+
+	return &SSHCommandBuilder{
+		host:     host,
+		user:     user,
+		keyPath:  keyPath,
+		baseArgs: args,
+	}
+}
+
+func (e *RealSSHExecutor) Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("no command provided")
+	}
+
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	return cmd.Run()
 }
 
 func (b *SSHCommandBuilder) WithForwarding(localPort int, remoteHost string, remotePort int) *SSHCommandBuilder {
@@ -62,10 +99,17 @@ func (b *SSHCommandBuilder) WithBackground() *SSHCommandBuilder {
 
 func (b *SSHCommandBuilder) Build() []string {
 	target := fmt.Sprintf("%s@%s", b.user, b.host)
-	return append(b.baseArgs, target)
+	cmd := []string{"ssh"}
+	cmd = append(cmd, b.baseArgs...)
+	cmd = append(cmd, target)
+	return cmd
 }
 
 func ExecuteSSHCommand(executor SSHExecutorInterface, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("no command provided")
+	}
+
 	var stderrBuf bytes.Buffer
 	err := executor.Execute(args, os.Stdin, os.Stdout, &stderrBuf)
 
@@ -112,7 +156,7 @@ func interpretSSHError(err error, errorOutput string, args []string) error {
 		return fmt.Errorf("host key verification failed for %s (try removing the host from known_hosts file)", host)
 
 	default:
-		return fmt.Errorf("SSH connection failed: %w\nCommand: ssh %s\nError output: %s",
+		return fmt.Errorf("SSH connection failed: %w\nCommand: %s\nError output: %s",
 			err, strings.Join(args, " "), errorOutput)
 	}
 }
@@ -138,6 +182,82 @@ func ValidateSSHKey(fs FileSystemInterface, keyPath string) error {
 
 	if !strings.Contains(string(content), "PRIVATE KEY") {
 		return fmt.Errorf("file does not appear to be a valid SSH private key")
+	}
+
+	return nil
+}
+
+func TerminateSOCKSProxy(executor SSHExecutorInterface, port int, osDetector OSDetector) error {
+	if executor == nil {
+		return fmt.Errorf("executor cannot be nil")
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("invalid port number: %d", port)
+	}
+
+	var cmd []string
+	switch osDetector.GetOS() {
+	case "linux", "darwin":
+		cmd = []string{
+			"sh", "-c",
+			fmt.Sprintf("pkill -f 'ssh.*-D.*%d'", port),
+		}
+	case "windows":
+		return terminateSOCKSProxyWindows(executor, port)
+	default:
+		return fmt.Errorf("unsupported operating system: %s", osDetector.GetOS())
+	}
+
+	err := executor.Execute(cmd, nil, nil, nil)
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return nil
+		}
+		return fmt.Errorf("failed to terminate SOCKS proxy on port %d: %w", port, err)
+	}
+
+	return nil
+}
+
+func terminateSOCKSProxyWindows(executor SSHExecutorInterface, port int) error {
+	netstatCmd := []string{
+		"cmd", "/c",
+		fmt.Sprintf("netstat -aon | findstr :%d", port),
+	}
+
+	var stdout, stderr strings.Builder
+	err := executor.Execute(netstatCmd, nil, &stdout, &stderr)
+	if err != nil {
+		if stdout.Len() == 0 && stderr.Len() > 0 {
+			return fmt.Errorf("failed to find SOCKS proxy process on port %d: %s", port, stderr.String())
+		}
+		return nil
+	}
+
+	output := stdout.String()
+	if output == "" {
+		return nil
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) >= 5 && strings.Contains(fields[1], ":"+strconv.Itoa(port)) {
+			pidStr := fields[4]
+			pid, err := strconv.Atoi(pidStr)
+			if err != nil {
+				return fmt.Errorf("invalid PID in netstat output: %s", pidStr)
+			}
+
+			killCmd := []string{
+				"taskkill", "/PID", strconv.Itoa(pid), "/F",
+			}
+			err = executor.Execute(killCmd, nil, nil, nil)
+			if err != nil {
+				return fmt.Errorf("failed to kill SOCKS proxy process (PID %d) on port %d: %w", pid, port, err)
+			}
+			return nil
+		}
 	}
 
 	return nil

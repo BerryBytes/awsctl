@@ -5,6 +5,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/models"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 )
 
 type EC2ClientInterface interface {
@@ -30,6 +31,9 @@ type BastionPrompterInterface interface {
 
 type BastionServiceInterface interface {
 	Run() error
+}
+type EC2InstanceConnectClient interface {
+	SendSSHPublicKey(ctx context.Context, params *ec2instanceconnect.SendSSHPublicKeyInput, optFns ...func(*ec2instanceconnect.Options)) (*ec2instanceconnect.SendSSHPublicKeyOutput, error)
 }
 
 var _ BastionPrompterInterface = (*BastionPrompter)(nil)

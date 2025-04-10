@@ -10,6 +10,7 @@ import (
 
 	models "github.com/BerryBytes/awsctl/models"
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2instanceconnect "github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -322,4 +323,47 @@ func (m *MockBastionServiceInterface) Run() error {
 func (mr *MockBastionServiceInterfaceMockRecorder) Run() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockBastionServiceInterface)(nil).Run))
+}
+
+// MockEC2InstanceConnectClient is a mock of EC2InstanceConnectClient interface.
+type MockEC2InstanceConnectClient struct {
+	ctrl     *gomock.Controller
+	recorder *MockEC2InstanceConnectClientMockRecorder
+}
+
+// MockEC2InstanceConnectClientMockRecorder is the mock recorder for MockEC2InstanceConnectClient.
+type MockEC2InstanceConnectClientMockRecorder struct {
+	mock *MockEC2InstanceConnectClient
+}
+
+// NewMockEC2InstanceConnectClient creates a new mock instance.
+func NewMockEC2InstanceConnectClient(ctrl *gomock.Controller) *MockEC2InstanceConnectClient {
+	mock := &MockEC2InstanceConnectClient{ctrl: ctrl}
+	mock.recorder = &MockEC2InstanceConnectClientMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockEC2InstanceConnectClient) EXPECT() *MockEC2InstanceConnectClientMockRecorder {
+	return m.recorder
+}
+
+// SendSSHPublicKey mocks base method.
+func (m *MockEC2InstanceConnectClient) SendSSHPublicKey(ctx context.Context, params *ec2instanceconnect.SendSSHPublicKeyInput, optFns ...func(*ec2instanceconnect.Options)) (*ec2instanceconnect.SendSSHPublicKeyOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendSSHPublicKey", varargs...)
+	ret0, _ := ret[0].(*ec2instanceconnect.SendSSHPublicKeyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendSSHPublicKey indicates an expected call of SendSSHPublicKey.
+func (mr *MockEC2InstanceConnectClientMockRecorder) SendSSHPublicKey(ctx, params interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSSHPublicKey", reflect.TypeOf((*MockEC2InstanceConnectClient)(nil).SendSSHPublicKey), varargs...)
 }

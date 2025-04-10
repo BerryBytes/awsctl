@@ -55,7 +55,6 @@ func (c *realEC2Client) ListBastionInstances(ctx context.Context) ([]models.EC2I
 	input := &ec2.DescribeInstancesInput{
 		Filters: []types.Filter{
 			{Name: aws.String(InstanceStateName), Values: []string{RunningState}},
-			// {Name: aws.String(TagRole), Values: []string{BastionWildcard}},
 		},
 	}
 
@@ -134,7 +133,6 @@ func filterBastionInstance(reservations []types.Reservation) []models.EC2Instanc
 					inst.Name = value
 				}
 
-				// Case-insensitive check for "bastion" in ANY tag value
 				if strings.Contains(strings.ToLower(value), "bastion") {
 					isBastion = true
 				}
