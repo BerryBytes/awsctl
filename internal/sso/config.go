@@ -65,7 +65,7 @@ func (c *RealAWSConfigClient) ValidProfiles() ([]string, error) {
 
 	var validProfiles []string
 	for _, profile := range profiles {
-		if profile != "" {
+		if profile != "" && profile != "default" {
 			validProfiles = append(validProfiles, profile)
 		}
 	}
