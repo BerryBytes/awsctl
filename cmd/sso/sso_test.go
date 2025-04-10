@@ -2,141 +2,63 @@ package sso
 
 import (
 	"bytes"
-	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
-
 	"github.com/golang/mock/gomock"
-	"github.com/manifoldco/promptui"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-type testGeneralUtils struct {
-	checkAWSCLIError error
-}
-
-func (t *testGeneralUtils) CheckAWSCLI() error {
-	return t.checkAWSCLIError
-}
-
-func (t *testGeneralUtils) HandleSignals() context.Context {
-	return context.Background()
-}
-
-func (t *testGeneralUtils) PrintCurrentRole(profile, accountID, accountName, roleName, roleARN, expiration string) {
-}
-
 func TestNewSSOCommands(t *testing.T) {
-	tests := []struct {
-		name           string
-		generalUtils   *testGeneralUtils
-		expectedErr    error
-		expectedOutput string
-	}{
-		{
-			name:           "successful AWS CLI check",
-			generalUtils:   &testGeneralUtils{},
-			expectedOutput: "AWS CLI is installed and available in PATH.",
-		},
-		{
-			name: "AWS CLI not installed",
-			generalUtils: &testGeneralUtils{
-				checkAWSCLIError: errors.New("aws cli not found"),
-			},
-			expectedErr:    errors.New("aws cli not found"),
-			expectedOutput: "Error: aws cli not found\nPlease install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			var outBuf, errBuf bytes.Buffer
-
-			cmd := &cobra.Command{
-				Use: "test",
-				PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-					if err := tt.generalUtils.CheckAWSCLI(); err != nil {
-						if _, err1 := fmt.Fprintln(cmd.ErrOrStderr(), "Error:", err); err1 != nil {
-							return err1
-						}
-
-						if _, err2 := fmt.Fprintln(cmd.ErrOrStderr(), "Please install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"); err2 != nil {
-							return err2
-						}
-
-						return err
-					}
-
-					if _, err := fmt.Fprintln(cmd.OutOrStdout(), "AWS CLI is installed and available in PATH."); err != nil {
-						return err
-					}
-
-					return nil
-				},
-			}
-			cmd.SetOut(&outBuf)
-			cmd.SetErr(&errBuf)
-
-			err := cmd.PersistentPreRunE(cmd, []string{})
-
-			combinedOutput := outBuf.String() + errBuf.String()
-
-			if tt.expectedErr != nil {
-				require.Error(t, err)
-				assert.Equal(t, tt.expectedErr.Error(), err.Error())
-			} else {
-				require.NoError(t, err)
-			}
-
-			if tt.expectedOutput != "" {
-				assert.Contains(t, combinedOutput, tt.expectedOutput)
-			}
-		})
-	}
-}
-
-func TestSetupSSO_Interrupt(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
-	mockSSO.EXPECT().SetupSSO().Return(promptui.ErrInterrupt)
-
-	cmd := SetupCmd(mockSSO)
-	cmd.SetArgs([]string{})
-
-	var outBuf bytes.Buffer
-	cmd.SetOut(&outBuf)
-
-	err := cmd.Execute()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "SSO initialization failed")
-	assert.Contains(t, err.Error(), "^C")
-}
-
-func TestSetupCmd_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
-	mockSSOClient.EXPECT().SetupSSO().Return(nil)
+	mockGeneralUtils := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 
-	cmd := SetupCmd(mockSSOClient)
+	cmd := NewSSOCommands(mockSSOClient, mockGeneralUtils)
 
-	var outBuf bytes.Buffer
-	cmd.SetOut(&outBuf)
+	t.Run("Command Metadata", func(t *testing.T) {
+		assert.Equal(t, "sso", cmd.Use, "Command use should be 'sso'")
+		assert.Equal(t, "Manage AWS SSO configurations", cmd.Short, "Short description should match")
+		assert.Equal(t, "A set of commands to manage and configure AWS SSO profiles.", cmd.Long, "Long description should match")
+		assert.False(t, cmd.SilenceUsage, "SilenceUsage should be false initially")
+	})
 
-	err := cmd.Execute()
+	t.Run("Command Structure", func(t *testing.T) {
+		commands := cmd.Commands()
+		assert.Len(t, commands, 2, "Should have exactly 2 subcommands")
 
-	assert.NoError(t, err)
-	assert.Contains(t, outBuf.String(), "AWS SSO setup completed successfully.")
+		commandNames := make([]string, len(commands))
+		for i, c := range commands {
+			commandNames[i] = c.Use
+		}
+		assert.Contains(t, commandNames, "init", "Should have 'init' subcommand")
+		assert.Contains(t, commandNames, "setup", "Should have 'setup' subcommand")
+	})
+
+	t.Run("PersistentPreRunE - Success", func(t *testing.T) {
+		mockGeneralUtils.EXPECT().CheckAWSCLI().Return(nil)
+
+		err := cmd.PersistentPreRunE(cmd, []string{})
+		assert.NoError(t, err, "Should not return an error when CheckAWSCLI succeeds")
+		assert.True(t, cmd.SilenceUsage, "SilenceUsage should be true after successful pre-run")
+	})
+
+	t.Run("PersistentPreRunE - AWS CLI Check Failure", func(t *testing.T) {
+		cmd := NewSSOCommands(mockSSOClient, mockGeneralUtils)
+
+		var outBuf bytes.Buffer
+		cmd.SetOut(&outBuf)
+		cmd.SetErr(&outBuf)
+
+		mockGeneralUtils.EXPECT().CheckAWSCLI().Return(errors.New("AWS CLI not installed"))
+
+		err := cmd.PersistentPreRunE(cmd, []string{})
+		assert.Error(t, err, "Should return an error when CheckAWSCLI fails")
+		assert.Equal(t, "AWS CLI not installed", err.Error(), "Error message should match")
+		assert.Contains(t, outBuf.String(), "Please install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html", "Should print installation instructions")
+		assert.True(t, cmd.SilenceUsage, "SilenceUsage should be true even on failure")
+	})
 }

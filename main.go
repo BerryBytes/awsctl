@@ -8,6 +8,7 @@ import (
 	"github.com/BerryBytes/awsctl/cmd/root"
 	"github.com/BerryBytes/awsctl/internal/bastion"
 	"github.com/BerryBytes/awsctl/internal/sso"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
@@ -22,15 +23,14 @@ func main() {
 	bastionSvc := bastion.NewBastionService(bastionOpts...)
 
 	ssoClient, err := sso.NewSSOClient(awsClient)
+	generalManager := generalutils.NewGeneralUtilsManager()
 	if err != nil {
 		fmt.Printf("Error initializing SSO client: %v\n", err)
 		os.Exit(1)
 	}
 
-	rootCmd := root.NewRootCmd(ssoClient, bastionSvc)
+	rootCmd := root.NewRootCmd(ssoClient, bastionSvc, generalManager)
 	if err := rootCmd.Execute(); err != nil {
-		// check: commented below code because the error was logged or printed twice
-		// fmt.Println(err)
 		os.Exit(1)
 	}
 }

@@ -35,8 +35,9 @@ func TestNewRootCmd(t *testing.T) {
 
 			mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 			mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+			mockGeneralManager := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 
-			rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
+			rootCmd := NewRootCmd(mockSSOClient, mockBastionService, mockGeneralManager)
 
 			assert.Equal(t, tt.expectedUse, rootCmd.Use)
 			assert.Equal(t, tt.expectedShort, rootCmd.Short)
@@ -51,10 +52,11 @@ func TestRootCommandStructure(t *testing.T) {
 
 	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 	mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+	mockGeneralManager := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 
-	rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
+	rootCmd := NewRootCmd(mockSSOClient, mockBastionService, mockGeneralManager)
 
-	ssoCmd := cmdSSO.NewSSOCommands(mockSSOClient)
+	ssoCmd := cmdSSO.NewSSOCommands(mockSSOClient, mockGeneralManager)
 	found := false
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == ssoCmd.Use {
@@ -101,8 +103,9 @@ func TestRootCmd_Execution(t *testing.T) {
 
 			mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 			mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+			mockGeneralManager := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 
-			rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
+			rootCmd := NewRootCmd(mockSSOClient, mockBastionService, mockGeneralManager)
 
 			var outBuf bytes.Buffer
 			rootCmd.SetOut(&outBuf)
@@ -130,10 +133,14 @@ func TestRootCmd_SubcommandExecution(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
-	mockSSOClient.EXPECT().SetupSSO().Return(nil)
 	mockBastionService := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+	mockGeneralUtils := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 
-	rootCmd := NewRootCmd(mockSSOClient, mockBastionService)
+	// Expect CheckAWSCLI to be called and return nil for successful execution
+	mockGeneralUtils.EXPECT().CheckAWSCLI().Return(nil)
+	mockSSOClient.EXPECT().SetupSSO().Return(nil)
+
+	rootCmd := NewRootCmd(mockSSOClient, mockBastionService, mockGeneralUtils)
 
 	rootCmd.SetArgs([]string{"sso", "setup"})
 
@@ -143,5 +150,5 @@ func TestRootCmd_SubcommandExecution(t *testing.T) {
 	err := rootCmd.Execute()
 	assert.NoError(t, err)
 
-	assert.Contains(t, outBuf.String(), "")
+	assert.Contains(t, outBuf.String(), "AWS SSO setup completed successfully")
 }
