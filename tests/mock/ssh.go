@@ -47,3 +47,40 @@ func (mr *MockSSHExecutorInterfaceMockRecorder) Execute(args, stdin, stdout, std
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockSSHExecutorInterface)(nil).Execute), args, stdin, stdout, stderr)
 }
+
+// MockOSDetector is a mock of OSDetector interface.
+type MockOSDetector struct {
+	ctrl     *gomock.Controller
+	recorder *MockOSDetectorMockRecorder
+}
+
+// MockOSDetectorMockRecorder is the mock recorder for MockOSDetector.
+type MockOSDetectorMockRecorder struct {
+	mock *MockOSDetector
+}
+
+// NewMockOSDetector creates a new mock instance.
+func NewMockOSDetector(ctrl *gomock.Controller) *MockOSDetector {
+	mock := &MockOSDetector{ctrl: ctrl}
+	mock.recorder = &MockOSDetectorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOSDetector) EXPECT() *MockOSDetectorMockRecorder {
+	return m.recorder
+}
+
+// GetOS mocks base method.
+func (m *MockOSDetector) GetOS() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOS")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetOS indicates an expected call of GetOS.
+func (mr *MockOSDetectorMockRecorder) GetOS() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOS", reflect.TypeOf((*MockOSDetector)(nil).GetOS))
+}
