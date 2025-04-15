@@ -30,19 +30,14 @@ func main() {
 	ctx := context.TODO()
 	awsConfig, _ := config.LoadDefaultConfig(ctx)
 
-	var ec2Client connection.EC2ClientInterface
-	var instanceConn connection.EC2InstanceConnectInterface
-
-	if awsConfig.Region != "" {
-		ec2Client = connection.NewEC2Client(ec2.NewFromConfig(awsConfig))
-		instanceConn = connection.NewEC2InstanceConnectAdapter(ec2instanceconnect.NewFromConfig(awsConfig))
-	}
+	ec2Client := connection.NewEC2Client(ec2.NewFromConfig(awsConfig))
+	instanceConn := connection.NewEC2InstanceConnectAdapter(ec2instanceconnect.NewFromConfig(awsConfig))
 
 	prompter := connection.NewConnectionPrompter()
 	provider := connection.NewConnectionProvider(
 		prompter,
 		fileSystem,
-		&awsConfig,
+		awsConfig,
 		ec2Client,
 		nil,
 		instanceConn,
@@ -57,7 +52,6 @@ func main() {
 		GeneralManager: generalManager,
 		FileSystem:     fileSystem,
 	})
-
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

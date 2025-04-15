@@ -22,6 +22,7 @@ type ConnectionPrompter interface {
 	PromptForRemotePort(usage string) (int, error)
 	PromptForBastionInstance(instances []models.EC2Instance) (string, error)
 	PromptForInstanceID() (string, error)
+	PromptForRegion(defaultRegion string) (string, error)
 }
 
 type EC2ClientInterface interface {

@@ -297,3 +297,22 @@ func (b *ConnectionPrompterStruct) ChooseConnectionMethod() (string, error) {
 		return "", fmt.Errorf("unexpected selection: %s", selected)
 	}
 }
+
+func (b *ConnectionPrompterStruct) PromptForRegion(defaultRegion string) (string, error) {
+	promptMessage := "Enter AWS region:"
+	if defaultRegion != "" {
+		promptMessage = fmt.Sprintf("Enter AWS region (Default: %s):", defaultRegion)
+	}
+
+	region, err := b.Prompter.PromptForInput(promptMessage, defaultRegion)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to get region: %w", err)
+	}
+	if region == "" {
+		return "", errors.New("region cannot be empty")
+	}
+	return region, nil
+}

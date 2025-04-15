@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 )
@@ -31,7 +33,7 @@ type ConnectionDetails struct {
 type ConnectionProvider struct {
 	prompter      ConnectionPrompter
 	fs            common.FileSystemInterface
-	awsConfig     *aws.Config
+	awsConfig     aws.Config
 	ec2Client     EC2ClientInterface
 	instanceConn  EC2InstanceConnectInterface
 	homeDir       func() (string, error)
@@ -41,7 +43,7 @@ type ConnectionProvider struct {
 func NewConnectionProvider(
 	prompter ConnectionPrompter,
 	fs common.FileSystemInterface,
-	awsConfig *aws.Config,
+	awsConfig aws.Config,
 	ec2Client EC2ClientInterface,
 	ssmClient SSMClientInterface,
 	instanceConn EC2InstanceConnectInterface,
@@ -52,16 +54,13 @@ func NewConnectionProvider(
 		fs:            fs,
 		awsConfig:     awsConfig,
 		homeDir:       homeDir,
-		awsConfigured: false,
+		ec2Client:     ec2Client,
+		instanceConn:  instanceConn,
+		awsConfigured: isAWSConfigured(awsConfig),
 	}
-
-	if awsConfig != nil && awsConfig.Region != "" {
-		if _, err := awsConfig.Credentials.Retrieve(context.Background()); err == nil {
-			provider.ec2Client = ec2Client
-			provider.instanceConn = instanceConn
-			provider.awsConfigured = true
-
-		}
+	if provider.awsConfigured {
+		provider.ec2Client = ec2Client
+		provider.instanceConn = instanceConn
 	}
 
 	return provider
@@ -82,7 +81,7 @@ func (p *ConnectionProvider) GetConnectionDetails(ctx context.Context) (*Connect
 }
 
 func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDetails, error) {
-	host, err := p.getBastionHost(ctx)
+	host, err := p.getBastionHost(ctx, p.ec2Client)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +111,7 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 		Method:  MethodSSH,
 	}
 
-	if strings.HasPrefix(host, "i-") && p.awsConfig != nil {
+	if strings.HasPrefix(host, "i-") && p.awsConfigured {
 		pubKeyPath := keyPath + ".pub"
 		if _, err := p.fs.Stat(pubKeyPath); err == nil {
 			if err := p.sendSSHPublicKey(ctx, host, user, pubKeyPath); err != nil {
@@ -135,8 +134,8 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	return details, nil
 }
 
-func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error) {
-	if !p.IsAWSConfigured() {
+func (p *ConnectionProvider) getBastionHost(ctx context.Context, ec2Client EC2ClientInterface) (string, error) {
+	if !p.awsConfigured {
 		fmt.Println("AWS configuration not found...")
 		return p.prompter.PromptForBastionHost()
 	}
@@ -146,11 +145,31 @@ func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error)
 		return p.prompter.PromptForBastionHost()
 	}
 
-	instances, err := p.ec2Client.ListBastionInstances(ctx)
-
+	defaultRegion, err := p.getDefaultRegion()
 	if err != nil {
-		fmt.Printf("AWS lookup failed: %v\n", err)
-		fmt.Println("Please enter bastion host details below:")
+		fmt.Printf("Failed to load default region: %v\n", err)
+		defaultRegion = ""
+	}
+	// fmt.Printf("default region: %s\n", defaultRegion)
+
+	region, err := p.prompter.PromptForRegion(defaultRegion)
+	if err != nil {
+		fmt.Printf("Failed to get region: %v\n", err)
+		return p.prompter.PromptForBastionHost()
+	}
+
+	if ec2Client == nil {
+		ec2Client, err = NewEC2ClientWithRegion(region)
+		if err != nil {
+			log.Printf("Failed to initialize EC2 client: %v", err)
+			return p.prompter.PromptForBastionHost()
+		}
+	}
+
+	instances, err := ec2Client.ListBastionInstances(ctx)
+	if err != nil {
+		log.Printf("AWS lookup failed: %v", err)
+		log.Println("Please enter bastion host details below:")
 		return p.prompter.PromptForBastionHost()
 	}
 
@@ -214,18 +233,26 @@ func (p *ConnectionProvider) getInstancePublicIP(ctx context.Context, instanceID
 	return *instance.PublicIpAddress, nil
 }
 
-func (p *ConnectionProvider) IsAWSConfigured() bool {
-	if p.awsConfig == nil {
+func isAWSConfigured(cfg aws.Config) bool {
+	if cfg.Region == "" {
 		return false
 	}
-
-	if p.awsConfig.Region == "" {
+	if _, err := cfg.Credentials.Retrieve(context.TODO()); err != nil {
 		return false
 	}
-
-	if _, err := p.awsConfig.Credentials.Retrieve(context.TODO()); err != nil {
-		return false
-	}
-
 	return true
+}
+
+func (p *ConnectionProvider) getDefaultRegion() (string, error) {
+	if p.awsConfig.Region != "" {
+		return p.awsConfig.Region, nil
+	}
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return "", fmt.Errorf("failed to load AWS configuration: %w", err)
+	}
+	if cfg.Region == "" {
+		return "", errors.New("no region configured in AWS config")
+	}
+	return cfg.Region, nil
 }

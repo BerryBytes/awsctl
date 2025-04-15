@@ -48,7 +48,7 @@ func TestNewServices(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 
 	services := NewServices(provider)
@@ -65,7 +65,7 @@ func TestSSHIntoBastion_Success(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -104,7 +104,7 @@ func TestSSHIntoBastion_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, nil, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
 	ctx := context.Background()
@@ -123,7 +123,7 @@ func TestSSHIntoBastion_ExecuteFails(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -163,7 +163,7 @@ func TestStartSOCKSProxy_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, nil, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
 	ctx := context.Background()
@@ -183,7 +183,7 @@ func TestStartSOCKSProxy_Success(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -237,7 +237,7 @@ func TestStartSOCKSProxy_TerminateFails(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -275,7 +275,7 @@ func TestStartSOCKSProxy_ExecuteFails(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -327,7 +327,7 @@ func TestStartPortForwarding_Success(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
@@ -370,7 +370,7 @@ func TestStartPortForwarding_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, nil, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
 	ctx := context.Background()
@@ -392,7 +392,7 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
-	awsConfig := &aws.Config{Region: "us-west-2", Credentials: credProvider}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
 	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
 
