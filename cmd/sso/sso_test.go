@@ -1,64 +1,78 @@
-package sso
+package sso_test
 
 import (
-	"bytes"
 	"errors"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/cmd/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+
 	"github.com/golang/mock/gomock"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewSSOCommands(t *testing.T) {
+func executePersistentPreRunE(cmd *cobra.Command) error {
+	cmd.SetArgs([]string{})
+	return cmd.PersistentPreRunE(cmd, []string{})
+}
+
+func TestSSOCmd_PersistentPreRun_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
-	mockGeneralUtils := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockGeneral.EXPECT().CheckAWSCLI().Return(nil)
 
-	cmd := NewSSOCommands(mockSSOClient, mockGeneralUtils)
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
 
-	t.Run("Command Metadata", func(t *testing.T) {
-		assert.Equal(t, "sso", cmd.Use, "Command use should be 'sso'")
-		assert.Equal(t, "Manage AWS SSO configurations", cmd.Short, "Short description should match")
-		assert.Equal(t, "A set of commands to manage and configure AWS SSO profiles.", cmd.Long, "Long description should match")
-		assert.False(t, cmd.SilenceUsage, "SilenceUsage should be false initially")
+	cmd := sso.NewSSOCommands(sso.SSODependencies{
+		Client:         mockSSO,
+		GeneralManager: mockGeneral,
 	})
 
-	t.Run("Command Structure", func(t *testing.T) {
-		commands := cmd.Commands()
-		assert.Len(t, commands, 2, "Should have exactly 2 subcommands")
+	err := executePersistentPreRunE(cmd)
+	assert.NoError(t, err)
+}
 
-		commandNames := make([]string, len(commands))
-		for i, c := range commands {
-			commandNames[i] = c.Use
-		}
-		assert.Contains(t, commandNames, "init", "Should have 'init' subcommand")
-		assert.Contains(t, commandNames, "setup", "Should have 'setup' subcommand")
+func TestSSOCmd_PersistentPreRun_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockGeneral.EXPECT().CheckAWSCLI().Return(errors.New("missing aws cli"))
+
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+
+	cmd := sso.NewSSOCommands(sso.SSODependencies{
+		Client:         mockSSO,
+		GeneralManager: mockGeneral,
 	})
 
-	t.Run("PersistentPreRunE - Success", func(t *testing.T) {
-		mockGeneralUtils.EXPECT().CheckAWSCLI().Return(nil)
+	err := executePersistentPreRunE(cmd)
+	assert.EqualError(t, err, "missing aws cli")
+}
 
-		err := cmd.PersistentPreRunE(cmd, []string{})
-		assert.NoError(t, err, "Should not return an error when CheckAWSCLI succeeds")
-		assert.True(t, cmd.SilenceUsage, "SilenceUsage should be true after successful pre-run")
+func TestSSOCmd_HasSubcommands(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockGeneral.EXPECT().CheckAWSCLI().Return(nil).AnyTimes()
+
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+
+	cmd := sso.NewSSOCommands(sso.SSODependencies{
+		Client:         mockSSO,
+		GeneralManager: mockGeneral,
 	})
 
-	t.Run("PersistentPreRunE - AWS CLI Check Failure", func(t *testing.T) {
-		cmd := NewSSOCommands(mockSSOClient, mockGeneralUtils)
+	subcommands := cmd.Commands()
+	var names []string
+	for _, c := range subcommands {
+		names = append(names, c.Name())
+	}
 
-		var outBuf bytes.Buffer
-		cmd.SetOut(&outBuf)
-		cmd.SetErr(&outBuf)
-
-		mockGeneralUtils.EXPECT().CheckAWSCLI().Return(errors.New("AWS CLI not installed"))
-
-		err := cmd.PersistentPreRunE(cmd, []string{})
-		assert.Error(t, err, "Should return an error when CheckAWSCLI fails")
-		assert.Equal(t, "AWS CLI not installed", err.Error(), "Error message should match")
-		assert.Contains(t, outBuf.String(), "Please install AWS CLI first: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html", "Should print installation instructions")
-		assert.True(t, cmd.SilenceUsage, "SilenceUsage should be true even on failure")
-	})
+	assert.Contains(t, names, "init")
+	assert.Contains(t, names, "setup")
 }

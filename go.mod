@@ -5,8 +5,10 @@ go 1.24.0
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.12
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.65
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.0
 	github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect v1.28.2
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.58.2
 	github.com/aws/smithy-go v1.22.2
 	github.com/golang/mock v1.6.0
 	github.com/manifoldco/promptui v0.9.0
@@ -17,7 +19,6 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.65 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect

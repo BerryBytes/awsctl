@@ -1,4 +1,4 @@
-package bastion
+package connection
 
 import (
 	"errors"
@@ -19,18 +19,18 @@ const (
 	ExitBastion     = "4) Exit"
 )
 
-type BastionPrompter struct {
+type ConnectionPrompterStruct struct {
 	Prompter promptUtils.Prompter
 	Prompt   promptui.Prompt
 }
 
-func NewBastionPrompter() *BastionPrompter {
-	return &BastionPrompter{
+func NewConnectionPrompter() *ConnectionPrompterStruct {
+	return &ConnectionPrompterStruct{
 		Prompter: promptUtils.NewPrompt(),
 	}
 }
 
-func (b *BastionPrompter) SelectAction() (string, error) {
+func (b *ConnectionPrompterStruct) SelectAction() (string, error) {
 	options := []string{
 		SSHIntoBastion,
 		StartSOCKSProxy,
@@ -48,7 +48,7 @@ func (b *BastionPrompter) SelectAction() (string, error) {
 	return selected, nil
 }
 
-func (b *BastionPrompter) PromptForSOCKSProxyPort(defaultPort int) (int, error) {
+func (b *ConnectionPrompterStruct) PromptForSOCKSProxyPort(defaultPort int) (int, error) {
 	prompt := fmt.Sprintf("Enter SOCKS proxy port (default: %d)", defaultPort)
 	result, err := b.Prompter.PromptForInput(prompt, strconv.Itoa(defaultPort))
 	if err != nil {
@@ -70,7 +70,7 @@ func (b *BastionPrompter) PromptForSOCKSProxyPort(defaultPort int) (int, error) 
 	return port, nil
 }
 
-func (b *BastionPrompter) PromptForBastionHost() (string, error) {
+func (b *ConnectionPrompterStruct) PromptForBastionHost() (string, error) {
 	host, err := b.Prompter.PromptForInput("Enter bastion host IP or DNS name:", "")
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
@@ -85,7 +85,7 @@ func (b *BastionPrompter) PromptForBastionHost() (string, error) {
 	return host, nil
 }
 
-func (b *BastionPrompter) PromptForSSHUser(defaultUser string) (string, error) {
+func (b *ConnectionPrompterStruct) PromptForSSHUser(defaultUser string) (string, error) {
 	user, err := b.Prompter.PromptForInput(fmt.Sprintf("Enter SSH user (default: %s)", defaultUser), defaultUser)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
@@ -96,7 +96,7 @@ func (b *BastionPrompter) PromptForSSHUser(defaultUser string) (string, error) {
 	return user, nil
 }
 
-func (b *BastionPrompter) PromptForLocalPort(purpose string, defaultPort int) (int, error) {
+func (b *ConnectionPrompterStruct) PromptForLocalPort(purpose string, defaultPort int) (int, error) {
 	if defaultPort < 1 || defaultPort > 65535 {
 		return 0, fmt.Errorf("invalid default port number")
 	}
@@ -141,7 +141,7 @@ func isPortAvailable(port int) bool {
 	return true
 }
 
-func (b *BastionPrompter) PromptForRemoteHost() (string, error) {
+func (b *ConnectionPrompterStruct) PromptForRemoteHost() (string, error) {
 	host, err := b.Prompter.PromptForInput("Enter remote host IP or DNS name:", "")
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
@@ -155,7 +155,7 @@ func (b *BastionPrompter) PromptForRemoteHost() (string, error) {
 	return host, nil
 }
 
-func (b *BastionPrompter) PromptForRemotePort(service string) (int, error) {
+func (b *ConnectionPrompterStruct) PromptForRemotePort(service string) (int, error) {
 	prompt := fmt.Sprintf("Enter remote %s port", service)
 	result, err := b.Prompter.PromptForInput(prompt, "")
 	if err != nil {
@@ -172,7 +172,7 @@ func (b *BastionPrompter) PromptForRemotePort(service string) (int, error) {
 	return port, nil
 }
 
-func (b *BastionPrompter) PromptForSSHKeyPath(defaultPath string) (string, error) {
+func (b *ConnectionPrompterStruct) PromptForSSHKeyPath(defaultPath string) (string, error) {
 	path, err := b.Prompter.PromptForInput(fmt.Sprintf("Enter SSH key path (default: %s)", defaultPath), defaultPath)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
@@ -183,7 +183,7 @@ func (b *BastionPrompter) PromptForSSHKeyPath(defaultPath string) (string, error
 	return path, nil
 }
 
-func (b *BastionPrompter) PromptForBastionInstance(instances []models.EC2Instance) (string, error) {
+func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.EC2Instance) (string, error) {
 	if len(instances) == 0 {
 		return "", errors.New("no instances available")
 	}
@@ -234,7 +234,7 @@ func (b *BastionPrompter) PromptForBastionInstance(instances []models.EC2Instanc
 	return "", errors.New("invalid selection")
 }
 
-func (p *BastionPrompter) PromptForConfirmation(prompt string) (bool, error) {
+func (p *ConnectionPrompterStruct) PromptForConfirmation(prompt string) (bool, error) {
 	for {
 		fullPrompt := fmt.Sprintf("%s (y/N)", prompt)
 		result, err := p.Prompter.PromptForInput(fullPrompt, "n")
@@ -255,5 +255,45 @@ func (p *BastionPrompter) PromptForConfirmation(prompt string) (bool, error) {
 			fmt.Printf("Invalid input %q - please enter 'y' or 'n'\n", result)
 			continue
 		}
+	}
+}
+
+func (b *ConnectionPrompterStruct) PromptForInstanceID() (string, error) {
+	instanceID, err := b.Prompter.PromptForInput("Enter EC2 instance ID:", "")
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to get instance ID: %w", err)
+	}
+
+	if instanceID == "" {
+		return "", errors.New("instance ID cannot be empty")
+	}
+
+	return instanceID, nil
+}
+
+func (b *ConnectionPrompterStruct) ChooseConnectionMethod() (string, error) {
+	options := []string{
+		MethodSSH,
+		// "AWS Systems Manager (SSM)",
+	}
+
+	selected, err := b.Prompter.PromptForSelection("Select connection method:", options)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to choose connection method: %w", err)
+	}
+
+	switch selected {
+	case MethodSSH:
+		return MethodSSH, nil
+	// case MethodSSM:
+	// 	return MethodSSM, nil
+	default:
+		return "", fmt.Errorf("unexpected selection: %s", selected)
 	}
 }

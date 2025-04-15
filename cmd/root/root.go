@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/BerryBytes/awsctl/internal/sso"
+	"github.com/BerryBytes/awsctl/utils/common"
 	generalUtils "github.com/BerryBytes/awsctl/utils/general"
 
 	bastionCmd "github.com/BerryBytes/awsctl/cmd/bastion"
@@ -11,7 +12,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewRootCmd(ssoClient sso.SSOClient, bastionSvc bastion.BastionServiceInterface, generalManager generalUtils.GeneralUtilsInterface) *cobra.Command {
+type RootDependencies struct {
+	SSOClient      sso.SSOClient
+	BastionService bastion.BastionServiceInterface
+	GeneralManager generalUtils.GeneralUtilsInterface
+	FileSystem     common.FileSystemInterface
+}
+
+func NewRootCmd(deps RootDependencies) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "awsctl",
 		Short: "AWS CLI Tool",
@@ -21,8 +29,14 @@ func NewRootCmd(ssoClient sso.SSOClient, bastionSvc bastion.BastionServiceInterf
 		},
 	}
 
-	rootCmd.AddCommand(cmdSSO.NewSSOCommands(ssoClient, generalManager))
-	rootCmd.AddCommand(bastionCmd.NewBastionCmd(bastionSvc))
+	rootCmd.AddCommand(cmdSSO.NewSSOCommands(cmdSSO.SSODependencies{
+		Client:         deps.SSOClient,
+		GeneralManager: deps.GeneralManager,
+	}))
+
+	rootCmd.AddCommand(bastionCmd.NewBastionCmd(bastionCmd.BastionDependencies{
+		Service: deps.BastionService,
+	}))
 
 	return rootCmd
 }

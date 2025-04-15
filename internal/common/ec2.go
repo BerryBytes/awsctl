@@ -1,4 +1,4 @@
-package bastion
+package connection
 
 import (
 	"context"
@@ -64,12 +64,6 @@ func (c *realEC2Client) ListBastionInstances(ctx context.Context) ([]models.EC2I
 	}
 
 	instances := filterBastionInstance(result.Reservations)
-	sort.Slice(instances, func(i, j int) bool {
-		if instances[i].Name == instances[j].Name {
-			return instances[i].InstanceID < instances[j].InstanceID
-		}
-		return instances[i].Name < instances[j].Name
-	})
 
 	return instances, nil
 }
@@ -144,5 +138,13 @@ func filterBastionInstance(reservations []types.Reservation) []models.EC2Instanc
 		}
 	}
 
+	sort.Slice(instances, func(i, j int) bool {
+		if instances[i].Name == instances[j].Name {
+			return instances[i].InstanceID < instances[j].InstanceID
+		}
+		return instances[i].Name < instances[j].Name
+	})
+
 	return instances
+
 }
