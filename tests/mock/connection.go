@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/BerryBytes/awsctl/models"
+	aws "github.com/aws/aws-sdk-go-v2/aws"
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2instanceconnect "github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	ssm "github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -524,4 +525,42 @@ func (m *MockServicesInterface) StartSOCKSProxy(ctx context.Context, port int) e
 func (mr *MockServicesInterfaceMockRecorder) StartSOCKSProxy(ctx, port interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSOCKSProxy", reflect.TypeOf((*MockServicesInterface)(nil).StartSOCKSProxy), ctx, port)
+}
+
+// MockAWSConfigLoader is a mock of AWSConfigLoader interface.
+type MockAWSConfigLoader struct {
+	ctrl     *gomock.Controller
+	recorder *MockAWSConfigLoaderMockRecorder
+}
+
+// MockAWSConfigLoaderMockRecorder is the mock recorder for MockAWSConfigLoader.
+type MockAWSConfigLoaderMockRecorder struct {
+	mock *MockAWSConfigLoader
+}
+
+// NewMockAWSConfigLoader creates a new mock instance.
+func NewMockAWSConfigLoader(ctrl *gomock.Controller) *MockAWSConfigLoader {
+	mock := &MockAWSConfigLoader{ctrl: ctrl}
+	mock.recorder = &MockAWSConfigLoaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAWSConfigLoader) EXPECT() *MockAWSConfigLoaderMockRecorder {
+	return m.recorder
+}
+
+// LoadDefaultConfig mocks base method.
+func (m *MockAWSConfigLoader) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadDefaultConfig", ctx)
+	ret0, _ := ret[0].(aws.Config)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadDefaultConfig indicates an expected call of LoadDefaultConfig.
+func (mr *MockAWSConfigLoaderMockRecorder) LoadDefaultConfig(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadDefaultConfig", reflect.TypeOf((*MockAWSConfigLoader)(nil).LoadDefaultConfig), ctx)
 }

@@ -42,6 +42,8 @@ func (b *BastionService) Run(ctx context.Context) error {
 				}
 				return fmt.Errorf("SSH failed: %v", err)
 			}
+			fmt.Println("SSH session closed. Exiting.")
+			return nil
 
 		case connection.StartSOCKSProxy:
 			port, err := b.prompter.PromptForSOCKSProxyPort(1080)
@@ -54,6 +56,8 @@ func (b *BastionService) Run(ctx context.Context) error {
 			if err := b.services.StartSOCKSProxy(ctx, port); err != nil {
 				return fmt.Errorf("SOCKS proxy error: %v", err)
 			}
+			fmt.Println("SOCKS proxy session closed. Exiting.")
+			return nil
 
 		case connection.PortForwarding:
 			localPort, err := b.prompter.PromptForLocalPort("forwarding", 8080)
@@ -86,6 +90,8 @@ func (b *BastionService) Run(ctx context.Context) error {
 				}
 				return fmt.Errorf("port forwarding error: %v", err)
 			}
+			fmt.Println("Port forwarding session closed. Exiting.")
+			return nil
 
 		case connection.ExitBastion:
 			fmt.Println("Exiting bastion tool.")

@@ -41,6 +41,7 @@ func main() {
 		ec2Client,
 		nil,
 		instanceConn,
+		nil,
 	)
 
 	services := connection.NewServices(provider)

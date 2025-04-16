@@ -567,6 +567,66 @@ func TestConnectionPrompter(t *testing.T) {
 			wantErr:        true,
 			wantErrMessage: "unexpected selection: invalid",
 		},
+		{
+			name: "PromptForRegion success with default",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region (Default: us-east-1):", "us-east-1").Return("us-east-1", nil)
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("us-east-1") },
+			wantResult:     "us-east-1",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForRegion success with custom input",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region (Default: us-east-1):", "us-east-1").Return("eu-west-1", nil)
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("us-east-1") },
+			wantResult:     "eu-west-1",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForRegion success no default",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region:", "").Return("us-west-2", nil)
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("") },
+			wantResult:     "us-west-2",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForRegion interrupted",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region (Default: us-east-1):", "us-east-1").Return("", promptUtils.ErrInterrupted)
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("us-east-1") },
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: promptUtils.ErrInterrupted.Error(),
+		},
+		{
+			name: "PromptForRegion generic error",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region (Default: us-east-1):", "us-east-1").Return("", errors.New("input error"))
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("us-east-1") },
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: "failed to get region: input error",
+		},
+		{
+			name: "PromptForRegion empty input",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForInput("Enter AWS region:", "").Return("", nil)
+			},
+			run:            func(p *ConnectionPrompterStruct) (interface{}, error) { return p.PromptForRegion("") },
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: "region cannot be empty",
+		},
 	}
 
 	for _, tt := range tests {

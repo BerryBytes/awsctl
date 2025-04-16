@@ -42,7 +42,6 @@ func TestBastionService_Run(t *testing.T) {
 			setupMocks: func() {
 				mockPrompter.EXPECT().SelectAction().Return(connection.SSHIntoBastion, nil)
 				mockServices.EXPECT().SSHIntoBastion(gomock.Any()).Return(nil)
-				mockPrompter.EXPECT().SelectAction().Return(connection.ExitBastion, nil)
 			},
 		},
 		{
@@ -59,7 +58,6 @@ func TestBastionService_Run(t *testing.T) {
 				mockPrompter.EXPECT().SelectAction().Return(connection.StartSOCKSProxy, nil)
 				mockPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1234, nil)
 				mockServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1234).Return(nil)
-				mockPrompter.EXPECT().SelectAction().Return(connection.ExitBastion, nil)
 			},
 		},
 		{
@@ -87,7 +85,6 @@ func TestBastionService_Run(t *testing.T) {
 				mockPrompter.EXPECT().PromptForRemoteHost().Return("remote.host", nil)
 				mockPrompter.EXPECT().PromptForRemotePort("remote service").Return(8081, nil)
 				mockServices.EXPECT().StartPortForwarding(gomock.Any(), 9000, "remote.host", 8081).Return(nil)
-				mockPrompter.EXPECT().SelectAction().Return(connection.ExitBastion, nil)
 			},
 		},
 		{

@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -43,6 +44,7 @@ type mocks struct {
 	ec2Client    *mock_awsctl.MockEC2ClientInterface
 	instanceConn *mock_awsctl.MockEC2InstanceConnectInterface
 	ssmClient    *mock_awsctl.MockSSMClientInterface
+	configLoader *mock_awsctl.MockAWSConfigLoader
 	ctrl         *gomock.Controller
 }
 
@@ -54,6 +56,7 @@ func setupMocks(t *testing.T) mocks {
 		ec2Client:    mock_awsctl.NewMockEC2ClientInterface(ctrl),
 		instanceConn: mock_awsctl.NewMockEC2InstanceConnectInterface(ctrl),
 		ssmClient:    mock_awsctl.NewMockSSMClientInterface(ctrl),
+		configLoader: mock_awsctl.NewMockAWSConfigLoader(ctrl),
 		ctrl:         ctrl,
 	}
 }
@@ -74,13 +77,13 @@ func TestNewConnectionProvider(t *testing.T) {
 		Credentials: credProvider,
 	}
 
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 	assert.NotNil(t, provider)
 	assert.True(t, provider.awsConfigured, "awsConfigured should be true with valid credentials")
 	assert.Equal(t, m.ec2Client, provider.ec2Client, "ec2Client should be set")
 	assert.Equal(t, m.instanceConn, provider.instanceConn, "instanceConn should be set")
 
-	provider = NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil)
+	provider = NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil, nil)
 	assert.NotNil(t, provider)
 	assert.False(t, provider.awsConfigured, "awsConfigured should be false with empty config")
 	assert.Nil(t, provider.ec2Client, "ec2Client should be nil")
@@ -102,7 +105,7 @@ func TestGetConnectionDetails_SSH(t *testing.T) {
 		Region:      "us-west-2",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
@@ -169,7 +172,7 @@ func TestGetConnectionDetails_UnsupportedMethod(t *testing.T) {
 	m := setupMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	m.prompter.EXPECT().ChooseConnectionMethod().Return("INVALID", nil)
 
@@ -204,6 +207,10 @@ func TestGetBastionHost_AWSConfigured(t *testing.T) {
 		ec2Client:     mockEC2Client,
 		instanceConn:  m.instanceConn,
 		awsConfigured: true,
+		configLoader:  m.configLoader,
+		newEC2Client: func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+			return mockEC2Client, nil
+		},
 	}
 
 	ctx := context.Background()
@@ -214,9 +221,10 @@ func TestGetBastionHost_AWSConfigured(t *testing.T) {
 		mockEC2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
 			{InstanceID: "i-1234567890abcdef0", Name: "bastion-1"},
 		}, nil)
+
 		m.prompter.EXPECT().PromptForBastionInstance(gomock.Any()).Return("i-1234567890abcdef0", nil)
 
-		host, err := provider.getBastionHost(ctx, mockEC2Client)
+		host, err := provider.getBastionHost(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, "i-1234567890abcdef0", host)
 	})
@@ -227,22 +235,110 @@ func TestGetBastionHost_AWSConfigured(t *testing.T) {
 		mockEC2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{}, nil)
 		m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 
-		host, err := provider.getBastionHost(ctx, mockEC2Client)
+		host, err := provider.getBastionHost(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, "bastion.example.com", host)
+	})
+	t.Run("error loading default region", func(t *testing.T) {
+		awsConfigNoRegion := aws.Config{
+			Credentials: credProvider,
+		}
+
+		mockEC2Client := mock_awsctl.NewMockEC2ClientInterface(m.ctrl)
+
+		provider := &ConnectionProvider{
+			prompter:      m.prompter,
+			fs:            m.fs,
+			awsConfig:     awsConfigNoRegion,
+			ec2Client:     nil,
+			instanceConn:  m.instanceConn,
+			awsConfigured: true,
+			configLoader:  m.configLoader,
+			newEC2Client: func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+				return mockEC2Client, nil
+			},
+		}
+
+		old := os.Stdout
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdout = w
+
+		m.configLoader.EXPECT().LoadDefaultConfig(gomock.Any()).Return(aws.Config{}, errors.New("config load error"))
+		m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(true, nil)
+		m.prompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+
+		mockEC2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
+			{InstanceID: "i-1234567890abcdef0", Name: "bastion-1"},
+		}, nil)
+		m.prompter.EXPECT().PromptForBastionInstance(gomock.Any()).Return("i-1234567890abcdef0", nil)
+
+		host, err := provider.getBastionHost(ctx)
+
+		w.Close()
+		os.Stdout = old
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Logf("failed to copy stdout: %v", err)
+		}
+		r.Close()
+
+		assert.NoError(t, err)
+		assert.Equal(t, "i-1234567890abcdef0", host)
+		assert.Contains(t, buf.String(), "Failed to load default region: failed to load AWS configuration: config load error")
+	})
+	t.Run("nil ec2Client, error creating EC2 client", func(t *testing.T) {
+		var logOutput strings.Builder
+		log.SetOutput(&logOutput)
+		defer log.SetOutput(os.Stderr)
+
+		credProvider := credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID:     "mock-access-key",
+				SecretAccessKey: "mock-secret-key",
+				Source:          "test",
+			},
+		}
+		awsConfig := aws.Config{
+			Region:      "us-east-1",
+			Credentials: credProvider,
+		}
+
+		provider := NewConnectionProvider(
+			m.prompter,
+			m.fs,
+			awsConfig,
+			nil,
+			m.ssmClient,
+			m.instanceConn,
+			m.configLoader,
+		)
+		provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+			return nil, errors.New("client creation error")
+		}
+
+		m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(true, nil)
+		m.prompter.EXPECT().PromptForRegion("us-east-1").Return("us-east-1", nil)
+		m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
+
+		host, err := provider.getBastionHost(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, "bastion.example.com", host)
+		assert.Contains(t, logOutput.String(), "Failed to initialize EC2 client: client creation error")
 	})
 }
 
 func TestGetBastionHost_NoAWSConfig(t *testing.T) {
 	m := setupMocks(t)
 	defer m.ctrl.Finish()
-	mockEC2Client := mock_awsctl.NewMockEC2ClientInterface(m.ctrl)
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 
-	host, err := provider.getBastionHost(context.Background(), mockEC2Client)
+	host, err := provider.getBastionHost(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, "bastion.example.com", host)
 }
@@ -262,7 +358,7 @@ func TestGetInstancePublicIP(t *testing.T) {
 		Region:      "us-west-2",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
 	instanceID := "i-1234567890abcdef0"
@@ -401,9 +497,9 @@ func TestGetConnectionDetails_ErrorCases(t *testing.T) {
 					Region:      "us-west-2",
 					Credentials: credProvider,
 				}
-				provider = NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+				provider = NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 			} else {
-				provider = NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil)
+				provider = NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil, nil)
 			}
 
 			tt.setupMocks(m)
@@ -430,7 +526,7 @@ func TestGetSSHDetails_InstanceConnectFallback(t *testing.T) {
 		Region:      "us-west-2",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
@@ -503,24 +599,39 @@ func TestGetBastionHost_AWSFailure(t *testing.T) {
 		Region:      "ap-south-1",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
-	mockEC2Client := mock_awsctl.NewMockEC2ClientInterface(m.ctrl)
+
+	provider := &ConnectionProvider{
+		prompter:      m.prompter,
+		fs:            m.fs,
+		awsConfig:     awsConfig,
+		ec2Client:     nil,
+		instanceConn:  m.instanceConn,
+		awsConfigured: true,
+		configLoader:  m.configLoader,
+		newEC2Client: func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+			return m.ec2Client, nil
+		},
+	}
 
 	ctx := context.Background()
 
-	var logOutput strings.Builder
+	var logOutput bytes.Buffer
 	log.SetOutput(&logOutput)
 	defer log.SetOutput(os.Stderr)
 
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(true, nil)
 	m.prompter.EXPECT().PromptForRegion("ap-south-1").Return("ap-south-1", nil)
-	mockEC2Client.EXPECT().ListBastionInstances(ctx).Return(nil, errors.New("aws error"))
+	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return(nil, errors.New("aws error"))
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 
-	host, err := provider.getBastionHost(ctx, mockEC2Client)
+	host, err := provider.getBastionHost(ctx)
+
 	assert.NoError(t, err)
 	assert.Equal(t, "bastion.example.com", host)
-	assert.Contains(t, logOutput.String(), "AWS lookup failed")
+
+	logStr := logOutput.String()
+	assert.Contains(t, logStr, "AWS lookup failed")
+	assert.Contains(t, logStr, "aws error")
 }
 
 func TestGetSSHDetails_HomeDirError(t *testing.T) {
@@ -558,7 +669,7 @@ func TestSendSSHPublicKey_ErrorCases(t *testing.T) {
 		Region:      "us-west-2",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
 	instanceID := "i-1234567890abcdef0"
@@ -630,7 +741,7 @@ func TestGetSSHDetails_InvalidSSHKey(t *testing.T) {
 	m := setupMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil)
+	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, nil, nil, nil, nil)
 
 	homeDir, _ := os.UserHomeDir()
 	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
@@ -670,8 +781,7 @@ func TestGetBastionHost_RegionPromptError(t *testing.T) {
 		Region:      "us-west-2",
 		Credentials: credProvider,
 	}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn)
-	mockEC2Client := mock_awsctl.NewMockEC2ClientInterface(m.ctrl)
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
 
@@ -697,7 +807,114 @@ func TestGetBastionHost_RegionPromptError(t *testing.T) {
 	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("", errors.New("region prompt failed"))
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 
-	host, err := provider.getBastionHost(ctx, mockEC2Client)
+	host, err := provider.getBastionHost(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, "bastion.example.com", host)
+}
+
+func TestGetDefaultRegion(t *testing.T) {
+	m := setupMocks(t)
+	defer m.ctrl.Finish()
+
+	tests := []struct {
+		name           string
+		awsConfig      aws.Config
+		mockSetup      func()
+		expectedRegion string
+		expectedError  string
+	}{
+		{
+			name: "Non-empty awsConfig Region",
+			awsConfig: aws.Config{
+				Region: "us-west-2",
+				Credentials: credentials.StaticCredentialsProvider{
+					Value: aws.Credentials{
+						AccessKeyID:     "mock-access-key",
+						SecretAccessKey: "mock-secret-key",
+						Source:          "test",
+					},
+				},
+			},
+			mockSetup:      func() {},
+			expectedRegion: "us-west-2",
+			expectedError:  "",
+		},
+		{
+			name: "Empty awsConfig Region, valid default config",
+			awsConfig: aws.Config{
+				Credentials: credentials.StaticCredentialsProvider{
+					Value: aws.Credentials{
+						AccessKeyID:     "mock-access-key",
+						SecretAccessKey: "mock-secret-key",
+						Source:          "test",
+					},
+				},
+			},
+			mockSetup: func() {
+				m.configLoader.EXPECT().LoadDefaultConfig(gomock.Any()).Return(aws.Config{Region: "us-east-1"}, nil)
+			},
+			expectedRegion: "us-east-1",
+			expectedError:  "",
+		},
+		{
+			name: "Empty awsConfig Region, no region in default config",
+			awsConfig: aws.Config{
+				Credentials: credentials.StaticCredentialsProvider{
+					Value: aws.Credentials{
+						AccessKeyID:     "mock-access-key",
+						SecretAccessKey: "mock-secret-key",
+						Source:          "test",
+					},
+				},
+			},
+			mockSetup: func() {
+				m.configLoader.EXPECT().LoadDefaultConfig(gomock.Any()).Return(aws.Config{}, nil)
+			},
+			expectedRegion: "",
+			expectedError:  "no region configured in AWS config",
+		},
+		{
+			name: "Empty awsConfig Region, error loading config",
+			awsConfig: aws.Config{
+				Credentials: credentials.StaticCredentialsProvider{
+					Value: aws.Credentials{
+						AccessKeyID:     "mock-access-key",
+						SecretAccessKey: "mock-secret-key",
+						Source:          "test",
+					},
+				},
+			},
+			mockSetup: func() {
+				m.configLoader.EXPECT().LoadDefaultConfig(gomock.Any()).Return(aws.Config{}, errors.New("config load error"))
+			},
+			expectedRegion: "",
+			expectedError:  "failed to load AWS configuration: config load error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewConnectionProvider(
+				m.prompter,
+				m.fs,
+				tt.awsConfig,
+				m.ec2Client,
+				m.ssmClient,
+				m.instanceConn,
+				m.configLoader,
+			)
+
+			tt.mockSetup()
+
+			region, err := provider.getDefaultRegion()
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Equal(t, tt.expectedRegion, region)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedRegion, region)
+			}
+		})
+	}
 }

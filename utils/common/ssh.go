@@ -45,11 +45,11 @@ type SSHCommandBuilder struct {
 func NewSSHCommandBuilder(host, user, keyPath string, useInstanceConnect bool) *SSHCommandBuilder {
 	args := []string{
 		"-i", keyPath,
-		"-o", "BatchMode=yes",
 	}
 
 	if useInstanceConnect {
 		args = append(args,
+			"-o", "BatchMode=yes",
 			"-o", "ConnectTimeout=10",
 			"-o", "ServerAliveInterval=15",
 			"-o", "StrictHostKeyChecking=no",
@@ -57,8 +57,10 @@ func NewSSHCommandBuilder(host, user, keyPath string, useInstanceConnect bool) *
 		)
 	} else {
 		args = append(args,
+			"-o", "BatchMode=no",
 			"-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=ask",
+			"-o", "StrictHostKeyChecking=yes",
+			"-o", "ServerAliveInterval=60",
 		)
 	}
 
@@ -82,13 +84,22 @@ func (e *RealSSHExecutor) Execute(args []string, stdin io.Reader, stdout, stderr
 	return cmd.Run()
 }
 
+// func (b *SSHCommandBuilder) WithForwarding(localPort int, remoteHost string, remotePort int) *SSHCommandBuilder {
+// 	b.baseArgs = append(b.baseArgs, "-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort))
+// 	return b
+// }
+
+//	func (b *SSHCommandBuilder) WithSOCKS(localPort int) *SSHCommandBuilder {
+//		b.baseArgs = append(b.baseArgs, "-D", strconv.Itoa(localPort))
+//		return b
+//	}
 func (b *SSHCommandBuilder) WithForwarding(localPort int, remoteHost string, remotePort int) *SSHCommandBuilder {
-	b.baseArgs = append(b.baseArgs, "-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort))
+	b.baseArgs = append(b.baseArgs, "-N", "-T", "-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort))
 	return b
 }
 
 func (b *SSHCommandBuilder) WithSOCKS(localPort int) *SSHCommandBuilder {
-	b.baseArgs = append(b.baseArgs, "-D", strconv.Itoa(localPort))
+	b.baseArgs = append(b.baseArgs, "-N", "-T", "-D", strconv.Itoa(localPort))
 	return b
 }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/BerryBytes/awsctl/models"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
@@ -150,11 +149,14 @@ func filterBastionInstance(reservations []types.Reservation) []models.EC2Instanc
 
 }
 
-func NewEC2ClientWithRegion(region string) (EC2ClientInterface, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+func NewEC2ClientWithRegion(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+	cfg, err := loader.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
+
+	cfg.Region = region
+
 	ec2Client := ec2.NewFromConfig(cfg)
 	return &realEC2Client{client: ec2Client}, nil
 }

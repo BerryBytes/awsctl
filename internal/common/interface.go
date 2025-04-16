@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/BerryBytes/awsctl/models"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -66,3 +68,13 @@ type ServicesInterface interface {
 }
 
 var _ ServicesInterface = (*Services)(nil)
+
+type AWSConfigLoader interface {
+	LoadDefaultConfig(ctx context.Context) (aws.Config, error)
+}
+
+type DefaultAWSConfigLoader struct{}
+
+func (d *DefaultAWSConfigLoader) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
+	return config.LoadDefaultConfig(ctx)
+}

@@ -48,14 +48,10 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	return common.ExecuteSSHCommand(s.executor, cmd)
 }
 
-func (s *Services) StartSOCKSProxy(ctx context.Context, port int) error {
+func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 	details, err := s.provider.GetConnectionDetails(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get connection details: %w", err)
-	}
-
-	if err := common.TerminateSOCKSProxy(s.executor, port, s.osDetector); err != nil {
-		return fmt.Errorf("failed to terminate existing proxy: %w", err)
 	}
 
 	builder := common.NewSSHCommandBuilder(
@@ -66,17 +62,13 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, port int) error {
 	)
 
 	cmd := builder.
-		WithSOCKS(port).
-		WithBackground().
+		WithSOCKS(localPort).
 		Build()
 
-	fmt.Printf("Starting SOCKS proxy on port %d...\n", port)
-	if err := common.ExecuteSSHCommand(s.executor, cmd); err != nil {
-		return fmt.Errorf("failed to start SOCKS proxy: %w", err)
-	}
+	fmt.Printf("Setting up SOCKS proxy on localhost:%d via %s...\n", localPort, details.Host)
+	fmt.Println("SOCKS proxy active. Press Ctrl+C to stop.")
 
-	fmt.Printf("SOCKS proxy started on port %d\n", port)
-	return nil
+	return common.ExecuteSSHCommand(s.executor, cmd)
 }
 
 func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) error {
@@ -96,8 +88,8 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 		WithForwarding(localPort, remoteHost, remotePort).
 		Build()
 
-	fmt.Printf("Setting up port forwarding from localhost:%d to %s:%d via %s...\n",
-		localPort, remoteHost, remotePort, details.Host)
+	fmt.Printf("Setting up port forwarding from localhost:%d to %s:%d via %s...\n", localPort, remoteHost, remotePort, details.Host)
+	fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
 
 	return common.ExecuteSSHCommand(s.executor, cmd)
 }

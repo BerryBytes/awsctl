@@ -78,9 +78,10 @@ func TestSSHCommandBuilder(t *testing.T) {
 		expected := []string{
 			"ssh",
 			"-i", "/path/to/key",
-			"-o", "BatchMode=yes",
+			"-o", "BatchMode=no",
 			"-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=ask",
+			"-o", "StrictHostKeyChecking=yes",
+			"-o", "ServerAliveInterval=60",
 			"user@example.com",
 		}
 		assert.Equal(t, expected, cmd)
@@ -103,9 +104,9 @@ func TestSSHCommandBuilder(t *testing.T) {
 		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithForwarding(8080, "localhost", 80).Build()
 
-		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=yes", "-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=ask",
-			"-L", "8080:localhost:80", "user@example.com"}
+		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o", "ConnectTimeout=30",
+			"-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=60",
+			"-N", "-T", "-L", "8080:localhost:80", "user@example.com"}
 
 		assert.Equal(t, expected, cmd)
 
@@ -115,8 +116,8 @@ func TestSSHCommandBuilder(t *testing.T) {
 		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithSOCKS(1080).Build()
 
-		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=yes", "-o",
-			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=ask",
+		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
+			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=60", "-N", "-T",
 			"-D", "1080", "user@example.com"}
 
 		assert.Equal(t, expected, cmd)
@@ -126,8 +127,9 @@ func TestSSHCommandBuilder(t *testing.T) {
 		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithBackground().Build()
 
-		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=yes", "-o",
-			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=ask",
+		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
+			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=yes",
+			"-o", "ServerAliveInterval=60",
 			"-N", "-f", "user@example.com"}
 
 		assert.Equal(t, expected, cmd)

@@ -11,7 +11,6 @@ import (
 
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 )
@@ -38,6 +37,8 @@ type ConnectionProvider struct {
 	instanceConn  EC2InstanceConnectInterface
 	homeDir       func() (string, error)
 	awsConfigured bool
+	configLoader  AWSConfigLoader
+	newEC2Client  func(region string, loader AWSConfigLoader) (EC2ClientInterface, error)
 }
 
 func NewConnectionProvider(
@@ -47,8 +48,12 @@ func NewConnectionProvider(
 	ec2Client EC2ClientInterface,
 	ssmClient SSMClientInterface,
 	instanceConn EC2InstanceConnectInterface,
+	configLoader AWSConfigLoader,
 ) *ConnectionProvider {
 	homeDir := os.UserHomeDir
+	if configLoader == nil {
+		configLoader = &DefaultAWSConfigLoader{}
+	}
 	provider := &ConnectionProvider{
 		prompter:      prompter,
 		fs:            fs,
@@ -57,6 +62,8 @@ func NewConnectionProvider(
 		ec2Client:     ec2Client,
 		instanceConn:  instanceConn,
 		awsConfigured: isAWSConfigured(awsConfig),
+		configLoader:  configLoader,
+		newEC2Client:  NewEC2ClientWithRegion,
 	}
 	if provider.awsConfigured {
 		provider.ec2Client = ec2Client
@@ -81,7 +88,7 @@ func (p *ConnectionProvider) GetConnectionDetails(ctx context.Context) (*Connect
 }
 
 func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDetails, error) {
-	host, err := p.getBastionHost(ctx, p.ec2Client)
+	host, err := p.getBastionHost(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +141,7 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	return details, nil
 }
 
-func (p *ConnectionProvider) getBastionHost(ctx context.Context, ec2Client EC2ClientInterface) (string, error) {
+func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error) {
 	if !p.awsConfigured {
 		fmt.Println("AWS configuration not found...")
 		return p.prompter.PromptForBastionHost()
@@ -150,7 +157,6 @@ func (p *ConnectionProvider) getBastionHost(ctx context.Context, ec2Client EC2Cl
 		fmt.Printf("Failed to load default region: %v\n", err)
 		defaultRegion = ""
 	}
-	// fmt.Printf("default region: %s\n", defaultRegion)
 
 	region, err := p.prompter.PromptForRegion(defaultRegion)
 	if err != nil {
@@ -158,12 +164,11 @@ func (p *ConnectionProvider) getBastionHost(ctx context.Context, ec2Client EC2Cl
 		return p.prompter.PromptForBastionHost()
 	}
 
-	if ec2Client == nil {
-		ec2Client, err = NewEC2ClientWithRegion(region)
-		if err != nil {
-			log.Printf("Failed to initialize EC2 client: %v", err)
-			return p.prompter.PromptForBastionHost()
-		}
+	loader := &DefaultAWSConfigLoader{}
+	ec2Client, err := p.newEC2Client(region, loader)
+	if err != nil {
+		log.Printf("Failed to initialize EC2 client: %v", err)
+		return p.prompter.PromptForBastionHost()
 	}
 
 	instances, err := ec2Client.ListBastionInstances(ctx)
@@ -247,7 +252,7 @@ func (p *ConnectionProvider) getDefaultRegion() (string, error) {
 	if p.awsConfig.Region != "" {
 		return p.awsConfig.Region, nil
 	}
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := p.configLoader.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return "", fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
