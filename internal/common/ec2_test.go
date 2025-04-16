@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/BerryBytes/awsctl/models"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -500,4 +502,46 @@ func TestFilterBastionInstance_Sorting(t *testing.T) {
 	assert.Equal(t, "i-1", result[0].InstanceID)
 	assert.Equal(t, "i-3", result[1].InstanceID)
 	assert.Equal(t, "i-2", result[2].InstanceID)
+}
+
+func TestNewEC2ClientWithRegion_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLoader := mock_awsctl.NewMockAWSConfigLoader(ctrl)
+
+	testConfig := aws.Config{
+		Region: "us-east-1",
+	}
+
+	mockLoader.EXPECT().
+		LoadDefaultConfig(gomock.Any()).
+		Return(testConfig, nil)
+
+	client, err := NewEC2ClientWithRegion("us-west-2", mockLoader)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
+	assert.IsType(t, &realEC2Client{}, client)
+
+}
+
+func TestNewEC2ClientWithRegion_ConfigLoadError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLoader := mock_awsctl.NewMockAWSConfigLoader(ctrl)
+
+	expectedErr := errors.New("failed to load config")
+
+	mockLoader.EXPECT().
+		LoadDefaultConfig(gomock.Any()).
+		Return(aws.Config{}, expectedErr)
+
+	client, err := NewEC2ClientWithRegion("us-west-2", mockLoader)
+
+	assert.Error(t, err)
+	assert.Nil(t, client)
+	assert.Contains(t, err.Error(), "failed to load AWS config")
+	assert.ErrorIs(t, err, expectedErr)
 }
