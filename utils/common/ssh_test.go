@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -158,19 +159,23 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Permission denied (publickey)"))
+						if _, err := stderr.Write([]byte("Permission denied (password)")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
 			cmd:           []string{"ssh", "-i", "/test/key", "user@host"},
-			expectedError: "SSH authentication failed: invalid SSH key at /test/key",
+			expectedError: "SSH authentication failed: invalid credentials for user",
 		},
 		{
 			name: "permission denied - password",
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Permission denied (password)"))
+						if _, err := stderr.Write([]byte("Permission denied (password)")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
@@ -182,7 +187,9 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Connection timed out"))
+						if _, err := stderr.Write([]byte("Connection timed out")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
@@ -362,7 +369,10 @@ func TestTerminateSOCKSProxy(t *testing.T) {
 					gomock.Any(),
 					gomock.Any(),
 				).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-					stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
+					if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n")); err != nil {
+						log.Printf("failed to write to stdout: %v", err)
+					}
+
 					return nil
 				})
 				m.EXPECT().Execute(

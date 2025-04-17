@@ -277,13 +277,17 @@ func TestGetBastionHost_AWSConfigured(t *testing.T) {
 
 		host, err := provider.getBastionHost(ctx)
 
-		w.Close()
+		if err := w.Close(); err != nil {
+			t.Logf("failed to close writer: %v", err)
+		}
 		os.Stdout = old
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, r); err != nil {
 			t.Logf("failed to copy stdout: %v", err)
 		}
-		r.Close()
+		if err := r.Close(); err != nil {
+			t.Logf("failed to close reader: %v", err)
+		}
 
 		assert.NoError(t, err)
 		assert.Equal(t, "i-1234567890abcdef0", host)
@@ -793,13 +797,18 @@ func TestGetBastionHost_RegionPromptError(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	defer func() {
-		w.Close()
+
+		if err := w.Close(); err != nil {
+			t.Logf("failed to close writer: %v", err)
+		}
 		os.Stdout = stdout
 		var stdoutOutput strings.Builder
 		if _, err := io.Copy(&stdoutOutput, r); err != nil {
 			t.Logf("error copying from pipe: %v", err)
 		}
-		r.Close()
+		if err := r.Close(); err != nil {
+			t.Logf("failed to close reader: %v", err)
+		}
 		assert.Contains(t, stdoutOutput.String(), "Failed to get region")
 	}()
 
