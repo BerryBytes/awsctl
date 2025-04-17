@@ -246,7 +246,9 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Some unknown error"))
+						if _, err := stderr.Write([]byte("Some unknown error")); err != nil {
+							t.Fatalf("failed to write to stderr: %v", err)
+						}
 						return fmt.Errorf("unknown error")
 					})
 			},
@@ -467,7 +469,9 @@ func TestTerminateSOCKSProxyWindows_NetstatError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stderr.Write([]byte("netstat failed"))
+		if _, err := stderr.Write([]byte("netstat failed")); err != nil {
+			t.Fatalf("failed to write to stderr: %v", err)
+		}
 		return errors.New("netstat error")
 	})
 
