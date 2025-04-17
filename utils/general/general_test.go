@@ -16,11 +16,18 @@ import (
 
 func TestCheckAWSCLI_NotFound(t *testing.T) {
 	originalPath := os.Getenv("PATH")
-	defer os.Setenv("PATH", originalPath)
+	defer func() {
+		if err := os.Setenv("PATH", originalPath); err != nil {
+			t.Logf("failed to reset PATH: %v", err)
+		}
+	}()
 
-	os.Setenv("PATH", "/nonexistent")
+	err := os.Setenv("PATH", "/nonexistent")
+	if err != nil {
+		t.Fatalf("failed to set PATH: %v", err)
+	}
 	manager := &DefaultGeneralUtilsManager{}
-	err := manager.CheckAWSCLI()
+	err = manager.CheckAWSCLI()
 
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "AWS CLI not found"))
@@ -63,7 +70,9 @@ func TestHandleSignals(t *testing.T) {
 		t.Fatal("timeout waiting for signal handling")
 	}
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close writer: %v", err)
+	}
 	os.Stdout = oldStdout
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, r)
@@ -91,7 +100,9 @@ func TestPrintCurrentRole(t *testing.T) {
 		"2023-12-31T23:59:59Z",
 	)
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close writer: %v", err)
+	}
 	os.Stdout = oldStdout
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)

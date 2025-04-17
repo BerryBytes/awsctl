@@ -201,7 +201,10 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("No route to host"))
+
+						if _, err := stderr.Write([]byte("No route to host")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
@@ -213,7 +216,10 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Could not resolve hostname"))
+
+						if _, err := stderr.Write([]byte("Could not resolve hostname")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
@@ -225,7 +231,10 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Host key verification failed"))
+
+						if _, err := stderr.Write([]byte("Host key verification failed")); err != nil {
+							log.Printf("failed to write to stderr: %v", err)
+						}
 						return &exec.ExitError{}
 					})
 			},
@@ -478,7 +487,10 @@ func TestTerminateSOCKSProxyWindows_InvalidPID(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n"))
+
+		if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n")); err != nil {
+			log.Printf("failed to write to stdout: %v", err)
+		}
 		return nil
 	})
 
@@ -498,7 +510,10 @@ func TestTerminateSOCKSProxyWindows_KillError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
+
+		if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n")); err != nil {
+			log.Printf("failed to write to stdout: %v", err)
+		}
 		return nil
 	})
 	mockExecutor.EXPECT().Execute(
