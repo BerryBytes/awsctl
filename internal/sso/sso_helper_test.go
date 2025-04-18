@@ -102,7 +102,11 @@ func createTempSSOCache(t *testing.T, cacheDir string, cache models.SSOCache) st
 	require.NoError(t, err)
 	cacheFile, err := os.CreateTemp(cacheDir, "*.json")
 	require.NoError(t, err)
-	defer cacheFile.Close()
+	defer func() {
+		if err := cacheFile.Close(); err != nil {
+			t.Logf("failed to close cache file: %v", err)
+		}
+	}()
 	err = json.NewEncoder(cacheFile).Encode(cache)
 	require.NoError(t, err)
 	return cacheFile.Name()
@@ -479,7 +483,11 @@ sso_start_url = https://test-start-url
 			client := tt.setup(t)
 			homeDir, err := client.getHomeDir()
 			if err == nil && homeDir != "" {
-				defer os.RemoveAll(homeDir)
+				defer func() {
+					if err := os.RemoveAll(homeDir); err != nil {
+						t.Logf("failed to remove temp home dir: %v", err)
+					}
+				}()
 			}
 			profiles, err := client.GetSSOProfiles()
 			if tt.wantErr {
@@ -735,7 +743,11 @@ sso_start_url = https://test-start-url
 			client := tt.setup(t)
 			homeDir, err := client.getHomeDir()
 			if err == nil && homeDir != "" {
-				defer os.RemoveAll(homeDir)
+				defer func() {
+					if err := os.RemoveAll(homeDir); err != nil {
+						t.Logf("failed to remove temp home dir: %v", err)
+					}
+				}()
 			}
 			session, err := client.getSessionName(tt.profile)
 			if tt.wantErr {

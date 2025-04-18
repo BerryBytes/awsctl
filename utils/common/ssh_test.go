@@ -158,7 +158,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Permission denied (publickey)"))
+						_, _ = stderr.Write([]byte("Permission denied (publickey)"))
 						return &exec.ExitError{}
 					})
 			},
@@ -170,7 +170,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Permission denied (password)"))
+						_, _ = stderr.Write([]byte("Permission denied (password)"))
 						return &exec.ExitError{}
 					})
 			},
@@ -182,7 +182,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Connection timed out"))
+						_, _ = stderr.Write([]byte("Connection timed out"))
 						return &exec.ExitError{}
 					})
 			},
@@ -194,7 +194,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("No route to host"))
+						_, _ = stderr.Write([]byte("No route to host"))
 						return &exec.ExitError{}
 					})
 			},
@@ -206,7 +206,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Could not resolve hostname"))
+						_, _ = stderr.Write([]byte("Could not resolve hostname"))
 						return &exec.ExitError{}
 					})
 			},
@@ -218,7 +218,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Host key verification failed"))
+						_, _ = stderr.Write([]byte("Host key verification failed"))
 						return &exec.ExitError{}
 					})
 			},
@@ -230,7 +230,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						stderr.Write([]byte("Some unknown error"))
+						_, _ = stderr.Write([]byte("Some unknown error"))
 						return fmt.Errorf("unknown error")
 					})
 			},
@@ -361,7 +361,7 @@ func TestTerminateSOCKSProxy(t *testing.T) {
 					gomock.Any(),
 					gomock.Any(),
 				).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-					stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
+					_, _ = stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
 					return nil
 				})
 				m.EXPECT().Execute(
@@ -467,7 +467,7 @@ func TestTerminateSOCKSProxyWindows_InvalidPID(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n"))
+		_, _ = stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n"))
 		return nil
 	})
 
@@ -487,7 +487,7 @@ func TestTerminateSOCKSProxyWindows_KillError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
+		_, _ = stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
 		return nil
 	})
 	mockExecutor.EXPECT().Execute(
