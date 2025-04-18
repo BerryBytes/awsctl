@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/BerryBytes/awsctl/internal/sso"
 )
 
 type SSHExecutorInterface interface {
@@ -25,7 +27,13 @@ func (r RuntimeOSDetector) GetOS() string {
 	return runtime.GOOS
 }
 
-type RealSSHExecutor struct{}
+type RealSSHExecutor struct {
+	commandExecutor sso.CommandExecutor
+}
+
+func NewRealSSHExecutor(commandExecutor sso.CommandExecutor) *RealSSHExecutor {
+	return &RealSSHExecutor{commandExecutor: commandExecutor}
+}
 
 type SOCKSProxyConfig struct {
 	Executor    SSHExecutorInterface
@@ -59,7 +67,7 @@ func NewSSHCommandBuilder(host, user, keyPath string, useInstanceConnect bool) *
 		args = append(args,
 			"-o", "BatchMode=no",
 			"-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=yes",
+			"-o", "StrictHostKeyChecking=ask",
 			"-o", "ServerAliveInterval=60",
 		)
 	}
@@ -76,7 +84,6 @@ func (e *RealSSHExecutor) Execute(args []string, stdin io.Reader, stdout, stderr
 	if len(args) == 0 {
 		return fmt.Errorf("no command provided")
 	}
-
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
@@ -84,15 +91,6 @@ func (e *RealSSHExecutor) Execute(args []string, stdin io.Reader, stdout, stderr
 	return cmd.Run()
 }
 
-// func (b *SSHCommandBuilder) WithForwarding(localPort int, remoteHost string, remotePort int) *SSHCommandBuilder {
-// 	b.baseArgs = append(b.baseArgs, "-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort))
-// 	return b
-// }
-
-//	func (b *SSHCommandBuilder) WithSOCKS(localPort int) *SSHCommandBuilder {
-//		b.baseArgs = append(b.baseArgs, "-D", strconv.Itoa(localPort))
-//		return b
-//	}
 func (b *SSHCommandBuilder) WithForwarding(localPort int, remoteHost string, remotePort int) *SSHCommandBuilder {
 	b.baseArgs = append(b.baseArgs, "-N", "-T", "-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort))
 	return b
@@ -132,6 +130,12 @@ func ExecuteSSHCommand(executor SSHExecutorInterface, args []string) error {
 }
 
 func interpretSSHError(err error, errorOutput string, args []string) error {
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		switch exitErr.ExitCode() {
+		case 0, 1, 2, 130, 143:
+			return nil
+		}
+	}
 	var keyPath, user, host string
 
 	for i := 0; i < len(args); i++ {

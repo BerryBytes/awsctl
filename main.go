@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 func main() {
@@ -31,6 +32,8 @@ func main() {
 	awsConfig, _ := config.LoadDefaultConfig(ctx)
 
 	ec2Client := connection.NewEC2Client(ec2.NewFromConfig(awsConfig))
+	ssmClient := ssm.NewFromConfig(awsConfig)
+	configLoader := &connection.DefaultAWSConfigLoader{}
 	instanceConn := connection.NewEC2InstanceConnectAdapter(ec2instanceconnect.NewFromConfig(awsConfig))
 
 	prompter := connection.NewConnectionPrompter()
@@ -39,9 +42,9 @@ func main() {
 		fileSystem,
 		awsConfig,
 		ec2Client,
-		nil,
+		ssmClient,
 		instanceConn,
-		nil,
+		configLoader,
 	)
 
 	services := connection.NewServices(provider)

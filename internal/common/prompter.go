@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SSHIntoBastion  = "1) SSH into bastion"
+	SSHIntoBastion  = "1) SSH/SSM into bastion"
 	StartSOCKSProxy = "2) Start SOCKS proxy"
 	PortForwarding  = "3) Port forwarding"
 	ExitBastion     = "4) Exit"
@@ -183,7 +183,7 @@ func (b *ConnectionPrompterStruct) PromptForSSHKeyPath(defaultPath string) (stri
 	return path, nil
 }
 
-func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.EC2Instance) (string, error) {
+func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.EC2Instance, isSSM bool) (string, error) {
 	if len(instances) == 0 {
 		return "", errors.New("no instances available")
 	}
@@ -197,21 +197,50 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 		items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID, inst.PublicIPAddress)
 	}
 
-	connectionMethods := []string{"Public IP (direct SSH)", "Instance ID (EC2 Instance Connect)"}
-	method, err := b.Prompter.PromptForSelection("Select connection method:", connectionMethods)
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
+	var selected string
+	var err error
+	if isSSM {
+		selected, err = b.Prompter.PromptForSelection("Select bastion instance for SSM:", items)
+		if err != nil {
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return "", promptUtils.ErrInterrupted
+			}
+			return "", fmt.Errorf("failed to select bastion instance: %w", err)
 		}
-		return "", fmt.Errorf("failed to select connection method: %w", err)
-	}
+	} else {
+		connectionMethods := []string{"Public IP (direct SSH)", "Instance ID (EC2 Instance Connect)"}
+		method, err := b.Prompter.PromptForSelection("Select connection method:", connectionMethods)
+		if err != nil {
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return "", promptUtils.ErrInterrupted
+			}
+			return "", fmt.Errorf("failed to select connection method: %w", err)
+		}
 
-	selected, err := b.Prompter.PromptForSelection("Select bastion instance:", items)
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
+		selected, err = b.Prompter.PromptForSelection("Select bastion instance:", items)
+		if err != nil {
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return "", promptUtils.ErrInterrupted
+			}
+			return "", fmt.Errorf("failed to select bastion instance: %w", err)
 		}
-		return "", fmt.Errorf("failed to select bastion host: %w", err)
+
+		for _, inst := range instances {
+			name := inst.Name
+			if name == "" {
+				name = inst.InstanceID
+			}
+			if strings.Contains(selected, fmt.Sprintf("%s (%s)", name, inst.InstanceID)) {
+				if method == "Public IP (direct SSH)" {
+					if inst.PublicIPAddress == "" {
+						return "", errors.New("selected instance has no public IP")
+					}
+					return inst.PublicIPAddress, nil
+				}
+				return inst.InstanceID, nil
+			}
+		}
+		return "", errors.New("invalid selection")
 	}
 
 	for _, inst := range instances {
@@ -220,17 +249,9 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 			name = inst.InstanceID
 		}
 		if strings.Contains(selected, fmt.Sprintf("%s (%s)", name, inst.InstanceID)) {
-			if method == "Public IP (direct SSH)" {
-				if inst.PublicIPAddress == "" {
-					return "", errors.New("selected instance has no public IP")
-				}
-				return inst.PublicIPAddress, nil
-			} else {
-				return inst.InstanceID, nil
-			}
+			return inst.InstanceID, nil
 		}
 	}
-
 	return "", errors.New("invalid selection")
 }
 
@@ -277,7 +298,7 @@ func (b *ConnectionPrompterStruct) PromptForInstanceID() (string, error) {
 func (b *ConnectionPrompterStruct) ChooseConnectionMethod() (string, error) {
 	options := []string{
 		MethodSSH,
-		// "AWS Systems Manager (SSM)",
+		MethodSSM,
 	}
 
 	selected, err := b.Prompter.PromptForSelection("Select connection method:", options)
@@ -291,8 +312,8 @@ func (b *ConnectionPrompterStruct) ChooseConnectionMethod() (string, error) {
 	switch selected {
 	case MethodSSH:
 		return MethodSSH, nil
-	// case MethodSSM:
-	// 	return MethodSSM, nil
+	case MethodSSM:
+		return MethodSSM, nil
 	default:
 		return "", fmt.Errorf("unexpected selection: %s", selected)
 	}

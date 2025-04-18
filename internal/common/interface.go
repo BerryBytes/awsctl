@@ -22,7 +22,7 @@ type ConnectionPrompter interface {
 	PromptForLocalPort(usage string, defaultPort int) (int, error)
 	PromptForRemoteHost() (string, error)
 	PromptForRemotePort(usage string) (int, error)
-	PromptForBastionInstance(instances []models.EC2Instance) (string, error)
+	PromptForBastionInstance(instances []models.EC2Instance, isSSM bool) (string, error)
 	PromptForInstanceID() (string, error)
 	PromptForRegion(defaultRegion string) (string, error)
 }
@@ -38,10 +38,6 @@ type EC2DescribeInstancesAPI interface {
 
 type EC2InstanceConnectInterface interface {
 	SendSSHPublicKey(ctx context.Context, input *ec2instanceconnect.SendSSHPublicKeyInput) (*ec2instanceconnect.SendSSHPublicKeyOutput, error)
-}
-
-type SSMClientInterface interface {
-	StartSession(ctx context.Context, input *ssm.StartSessionInput) (*ssm.StartSessionOutput, error)
 }
 
 type SSMExecutorInterface interface {
@@ -77,4 +73,23 @@ type DefaultAWSConfigLoader struct{}
 
 func (d *DefaultAWSConfigLoader) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx)
+}
+
+type SSMClientInterface interface {
+	StartSession(ctx context.Context, input *ssm.StartSessionInput, opts ...func(*ssm.Options)) (*ssm.StartSessionOutput, error)
+	TerminateSession(ctx context.Context, input *ssm.TerminateSessionInput, opts ...func(*ssm.Options)) (*ssm.TerminateSessionOutput, error)
+}
+
+type SSMStarterInterface interface {
+	StartSession(ctx context.Context, instanceID string) error
+	StartPortForwarding(ctx context.Context, instanceID string, localPort int, remoteHost string, remotePort int) error
+	StartSOCKSProxy(ctx context.Context, instanceID string, localPort int) error
+}
+
+type RealSSMClient struct {
+	client SSMClientInterface
+}
+
+func NewRealSSMClient(client SSMClientInterface) *RealSSMClient {
+	return &RealSSMClient{client: client}
 }

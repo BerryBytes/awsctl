@@ -50,7 +50,7 @@ func TestBastionService_Run(t *testing.T) {
 				mockPrompter.EXPECT().SelectAction().Return(connection.SSHIntoBastion, nil)
 				mockServices.EXPECT().SSHIntoBastion(gomock.Any()).Return(errors.New("ssh error"))
 			},
-			expectedError: "SSH failed: ssh error",
+			expectedError: "SSH/SSM failed: ssh error",
 		},
 		{
 			name: "User selects StartSOCKSProxy successfully",

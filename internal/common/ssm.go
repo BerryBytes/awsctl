@@ -1,0 +1,127 @@
+package connection
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"runtime"
+
+	"github.com/BerryBytes/awsctl/internal/sso"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+)
+
+type RealSSMStarter struct {
+	client          SSMClientInterface
+	region          string
+	commandExecutor sso.CommandExecutor
+}
+
+func NewRealSSMStarter(client SSMClientInterface, region string) *RealSSMStarter {
+	return &RealSSMStarter{
+		client:          client,
+		region:          region,
+		commandExecutor: &sso.RealCommandExecutor{},
+	}
+}
+
+func (s *RealSSMStarter) StartSession(ctx context.Context, instanceID string) error {
+	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+		Target: aws.String(instanceID),
+	})
+	if err != nil {
+		return fmt.Errorf("SSM session failed: %w", err)
+	}
+	defer s.terminateSession(ctx, session.SessionId)
+
+	fmt.Printf("Starting SSM session with instance %s...\n", instanceID)
+	return s.runSessionManagerPlugin(ctx, session, instanceID, "StartSession")
+}
+
+func (s *RealSSMStarter) StartPortForwarding(ctx context.Context, instanceID string, localPort int, remoteHost string, remotePort int) error {
+	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+		Target:       aws.String(instanceID),
+		DocumentName: aws.String("AWS-StartPortForwardingSession"),
+		Parameters: map[string][]string{
+			"portNumber":      {fmt.Sprintf("%d", localPort)},
+			"localPortNumber": {fmt.Sprintf("%d", localPort)},
+			"host":            {remoteHost},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("SSM port forwarding failed: %w", err)
+	}
+	defer s.terminateSession(ctx, session.SessionId)
+
+	fmt.Printf("Starting SSM port forwarding for instance %s (localhost:%d to %s:%d)...\n", instanceID, localPort, remoteHost, remotePort)
+	return s.runSessionManagerPlugin(ctx, session, instanceID, "PortForwarding")
+}
+
+func (s *RealSSMStarter) StartSOCKSProxy(ctx context.Context, instanceID string, localPort int) error {
+	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+		Target:       aws.String(instanceID),
+		DocumentName: aws.String("AWS-StartPortForwardingSession"),
+		Parameters: map[string][]string{
+			"portNumber":      {"1080"},
+			"localPortNumber": {fmt.Sprintf("%d", localPort)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("SSM SOCKS proxy failed: %w", err)
+	}
+	defer s.terminateSession(ctx, session.SessionId)
+
+	fmt.Printf("Starting SSM SOCKS proxy for instance %s on localhost:%d...\n", instanceID, localPort)
+	return s.runSessionManagerPlugin(ctx, session, instanceID, "SOCKSProxy")
+}
+
+func (s *RealSSMStarter) terminateSession(ctx context.Context, sessionID *string) {
+	if sessionID == nil {
+		return
+	}
+	_, err := s.client.TerminateSession(ctx, &ssm.TerminateSessionInput{
+		SessionId: sessionID,
+	})
+	if err != nil {
+		fmt.Printf("Warning: Failed to terminate SSM session %s: %v\n", *sessionID, err)
+	}
+}
+
+func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *ssm.StartSessionOutput, instanceID, sessionType string) error {
+	pluginName := "session-manager-plugin"
+	if runtime.GOOS == "windows" {
+		pluginName = "session-manager-plugin.exe"
+	}
+
+	if customPath := os.Getenv("AWS_SESSION_MANAGER_PLUGIN_PATH"); customPath != "" {
+		pluginName = customPath
+	}
+
+	pluginPath, err := s.commandExecutor.LookPath(pluginName)
+	if err != nil {
+		return fmt.Errorf("session-manager-plugin not found: %w", err)
+	}
+
+	sessionParams := map[string]interface{}{
+		"Target":     instanceID,
+		"SessionId":  *session.SessionId,
+		"StreamUrl":  *session.StreamUrl,
+		"TokenValue": *session.TokenValue,
+	}
+
+	paramsJSON, err := json.Marshal(sessionParams)
+	if err != nil {
+		return fmt.Errorf("failed to marshal session parameters: %w", err)
+	}
+
+	args := []string{
+		string(paramsJSON),
+		s.region,
+		"StartSession",
+		"",
+		fmt.Sprintf(`{"Target": "%s"}`, instanceID),
+	}
+	fmt.Printf("Executing %s session for instance %s with session-manager-plugin...\n", sessionType, instanceID)
+	return s.commandExecutor.RunInteractiveCommand(ctx, pluginPath, args...)
+}

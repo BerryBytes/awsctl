@@ -34,6 +34,21 @@ func (m *MockCommandExecutor) EXPECT() *MockCommandExecutorMockRecorder {
 	return m.recorder
 }
 
+// LookPath mocks base method.
+func (m *MockCommandExecutor) LookPath(file string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LookPath", file)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookPath indicates an expected call of LookPath.
+func (mr *MockCommandExecutorMockRecorder) LookPath(file interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookPath", reflect.TypeOf((*MockCommandExecutor)(nil).LookPath), file)
+}
+
 // RunCommand mocks base method.
 func (m *MockCommandExecutor) RunCommand(name string, args ...string) ([]byte, error) {
 	m.ctrl.T.Helper()

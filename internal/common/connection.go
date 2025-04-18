@@ -17,7 +17,7 @@ import (
 
 const (
 	MethodSSH string = "SSH"
-	// MethodSSM string = "AWS Systems Manager (SSM)" // will add this option in future
+	MethodSSM string = "AWS Systems Manager (SSM)"
 )
 
 type ConnectionDetails struct {
@@ -27,6 +27,7 @@ type ConnectionDetails struct {
 	InstanceID         string
 	UseInstanceConnect bool
 	Method             string
+	SSMClient          SSMClientInterface
 }
 
 type ConnectionProvider struct {
@@ -35,6 +36,7 @@ type ConnectionProvider struct {
 	awsConfig     aws.Config
 	ec2Client     EC2ClientInterface
 	instanceConn  EC2InstanceConnectInterface
+	ssmClient     SSMClientInterface
 	homeDir       func() (string, error)
 	awsConfigured bool
 	configLoader  AWSConfigLoader
@@ -61,6 +63,7 @@ func NewConnectionProvider(
 		homeDir:       homeDir,
 		ec2Client:     ec2Client,
 		instanceConn:  instanceConn,
+		ssmClient:     ssmClient,
 		awsConfigured: isAWSConfigured(awsConfig),
 		configLoader:  configLoader,
 		newEC2Client:  NewEC2ClientWithRegion,
@@ -82,6 +85,8 @@ func (p *ConnectionProvider) GetConnectionDetails(ctx context.Context) (*Connect
 	switch method {
 	case MethodSSH:
 		return p.getSSHDetails(ctx)
+	case MethodSSM:
+		return p.getSSMDetails(ctx)
 	default:
 		return nil, fmt.Errorf("unsupported connection method: %s", method)
 	}
@@ -141,6 +146,69 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	return details, nil
 }
 
+func (p *ConnectionProvider) getSSMDetails(ctx context.Context) (*ConnectionDetails, error) {
+	if !p.awsConfigured {
+		return nil, errors.New("AWS configuration required for SSM access")
+	}
+
+	instanceID, awsErr := p.getBastionInstanceID(ctx, true)
+	if awsErr == nil {
+		return &ConnectionDetails{
+			InstanceID: instanceID,
+			Method:     MethodSSM,
+			SSMClient:  p.ssmClient,
+		}, nil
+	}
+
+	fmt.Printf("AWS lookup failed: %v\n", awsErr)
+	fmt.Println("Please enter the instance ID manually (e.g., i-1234567890abcdef0)")
+
+	host, err := p.prompter.PromptForInstanceID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get instance ID: %w", err)
+	}
+
+	if !strings.HasPrefix(host, "i-") {
+		return nil, errors.New("invalid instance ID format - should start with 'i-'")
+	}
+
+	return &ConnectionDetails{
+		InstanceID: host,
+		Method:     MethodSSM,
+		SSMClient:  p.ssmClient,
+	}, nil
+}
+
+func (p *ConnectionProvider) getBastionInstanceID(ctx context.Context, isSSM bool) (string, error) {
+	defaultRegion, err := p.getDefaultRegion()
+	if err != nil {
+		fmt.Printf("Failed to load default region: %v\n", err)
+		defaultRegion = ""
+	}
+
+	region, err := p.prompter.PromptForRegion(defaultRegion)
+	if err != nil {
+		return "", fmt.Errorf("failed to get region: %w", err)
+	}
+
+	loader := &DefaultAWSConfigLoader{}
+	ec2Client, err := p.newEC2Client(region, loader)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize EC2 client: %w", err)
+	}
+
+	instances, err := ec2Client.ListBastionInstances(ctx)
+	if err != nil {
+		return "", fmt.Errorf("AWS lookup failed: %w", err)
+	}
+
+	if len(instances) == 0 {
+		return "", errors.New("no bastion hosts found in AWS")
+	}
+
+	return p.prompter.PromptForBastionInstance(instances, isSSM)
+}
+
 func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error) {
 	if !p.awsConfigured {
 		fmt.Println("AWS configuration not found...")
@@ -184,7 +252,7 @@ func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error)
 		return p.prompter.PromptForBastionHost()
 	}
 
-	return p.prompter.PromptForBastionInstance(instances)
+	return p.prompter.PromptForBastionInstance(instances, false)
 }
 
 func (p *ConnectionProvider) sendSSHPublicKey(ctx context.Context, instanceID, user, publicKeyPath string) error {

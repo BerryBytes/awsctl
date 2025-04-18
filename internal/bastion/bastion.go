@@ -40,9 +40,9 @@ func (b *BastionService) Run(ctx context.Context) error {
 				if errors.Is(err, promptUtils.ErrInterrupted) {
 					return nil
 				}
-				return fmt.Errorf("SSH failed: %v", err)
+				return fmt.Errorf("SSH/SSM failed: %v", err)
 			}
-			fmt.Println("SSH session closed. Exiting.")
+			fmt.Println("SSH/SSM session closed. Exiting.")
 			return nil
 
 		case connection.StartSOCKSProxy:

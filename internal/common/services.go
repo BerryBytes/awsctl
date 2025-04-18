@@ -11,6 +11,7 @@ type Services struct {
 	provider   *ConnectionProvider
 	executor   common.SSHExecutorInterface
 	osDetector common.OSDetector
+	ssmStarter SSMStarterInterface
 }
 
 func NewServices(
@@ -20,6 +21,7 @@ func NewServices(
 		provider:   provider,
 		executor:   &common.RealSSHExecutor{},
 		osDetector: common.RuntimeOSDetector{},
+		ssmStarter: NewRealSSMStarter(provider.ssmClient, provider.awsConfig.Region),
 	}
 }
 
@@ -27,6 +29,11 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	details, err := s.provider.GetConnectionDetails(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get connection details: %w", err)
+	}
+
+	if details.Method == MethodSSM {
+		fmt.Printf("Initiating SSM session with instance %s...\n", details.InstanceID)
+		return s.ssmStarter.StartSession(ctx, details.InstanceID)
 	}
 
 	builder := common.NewSSHCommandBuilder(
@@ -54,6 +61,12 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 		return fmt.Errorf("failed to get connection details: %w", err)
 	}
 
+	if details.Method == MethodSSM {
+		fmt.Printf("Setting up SSM SOCKS proxy on localhost:%d via instance %s...\n", localPort, details.InstanceID)
+		fmt.Println("SOCKS proxy active. Press Ctrl+C to stop.")
+		return s.ssmStarter.StartSOCKSProxy(ctx, details.InstanceID, localPort)
+	}
+
 	builder := common.NewSSHCommandBuilder(
 		details.Host,
 		details.User,
@@ -75,6 +88,12 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 	details, err := s.provider.GetConnectionDetails(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get connection details: %w", err)
+	}
+
+	if details.Method == MethodSSM {
+		fmt.Printf("Setting up SSM port forwarding from localhost:%d to %s:%d via instance %s...\n", localPort, remoteHost, remotePort, details.InstanceID)
+		fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
+		return s.ssmStarter.StartPortForwarding(ctx, details.InstanceID, localPort, remoteHost, remotePort)
 	}
 
 	builder := common.NewSSHCommandBuilder(

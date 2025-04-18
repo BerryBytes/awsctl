@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -81,7 +80,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 			"-i", "/path/to/key",
 			"-o", "BatchMode=no",
 			"-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=yes",
+			"-o", "StrictHostKeyChecking=ask",
 			"-o", "ServerAliveInterval=60",
 			"user@example.com",
 		}
@@ -106,7 +105,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 		cmd := builder.WithForwarding(8080, "localhost", 80).Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o", "ConnectTimeout=30",
-			"-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=60",
+			"-o", "StrictHostKeyChecking=ask", "-o", "ServerAliveInterval=60",
 			"-N", "-T", "-L", "8080:localhost:80", "user@example.com"}
 
 		assert.Equal(t, expected, cmd)
@@ -118,7 +117,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 		cmd := builder.WithSOCKS(1080).Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
-			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=60", "-N", "-T",
+			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=ask", "-o", "ServerAliveInterval=60", "-N", "-T",
 			"-D", "1080", "user@example.com"}
 
 		assert.Equal(t, expected, cmd)
@@ -129,7 +128,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 		cmd := builder.WithBackground().Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
-			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=yes",
+			"ConnectTimeout=30", "-o", "StrictHostKeyChecking=ask",
 			"-o", "ServerAliveInterval=60",
 			"-N", "-f", "user@example.com"}
 
@@ -159,23 +158,19 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						if _, err := stderr.Write([]byte("Permission denied (password)")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Permission denied (publickey)"))
 						return &exec.ExitError{}
 					})
 			},
 			cmd:           []string{"ssh", "-i", "/test/key", "user@host"},
-			expectedError: "SSH authentication failed: invalid credentials for user",
+			expectedError: "SSH authentication failed: invalid SSH key at /test/key",
 		},
 		{
 			name: "permission denied - password",
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						if _, err := stderr.Write([]byte("Permission denied (password)")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Permission denied (password)"))
 						return &exec.ExitError{}
 					})
 			},
@@ -187,9 +182,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						if _, err := stderr.Write([]byte("Connection timed out")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Connection timed out"))
 						return &exec.ExitError{}
 					})
 			},
@@ -201,10 +194,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-
-						if _, err := stderr.Write([]byte("No route to host")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("No route to host"))
 						return &exec.ExitError{}
 					})
 			},
@@ -216,10 +206,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-
-						if _, err := stderr.Write([]byte("Could not resolve hostname")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Could not resolve hostname"))
 						return &exec.ExitError{}
 					})
 			},
@@ -231,10 +218,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-
-						if _, err := stderr.Write([]byte("Host key verification failed")); err != nil {
-							log.Printf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Host key verification failed"))
 						return &exec.ExitError{}
 					})
 			},
@@ -246,9 +230,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockSetup: func(m *mock_awsctl.MockSSHExecutorInterface) {
 				m.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-						if _, err := stderr.Write([]byte("Some unknown error")); err != nil {
-							t.Fatalf("failed to write to stderr: %v", err)
-						}
+						stderr.Write([]byte("Some unknown error"))
 						return fmt.Errorf("unknown error")
 					})
 			},
@@ -268,7 +250,6 @@ func TestExecuteSSHCommand(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError)
 
-				// For the default case, verify the full error output format
 				if tt.name == "unknown error" {
 					assert.Contains(t, err.Error(), "Command: ssh -i /test/key user@host")
 					assert.Contains(t, err.Error(), "Error output: Some unknown error")
@@ -380,10 +361,7 @@ func TestTerminateSOCKSProxy(t *testing.T) {
 					gomock.Any(),
 					gomock.Any(),
 				).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-					if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n")); err != nil {
-						log.Printf("failed to write to stdout: %v", err)
-					}
-
+					stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
 					return nil
 				})
 				m.EXPECT().Execute(
@@ -469,9 +447,7 @@ func TestTerminateSOCKSProxyWindows_NetstatError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		if _, err := stderr.Write([]byte("netstat failed")); err != nil {
-			t.Fatalf("failed to write to stderr: %v", err)
-		}
+		stderr.Write([]byte("netstat failed"))
 		return errors.New("netstat error")
 	})
 
@@ -491,10 +467,7 @@ func TestTerminateSOCKSProxyWindows_InvalidPID(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-
-		if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n")); err != nil {
-			log.Printf("failed to write to stdout: %v", err)
-		}
+		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       invalid\n"))
 		return nil
 	})
 
@@ -514,10 +487,7 @@ func TestTerminateSOCKSProxyWindows_KillError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-
-		if _, err := stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n")); err != nil {
-			log.Printf("failed to write to stdout: %v", err)
-		}
+		stdout.Write([]byte("  TCP    0.0.0.0:1080          0.0.0.0:0              LISTENING       1234\n"))
 		return nil
 	})
 	mockExecutor.EXPECT().Execute(

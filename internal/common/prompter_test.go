@@ -346,7 +346,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "1.2.3.4",
 			wantErr:        false,
@@ -360,7 +360,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
@@ -373,7 +373,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
@@ -387,17 +387,17 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
-			wantErrMessage: "failed to select bastion host: selection error",
+			wantErrMessage: "failed to select bastion instance: selection error",
 		},
 		{
 			name:  "PromptForBastionInstance no instances",
 			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
-				return p.PromptForBastionInstance([]models.EC2Instance{})
+				return p.PromptForBastionInstance([]models.EC2Instance{}, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
@@ -411,7 +411,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: ""}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
@@ -425,7 +425,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
-				return p.PromptForBastionInstance(instances)
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "",
 			wantErr:        true,
@@ -626,6 +626,71 @@ func TestConnectionPrompter(t *testing.T) {
 			wantResult:     "",
 			wantErr:        true,
 			wantErrMessage: "region cannot be empty",
+		},
+		{
+			name: "PromptForBastionInstance SSM success",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select bastion instance for SSM:", gomock.Any()).Return("bastion1 (i-123) - 1.2.3.4", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "i-123",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForBastionInstance SSM interrupted",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select bastion instance for SSM:", gomock.Any()).Return("", promptUtils.ErrInterrupted)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: promptUtils.ErrInterrupted.Error(),
+		},
+		{
+			name: "PromptForBastionInstance SSM generic error",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select bastion instance for SSM:", gomock.Any()).Return("", errors.New("selection error"))
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: "failed to select bastion instance: selection error",
+		},
+		{
+			name: "PromptForBastionInstance SSM invalid selection",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select bastion instance for SSM:", gomock.Any()).Return("invalid selection", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "",
+			wantErr:        true,
+			wantErrMessage: "invalid selection",
+		},
+		{
+			name: "PromptForBastionInstance SSM success with unnamed instance",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select bastion instance for SSM:", gomock.Any()).Return("i-123 (i-123) - 1.2.3.4", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "i-123",
+			wantErr:        false,
+			wantErrMessage: "",
 		},
 	}
 

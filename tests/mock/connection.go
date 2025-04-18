@@ -70,18 +70,18 @@ func (mr *MockConnectionPrompterMockRecorder) PromptForBastionHost() *gomock.Cal
 }
 
 // PromptForBastionInstance mocks base method.
-func (m *MockConnectionPrompter) PromptForBastionInstance(instances []models.EC2Instance) (string, error) {
+func (m *MockConnectionPrompter) PromptForBastionInstance(instances []models.EC2Instance, isSSM bool) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PromptForBastionInstance", instances)
+	ret := m.ctrl.Call(m, "PromptForBastionInstance", instances, isSSM)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PromptForBastionInstance indicates an expected call of PromptForBastionInstance.
-func (mr *MockConnectionPrompterMockRecorder) PromptForBastionInstance(instances interface{}) *gomock.Call {
+func (mr *MockConnectionPrompterMockRecorder) PromptForBastionInstance(instances, isSSM interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForBastionInstance", reflect.TypeOf((*MockConnectionPrompter)(nil).PromptForBastionInstance), instances)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForBastionInstance", reflect.TypeOf((*MockConnectionPrompter)(nil).PromptForBastionInstance), instances, isSSM)
 }
 
 // PromptForConfirmation mocks base method.
@@ -373,44 +373,6 @@ func (mr *MockEC2InstanceConnectInterfaceMockRecorder) SendSSHPublicKey(ctx, inp
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSSHPublicKey", reflect.TypeOf((*MockEC2InstanceConnectInterface)(nil).SendSSHPublicKey), ctx, input)
 }
 
-// MockSSMClientInterface is a mock of SSMClientInterface interface.
-type MockSSMClientInterface struct {
-	ctrl     *gomock.Controller
-	recorder *MockSSMClientInterfaceMockRecorder
-}
-
-// MockSSMClientInterfaceMockRecorder is the mock recorder for MockSSMClientInterface.
-type MockSSMClientInterfaceMockRecorder struct {
-	mock *MockSSMClientInterface
-}
-
-// NewMockSSMClientInterface creates a new mock instance.
-func NewMockSSMClientInterface(ctrl *gomock.Controller) *MockSSMClientInterface {
-	mock := &MockSSMClientInterface{ctrl: ctrl}
-	mock.recorder = &MockSSMClientInterfaceMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSSMClientInterface) EXPECT() *MockSSMClientInterfaceMockRecorder {
-	return m.recorder
-}
-
-// StartSession mocks base method.
-func (m *MockSSMClientInterface) StartSession(ctx context.Context, input *ssm.StartSessionInput) (*ssm.StartSessionOutput, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartSession", ctx, input)
-	ret0, _ := ret[0].(*ssm.StartSessionOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StartSession indicates an expected call of StartSession.
-func (mr *MockSSMClientInterfaceMockRecorder) StartSession(ctx, input interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSession", reflect.TypeOf((*MockSSMClientInterface)(nil).StartSession), ctx, input)
-}
-
 // MockSSMExecutorInterface is a mock of SSMExecutorInterface interface.
 type MockSSMExecutorInterface struct {
 	ctrl     *gomock.Controller
@@ -563,4 +525,132 @@ func (m *MockAWSConfigLoader) LoadDefaultConfig(ctx context.Context) (aws.Config
 func (mr *MockAWSConfigLoaderMockRecorder) LoadDefaultConfig(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadDefaultConfig", reflect.TypeOf((*MockAWSConfigLoader)(nil).LoadDefaultConfig), ctx)
+}
+
+// MockSSMClientInterface is a mock of SSMClientInterface interface.
+type MockSSMClientInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockSSMClientInterfaceMockRecorder
+}
+
+// MockSSMClientInterfaceMockRecorder is the mock recorder for MockSSMClientInterface.
+type MockSSMClientInterfaceMockRecorder struct {
+	mock *MockSSMClientInterface
+}
+
+// NewMockSSMClientInterface creates a new mock instance.
+func NewMockSSMClientInterface(ctrl *gomock.Controller) *MockSSMClientInterface {
+	mock := &MockSSMClientInterface{ctrl: ctrl}
+	mock.recorder = &MockSSMClientInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSSMClientInterface) EXPECT() *MockSSMClientInterfaceMockRecorder {
+	return m.recorder
+}
+
+// StartSession mocks base method.
+func (m *MockSSMClientInterface) StartSession(ctx context.Context, input *ssm.StartSessionInput, opts ...func(*ssm.Options)) (*ssm.StartSessionOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "StartSession", varargs...)
+	ret0, _ := ret[0].(*ssm.StartSessionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StartSession indicates an expected call of StartSession.
+func (mr *MockSSMClientInterfaceMockRecorder) StartSession(ctx, input interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSession", reflect.TypeOf((*MockSSMClientInterface)(nil).StartSession), varargs...)
+}
+
+// TerminateSession mocks base method.
+func (m *MockSSMClientInterface) TerminateSession(ctx context.Context, input *ssm.TerminateSessionInput, opts ...func(*ssm.Options)) (*ssm.TerminateSessionOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "TerminateSession", varargs...)
+	ret0, _ := ret[0].(*ssm.TerminateSessionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TerminateSession indicates an expected call of TerminateSession.
+func (mr *MockSSMClientInterfaceMockRecorder) TerminateSession(ctx, input interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TerminateSession", reflect.TypeOf((*MockSSMClientInterface)(nil).TerminateSession), varargs...)
+}
+
+// MockSSMStarterInterface is a mock of SSMStarterInterface interface.
+type MockSSMStarterInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockSSMStarterInterfaceMockRecorder
+}
+
+// MockSSMStarterInterfaceMockRecorder is the mock recorder for MockSSMStarterInterface.
+type MockSSMStarterInterfaceMockRecorder struct {
+	mock *MockSSMStarterInterface
+}
+
+// NewMockSSMStarterInterface creates a new mock instance.
+func NewMockSSMStarterInterface(ctrl *gomock.Controller) *MockSSMStarterInterface {
+	mock := &MockSSMStarterInterface{ctrl: ctrl}
+	mock.recorder = &MockSSMStarterInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSSMStarterInterface) EXPECT() *MockSSMStarterInterfaceMockRecorder {
+	return m.recorder
+}
+
+// StartPortForwarding mocks base method.
+func (m *MockSSMStarterInterface) StartPortForwarding(ctx context.Context, instanceID string, localPort int, remoteHost string, remotePort int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartPortForwarding", ctx, instanceID, localPort, remoteHost, remotePort)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StartPortForwarding indicates an expected call of StartPortForwarding.
+func (mr *MockSSMStarterInterfaceMockRecorder) StartPortForwarding(ctx, instanceID, localPort, remoteHost, remotePort interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPortForwarding", reflect.TypeOf((*MockSSMStarterInterface)(nil).StartPortForwarding), ctx, instanceID, localPort, remoteHost, remotePort)
+}
+
+// StartSOCKSProxy mocks base method.
+func (m *MockSSMStarterInterface) StartSOCKSProxy(ctx context.Context, instanceID string, localPort int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartSOCKSProxy", ctx, instanceID, localPort)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StartSOCKSProxy indicates an expected call of StartSOCKSProxy.
+func (mr *MockSSMStarterInterfaceMockRecorder) StartSOCKSProxy(ctx, instanceID, localPort interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSOCKSProxy", reflect.TypeOf((*MockSSMStarterInterface)(nil).StartSOCKSProxy), ctx, instanceID, localPort)
+}
+
+// StartSession mocks base method.
+func (m *MockSSMStarterInterface) StartSession(ctx context.Context, instanceID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartSession", ctx, instanceID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StartSession indicates an expected call of StartSession.
+func (mr *MockSSMStarterInterfaceMockRecorder) StartSession(ctx, instanceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSession", reflect.TypeOf((*MockSSMStarterInterface)(nil).StartSession), ctx, instanceID)
 }

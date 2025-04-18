@@ -11,6 +11,7 @@ import (
 type CommandExecutor interface {
 	RunCommand(name string, args ...string) ([]byte, error)
 	RunInteractiveCommand(ctx context.Context, name string, args ...string) error
+	LookPath(file string) (string, error)
 }
 
 type RealCommandExecutor struct{}
@@ -27,6 +28,10 @@ func (e *RealCommandExecutor) RunInteractiveCommand(ctx context.Context, name st
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func (e *RealCommandExecutor) LookPath(file string) (string, error) {
+	return exec.LookPath(file)
 }
 
 type AWSConfigClient interface {
