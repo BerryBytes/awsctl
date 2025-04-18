@@ -447,7 +447,7 @@ func TestTerminateSOCKSProxyWindows_NetstatError(t *testing.T) {
 		gomock.Any(),
 		gomock.Any(),
 	).DoAndReturn(func(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-		stderr.Write([]byte("netstat failed"))
+		_, _ = stderr.Write([]byte("netstat failed"))
 		return errors.New("netstat error")
 	})
 
