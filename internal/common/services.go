@@ -4,24 +4,27 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 )
 
 type Services struct {
-	provider   *ConnectionProvider
-	executor   common.SSHExecutorInterface
-	osDetector common.OSDetector
-	ssmStarter SSMStarterInterface
+	provider        *ConnectionProvider
+	executor        common.SSHExecutorInterface
+	osDetector      common.OSDetector
+	ssmStarter      SSMStarterInterface
+	commandExecutor sso.CommandExecutor
 }
 
 func NewServices(
 	provider *ConnectionProvider,
 ) *Services {
 	return &Services{
-		provider:   provider,
-		executor:   &common.RealSSHExecutor{},
-		osDetector: common.RuntimeOSDetector{},
-		ssmStarter: NewRealSSMStarter(provider.ssmClient, provider.awsConfig.Region),
+		provider:        provider,
+		executor:        &common.RealSSHExecutor{},
+		osDetector:      common.RuntimeOSDetector{},
+		ssmStarter:      NewRealSSMStarter(provider.ssmClient, provider.awsConfig.Region),
+		commandExecutor: &sso.RealCommandExecutor{},
 	}
 }
 
@@ -36,6 +39,19 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 		return s.ssmStarter.StartSession(ctx, details.InstanceID)
 	}
 
+	if details.UseInstanceConnect {
+		fmt.Println("Using EC2 Instance Connect Endpoint (EIC-E) for authentication")
+		fmt.Printf("Connecting to %s@%s using EC2 Instance Connect...\n", details.User, details.InstanceID)
+
+		args := []string{
+			"ec2-instance-connect", "ssh",
+			"--instance-id", details.InstanceID,
+			"--connection-type", "eice",
+		}
+
+		return s.commandExecutor.RunInteractiveCommand(ctx, "aws", args...)
+	}
+
 	builder := common.NewSSHCommandBuilder(
 		details.Host,
 		details.User,
@@ -45,11 +61,7 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 
 	cmd := builder.Build()
 
-	if details.UseInstanceConnect {
-		fmt.Println("Using EC2 Instance Connect for authentication")
-	} else {
-		fmt.Println("Using traditional SSH authentication")
-	}
+	fmt.Println("Using traditional SSH authentication")
 
 	fmt.Printf("Connecting to %s@%s...\n", details.User, details.Host)
 	return common.ExecuteSSHCommand(s.executor, cmd)

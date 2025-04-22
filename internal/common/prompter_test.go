@@ -407,7 +407,6 @@ func TestConnectionPrompter(t *testing.T) {
 			name: "PromptForBastionInstance no public IP",
 			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
 				m.EXPECT().PromptForSelection("Select connection method:", gomock.Any()).Return("Public IP (direct SSH)", nil)
-				m.EXPECT().PromptForSelection("Select bastion instance:", gomock.Any()).Return("bastion1 (i-123) - ", nil)
 			},
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: ""}}
@@ -415,7 +414,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			wantResult:     "",
 			wantErr:        true,
-			wantErrMessage: "selected instance has no public IP",
+			wantErrMessage: "no bastion instances with public IP available",
 		},
 		{
 			name: "PromptForBastionInstance invalid selection",
@@ -687,6 +686,48 @@ func TestConnectionPrompter(t *testing.T) {
 			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
 				instances := []models.EC2Instance{{Name: "", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
 				return p.PromptForBastionInstance(instances, true)
+			},
+			wantResult:     "i-123",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForBastionInstance success InstanceID",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select connection method:", gomock.Any()).Return("Instance ID (EC2 Instance Connect)", nil)
+				m.EXPECT().PromptForSelection("Select bastion instance:", gomock.Any()).Return("bastion1 (i-123) - No Public IP (EC2 Connect only)", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: ""}}
+				return p.PromptForBastionInstance(instances, false)
+			},
+			wantResult:     "i-123",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForBastionInstance success InstanceID with public IP",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select connection method:", gomock.Any()).Return("Instance ID (EC2 Instance Connect)", nil)
+				m.EXPECT().PromptForSelection("Select bastion instance:", gomock.Any()).Return("bastion1 (i-123) - 1.2.3.4", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "bastion1", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, false)
+			},
+			wantResult:     "i-123",
+			wantErr:        false,
+			wantErrMessage: "",
+		},
+		{
+			name: "PromptForBastionInstance success InstanceID with unnamed instance",
+			setup: func(t *testing.T, p *ConnectionPrompterStruct, m *mock_awsctl.MockPrompter) {
+				m.EXPECT().PromptForSelection("Select connection method:", gomock.Any()).Return("Instance ID (EC2 Instance Connect)", nil)
+				m.EXPECT().PromptForSelection("Select bastion instance:", gomock.Any()).Return("i-123 (i-123) - 1.2.3.4", nil)
+			},
+			run: func(p *ConnectionPrompterStruct) (interface{}, error) {
+				instances := []models.EC2Instance{{Name: "", InstanceID: "i-123", PublicIPAddress: "1.2.3.4"}}
+				return p.PromptForBastionInstance(instances, false)
 			},
 			wantResult:     "i-123",
 			wantErr:        false,

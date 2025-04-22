@@ -188,36 +188,23 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 		return "", errors.New("no instances available")
 	}
 
-	items := make([]string, len(instances))
-	for i, inst := range instances {
-		name := inst.Name
-		if name == "" {
-			name = inst.InstanceID
-		}
-		items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID, inst.PublicIPAddress)
-	}
-
-	var selected string
-	var err error
 	if isSSM {
-		selected, err = b.Prompter.PromptForSelection("Select bastion instance for SSM:", items)
-		if err != nil {
-			if errors.Is(err, promptUtils.ErrInterrupted) {
-				return "", promptUtils.ErrInterrupted
+		items := make([]string, len(instances))
+		for i, inst := range instances {
+			name := inst.Name
+			if name == "" {
+				name = inst.InstanceID
 			}
-			return "", fmt.Errorf("failed to select bastion instance: %w", err)
-		}
-	} else {
-		connectionMethods := []string{"Public IP (direct SSH)", "Instance ID (EC2 Instance Connect)"}
-		method, err := b.Prompter.PromptForSelection("Select connection method:", connectionMethods)
-		if err != nil {
-			if errors.Is(err, promptUtils.ErrInterrupted) {
-				return "", promptUtils.ErrInterrupted
-			}
-			return "", fmt.Errorf("failed to select connection method: %w", err)
+			items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID,
+				func() string {
+					if inst.PublicIPAddress == "" {
+						return "No Public IP"
+					}
+					return inst.PublicIPAddress
+				}())
 		}
 
-		selected, err = b.Prompter.PromptForSelection("Select bastion instance:", items)
+		selected, err := b.Prompter.PromptForSelection("Select bastion instance for SSM:", items)
 		if err != nil {
 			if errors.Is(err, promptUtils.ErrInterrupted) {
 				return "", promptUtils.ErrInterrupted
@@ -231,27 +218,84 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 				name = inst.InstanceID
 			}
 			if strings.Contains(selected, fmt.Sprintf("%s (%s)", name, inst.InstanceID)) {
-				if method == "Public IP (direct SSH)" {
-					if inst.PublicIPAddress == "" {
-						return "", errors.New("selected instance has no public IP")
-					}
-					return inst.PublicIPAddress, nil
-				}
 				return inst.InstanceID, nil
 			}
 		}
 		return "", errors.New("invalid selection")
 	}
 
-	for _, inst := range instances {
+	connectionMethods := []string{
+		"Public IP (direct SSH)",
+		"Instance ID (EC2 Instance Connect)",
+	}
+	method, err := b.Prompter.PromptForSelection("Select connection method:", connectionMethods)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to select connection method: %w", err)
+	}
+
+	var filteredInstances []models.EC2Instance
+	var items []string
+
+	if method == "Public IP (direct SSH)" {
+		for _, inst := range instances {
+			if inst.PublicIPAddress != "" {
+				filteredInstances = append(filteredInstances, inst)
+			}
+		}
+		if len(filteredInstances) == 0 {
+			return "", errors.New("no bastion instances with public IP available")
+		}
+
+		items = make([]string, len(filteredInstances))
+		for i, inst := range filteredInstances {
+			name := inst.Name
+			if name == "" {
+				name = inst.InstanceID
+			}
+			items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID, inst.PublicIPAddress)
+		}
+	} else {
+		filteredInstances = instances
+		items = make([]string, len(filteredInstances))
+		for i, inst := range filteredInstances {
+			name := inst.Name
+			if name == "" {
+				name = inst.InstanceID
+			}
+			items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID,
+				func() string {
+					if inst.PublicIPAddress == "" {
+						return "No Public IP (EC2 Connect only)"
+					}
+					return inst.PublicIPAddress
+				}())
+		}
+	}
+
+	selected, err := b.Prompter.PromptForSelection("Select bastion instance:", items)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to select bastion instance: %w", err)
+	}
+
+	for _, inst := range filteredInstances {
 		name := inst.Name
 		if name == "" {
 			name = inst.InstanceID
 		}
 		if strings.Contains(selected, fmt.Sprintf("%s (%s)", name, inst.InstanceID)) {
+			if method == "Public IP (direct SSH)" {
+				return inst.PublicIPAddress, nil
+			}
 			return inst.InstanceID, nil
 		}
 	}
+
 	return "", errors.New("invalid selection")
 }
 
