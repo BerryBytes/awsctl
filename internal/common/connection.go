@@ -11,8 +11,6 @@ import (
 
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 )
 
 const (
@@ -124,19 +122,7 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	}
 
 	if strings.HasPrefix(host, "i-") && p.awsConfigured {
-		pubKeyPath := keyPath + ".pub"
-		if _, err := p.fs.Stat(pubKeyPath); err == nil {
-			if err := p.sendSSHPublicKey(ctx, host, user, pubKeyPath); err != nil {
-				log.Printf("Warning: EC2 Instance Connect failed (%v), falling back to public IP", err)
-				if ip, err := p.getInstancePublicIP(ctx, host); err == nil && ip != "" {
-					details.Host = ip
-				} else {
-					return nil, fmt.Errorf("failed to get public IP for fallback: %w", err)
-				}
-			} else {
-				details.UseInstanceConnect = true
-			}
-		}
+		details.UseInstanceConnect = true
 	}
 
 	if err := common.ValidateSSHKey(p.fs, keyPath); err != nil {
@@ -253,57 +239,6 @@ func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error)
 	}
 
 	return p.prompter.PromptForBastionInstance(instances, false)
-}
-
-func (p *ConnectionProvider) sendSSHPublicKey(ctx context.Context, instanceID, user, publicKeyPath string) error {
-	keyContent, err := p.fs.ReadFile(publicKeyPath)
-	if err != nil {
-		return fmt.Errorf("failed to read public key: %w", err)
-	}
-
-	describeOutput, err := p.ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{instanceID},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to describe instance: %w", err)
-	}
-
-	if len(describeOutput.Reservations) == 0 || len(describeOutput.Reservations[0].Instances) == 0 {
-		return fmt.Errorf("no instance found with ID %s", instanceID)
-	}
-
-	instance := describeOutput.Reservations[0].Instances[0]
-	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
-		return fmt.Errorf("instance %s has no availability zone", instanceID)
-	}
-
-	_, err = p.instanceConn.SendSSHPublicKey(ctx, &ec2instanceconnect.SendSSHPublicKeyInput{
-		InstanceId:       &instanceID,
-		InstanceOSUser:   &user,
-		SSHPublicKey:     aws.String(string(keyContent)),
-		AvailabilityZone: instance.Placement.AvailabilityZone,
-	})
-	return err
-}
-
-func (p *ConnectionProvider) getInstancePublicIP(ctx context.Context, instanceID string) (string, error) {
-	describeOutput, err := p.ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{instanceID},
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to describe instance: %w", err)
-	}
-
-	if len(describeOutput.Reservations) == 0 || len(describeOutput.Reservations[0].Instances) == 0 {
-		return "", fmt.Errorf("no instance found with ID %s", instanceID)
-	}
-
-	instance := describeOutput.Reservations[0].Instances[0]
-	if instance.PublicIpAddress == nil {
-		return "", fmt.Errorf("instance %s has no public IP address", instanceID)
-	}
-
-	return *instance.PublicIpAddress, nil
 }
 
 func isAWSConfigured(cfg aws.Config) bool {

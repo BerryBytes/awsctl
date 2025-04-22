@@ -45,7 +45,7 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 
 		args := []string{
 			"ec2-instance-connect", "ssh",
-			"--instance-id", details.InstanceID,
+			"--instance-id", details.Host,
 			"--connection-type", "eice",
 		}
 
