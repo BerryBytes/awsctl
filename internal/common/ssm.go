@@ -100,7 +100,8 @@ func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *s
 
 	pluginPath, err := s.commandExecutor.LookPath(pluginName)
 	if err != nil {
-		return fmt.Errorf("session-manager-plugin not found: %w", err)
+		return fmt.Errorf("session-manager-plugin not found. Install it from below: \n%s(%w)",
+			"https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html \n", err)
 	}
 
 	sessionParams := map[string]interface{}{
@@ -122,6 +123,7 @@ func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *s
 		"",
 		fmt.Sprintf(`{"Target": "%s"}`, instanceID),
 	}
-	fmt.Printf("Executing %s session for instance %s with session-manager-plugin...\n", sessionType, instanceID)
+
+	fmt.Printf("Executing %s session for instance %s...\n", sessionType, instanceID)
 	return s.commandExecutor.RunInteractiveCommand(ctx, pluginPath, args...)
 }
