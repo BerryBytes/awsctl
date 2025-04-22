@@ -189,19 +189,24 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 	}
 
 	if isSSM {
-		items := make([]string, len(instances))
-		for i, inst := range instances {
+		var ssmInstances []models.EC2Instance
+		for _, inst := range instances {
+			if inst.PublicIPAddress == "" {
+				ssmInstances = append(ssmInstances, inst)
+			}
+		}
+
+		if len(ssmInstances) == 0 {
+			return "", errors.New("no instances available for SSM connection (all instances have public IPs)")
+		}
+
+		items := make([]string, len(ssmInstances))
+		for i, inst := range ssmInstances {
 			name := inst.Name
 			if name == "" {
 				name = inst.InstanceID
 			}
-			items[i] = fmt.Sprintf("%s (%s) - %s", name, inst.InstanceID,
-				func() string {
-					if inst.PublicIPAddress == "" {
-						return "No Public IP"
-					}
-					return inst.PublicIPAddress
-				}())
+			items[i] = fmt.Sprintf("%s (%s) - No Public IP (SSM only)", name, inst.InstanceID)
 		}
 
 		selected, err := b.Prompter.PromptForSelection("Select bastion instance for SSM:", items)
@@ -212,7 +217,7 @@ func (b *ConnectionPrompterStruct) PromptForBastionInstance(instances []models.E
 			return "", fmt.Errorf("failed to select bastion instance: %w", err)
 		}
 
-		for _, inst := range instances {
+		for _, inst := range ssmInstances {
 			name := inst.Name
 			if name == "" {
 				name = inst.InstanceID
