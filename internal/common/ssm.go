@@ -40,9 +40,10 @@ func (s *RealSSMStarter) StartSession(ctx context.Context, instanceID string) er
 }
 
 func (s *RealSSMStarter) StartPortForwarding(ctx context.Context, instanceID string, localPort int, remoteHost string, remotePort int) error {
+	fmt.Printf("remote host %s", remoteHost)
 	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
 		Target:       aws.String(instanceID),
-		DocumentName: aws.String("AWS-StartPortForwardingSession"),
+		DocumentName: aws.String("AWS-StartPortForwardingSessionToRemoteHost"),
 		Parameters: map[string][]string{
 			"portNumber":      {fmt.Sprintf("%d", localPort)},
 			"localPortNumber": {fmt.Sprintf("%d", localPort)},
