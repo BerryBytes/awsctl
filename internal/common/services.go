@@ -79,6 +79,21 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 		return s.ssmStarter.StartSOCKSProxy(ctx, details.InstanceID, localPort)
 	}
 
+	if details.UseInstanceConnect {
+		fmt.Printf("Setting up SOCKS proxy on localhost:%d via EC2 Instance Connect for instance %s...\n", localPort, details.Host)
+		fmt.Println("SOCKS proxy active. Press Ctrl+C to stop.")
+
+		args := []string{
+			"ec2-instance-connect", "ssh",
+			"--instance-id", details.Host,
+			"--connection-type", "eice",
+			"-N", "-T",
+			"-D", fmt.Sprintf("%d", localPort),
+		}
+
+		return s.commandExecutor.RunInteractiveCommand(ctx, "aws", args...)
+	}
+
 	builder := common.NewSSHCommandBuilder(
 		details.Host,
 		details.User,
@@ -106,6 +121,21 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 		fmt.Printf("Setting up SSM port forwarding from localhost:%d to %s:%d via instance %s...\n", localPort, remoteHost, remotePort, details.InstanceID)
 		fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
 		return s.ssmStarter.StartPortForwarding(ctx, details.InstanceID, localPort, remoteHost, remotePort)
+	}
+
+	if details.UseInstanceConnect {
+		fmt.Printf("Setting up port forwarding from localhost:%d to %s:%d via EC2 Instance Connect for instance %s...\n", localPort, remoteHost, remotePort, details.Host)
+		fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
+
+		args := []string{
+			"ec2-instance-connect", "ssh",
+			"--instance-id", details.Host,
+			"--connection-type", "eice",
+			"-N", "-T",
+			"-L", fmt.Sprintf("%d:%s:%d", localPort, remoteHost, remotePort),
+		}
+
+		return s.commandExecutor.RunInteractiveCommand(ctx, "aws", args...)
 	}
 
 	builder := common.NewSSHCommandBuilder(
