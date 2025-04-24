@@ -346,20 +346,20 @@ func (p *ConnectionProvider) generateTempSSHKey() (publicKey, tempKeyPath string
 	tempKeyPath = tempFile.Name()
 
 	if err := pem.Encode(tempFile, privateKeyPEM); err != nil {
-		tempFile.Close()
-		os.Remove(tempKeyPath)
+		_ = tempFile.Close()
+		_ = os.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to write private key: %w", err)
 	}
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	if err := os.Chmod(tempKeyPath, 0600); err != nil {
-		os.Remove(tempKeyPath)
+		_ = os.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to set key permissions: %w", err)
 	}
 
 	sshPublicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		os.Remove(tempKeyPath)
+		_ = os.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to generate public key: %w", err)
 	}
 	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
