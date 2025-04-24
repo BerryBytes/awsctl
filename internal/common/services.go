@@ -187,7 +187,7 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 
 	err = common.ExecuteSSHCommand(s.executor, cmd)
 	if details.UseInstanceConnect && details.KeyPath != "" {
-		os.Remove(details.KeyPath)
+		_ = os.Remove(details.KeyPath)
 	}
 	return err
 }
