@@ -49,6 +49,20 @@ func (mr *MockFileSystemInterfaceMockRecorder) ReadFile(name interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFile", reflect.TypeOf((*MockFileSystemInterface)(nil).ReadFile), name)
 }
 
+// Remove mocks base method.
+func (m *MockFileSystemInterface) Remove(name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Remove", name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Remove indicates an expected call of Remove.
+func (mr *MockFileSystemInterfaceMockRecorder) Remove(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockFileSystemInterface)(nil).Remove), name)
+}
+
 // Stat mocks base method.
 func (m *MockFileSystemInterface) Stat(name string) (os.FileInfo, error) {
 	m.ctrl.T.Helper()

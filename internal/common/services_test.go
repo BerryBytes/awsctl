@@ -16,6 +16,9 @@ import (
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -598,4 +601,104 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 	err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "forwarding failed")
+}
+
+func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
+	m := setupServiceMocks(t)
+	defer m.ctrl.Finish()
+
+	credProvider := credentials.StaticCredentialsProvider{
+		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
+	}
+	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
+	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
+	provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+		return m.ec2Client, nil
+	}
+	services := &Services{
+		provider:        provider,
+		executor:        m.executor,
+		osDetector:      m.osDetector,
+		ssmStarter:      m.ssmStarter,
+		commandExecutor: m.commandExecutor,
+	}
+
+	ctx := context.Background()
+	instanceID := "i-1234567890abcdef0"
+	user := "ec2-user"
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, err := io.Copy(&buf, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "copy error: %v\n", err)
+		}
+		close(done)
+	}()
+
+	defer func() {
+		_ = w.Close()
+		os.Stdout = oldStdout
+		<-done
+	}()
+
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(true, nil)
+	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("us-west-2", nil)
+	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
+		{InstanceID: instanceID, Name: "bastion-1"},
+	}, nil)
+	m.prompter.EXPECT().PromptForBastionInstance(gomock.Any(), false).Return(instanceID, nil)
+	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return(user, nil)
+
+	m.ec2Client.EXPECT().DescribeInstances(ctx, gomock.Any()).Return(&ec2.DescribeInstancesOutput{
+		Reservations: []types.Reservation{
+			{
+				Instances: []types.Instance{
+					{
+						InstanceId:      aws.String(instanceID),
+						PublicIpAddress: aws.String("1.2.3.4"),
+						State:           &types.InstanceState{Name: types.InstanceStateNameRunning},
+						Tags:            []types.Tag{{Key: aws.String("Name"), Value: aws.String("bastion-1")}},
+						MetadataOptions: &types.InstanceMetadataOptionsResponse{HttpTokens: types.HttpTokensStateRequired},
+						Placement:       &types.Placement{AvailabilityZone: aws.String("us-west-2a")},
+					},
+				},
+			},
+		},
+	}, nil).AnyTimes()
+
+	m.instanceConn.EXPECT().SendSSHPublicKey(ctx, gomock.Any()).Return(&ec2instanceconnect.SendSSHPublicKeyOutput{
+		Success: true,
+	}, nil)
+
+	m.commandExecutor.EXPECT().RunInteractiveCommand(
+		ctx,
+		"aws",
+		[]string{
+			"ec2-instance-connect", "ssh",
+			"--instance-id", instanceID,
+			"--connection-type", "eice",
+		},
+	).Return(nil)
+
+	err = services.SSHIntoBastion(ctx)
+	assert.NoError(t, err)
+
+	_ = w.Sync()
+	_ = w.Close()
+	<-done
+
+	output := buf.String()
+	t.Logf("Captured stdout: %q", output)
+	assert.Contains(t, output, "Using EC2 Instance Connect Endpoint (EIC-E) for authentication")
+	assert.Contains(t, output, fmt.Sprintf("Connecting to %s@%s using EC2 Instance Connect...\n", user, instanceID))
 }

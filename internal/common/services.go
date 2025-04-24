@@ -80,11 +80,11 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 
 	cleanupKey := func() {
 		if details.UseInstanceConnect && details.KeyPath != "" {
-			if _, err := os.Stat(details.KeyPath); os.IsNotExist(err) {
+			if _, err := s.provider.fs.Stat(details.KeyPath); os.IsNotExist(err) {
 				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
 				return
 			}
-			if err := os.Remove(details.KeyPath); err != nil {
+			if err := s.provider.fs.Remove(details.KeyPath); err != nil {
 				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
 			} else {
 				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
@@ -137,11 +137,11 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 	}
 	cleanupKey := func() {
 		if details.UseInstanceConnect && details.KeyPath != "" {
-			if _, err := os.Stat(details.KeyPath); os.IsNotExist(err) {
+			if _, err := s.provider.fs.Stat(details.KeyPath); os.IsNotExist(err) {
 				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
 				return
 			}
-			if err := os.Remove(details.KeyPath); err != nil {
+			if err := s.provider.fs.Remove(details.KeyPath); err != nil {
 				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
 			} else {
 				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
@@ -187,7 +187,7 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 
 	err = common.ExecuteSSHCommand(s.executor, cmd)
 	if details.UseInstanceConnect && details.KeyPath != "" {
-		_ = os.Remove(details.KeyPath)
+		_ = s.provider.fs.Remove(details.KeyPath)
 	}
 	return err
 }
