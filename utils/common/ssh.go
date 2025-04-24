@@ -63,6 +63,12 @@ func NewSSHCommandBuilder(host, user, keyPath string, useInstanceConnect bool) *
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "UserKnownHostsFile=/dev/null",
 		)
+
+		if strings.HasPrefix(host, "i-") {
+			args = append(args,
+				"-o", fmt.Sprintf("ProxyCommand=aws ec2-instance-connect open-tunnel --instance-id %s", host),
+			)
+		}
 	} else {
 		args = append(args,
 			"-o", "BatchMode=no",
@@ -107,7 +113,12 @@ func (b *SSHCommandBuilder) WithBackground() *SSHCommandBuilder {
 }
 
 func (b *SSHCommandBuilder) Build() []string {
-	target := fmt.Sprintf("%s@%s", b.user, b.host)
+	target := b.host
+	if strings.HasPrefix(b.host, "i-") && containsProxyCommand(b.baseArgs) {
+		target = "127.0.0.1"
+	}
+
+	target = fmt.Sprintf("%s@%s", b.user, target)
 	cmd := []string{"ssh"}
 	cmd = append(cmd, b.baseArgs...)
 	cmd = append(cmd, target)
@@ -276,4 +287,13 @@ func terminateSOCKSProxyWindows(executor SSHExecutorInterface, port int) error {
 	}
 
 	return nil
+}
+
+func containsProxyCommand(args []string) bool {
+	for i, arg := range args {
+		if arg == "-o" && i+1 < len(args) && strings.Contains(args[i+1], "ProxyCommand") {
+			return true
+		}
+	}
+	return false
 }

@@ -16,6 +16,9 @@ import (
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -360,35 +363,53 @@ func TestGetSSHDetails_InstanceConnectFallback(t *testing.T) {
 	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
 	ctx := context.Background()
-	homeDir, _ := os.UserHomeDir()
-	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
 
 	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("i-1234567890abcdef0", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
-	m.prompter.EXPECT().PromptForSSHKeyPath("~/.ssh/id_ed25519").Return("~/.ssh/id_ed25519", nil)
 
-	privateKeyInfo := &mockFileInfo{
-		name:    "id_ed25519",
-		size:    464,
-		mode:    0600,
-		modTime: time.Now(),
-		isDir:   false,
-	}
-	m.fs.EXPECT().Stat(keyPath).Return(privateKeyInfo, nil)
+	// Mock DescribeInstances for getInstanceDetails
+	publicIP := "1.2.3.4"
+	m.ec2Client.EXPECT().DescribeInstances(gomock.Any(), gomock.Any()).Return(&ec2.DescribeInstancesOutput{
+		Reservations: []types.Reservation{
+			{
+				Instances: []types.Instance{
+					{
+						InstanceId:      aws.String("i-1234567890abcdef0"),
+						PublicIpAddress: &publicIP,
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
+						},
+					},
+				},
+			},
+		},
+	}, nil)
 
-	m.fs.EXPECT().ReadFile(keyPath).Return([]byte(`-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACD6...example...
------END OPENSSH PRIVATE KEY-----`), nil) // gitleaks:allow
+	// Mock DescribeInstances for getInstanceAvailabilityZone
+	m.ec2Client.EXPECT().DescribeInstances(gomock.Any(), gomock.Any()).Return(&ec2.DescribeInstancesOutput{
+		Reservations: []types.Reservation{
+			{
+				Instances: []types.Instance{
+					{
+						InstanceId:      aws.String("i-1234567890abcdef0"),
+						Placement:       &types.Placement{AvailabilityZone: aws.String("us-west-2a")},
+						PublicIpAddress: &publicIP,
+						State:           &types.InstanceState{Name: types.InstanceStateNameRunning},
+					},
+				},
+			},
+		},
+	}, nil)
+
+	m.instanceConn.EXPECT().SendSSHPublicKey(gomock.Any(), gomock.Any()).Return(&ec2instanceconnect.SendSSHPublicKeyOutput{Success: true}, nil)
 
 	details, err := provider.GetConnectionDetails(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, "i-1234567890abcdef0", details.Host)
+	assert.Equal(t, "1.2.3.4", details.Host)
 	assert.True(t, details.UseInstanceConnect)
 }
-
 func TestGetBastionHost_AWSFailure(t *testing.T) {
 	m := setupMocks(t)
 	defer m.ctrl.Finish()

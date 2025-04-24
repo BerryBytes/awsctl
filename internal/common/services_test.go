@@ -21,31 +21,33 @@ import (
 )
 
 type serviceMocks struct {
-	ctrl         *gomock.Controller
-	prompter     *mock_awsctl.MockConnectionPrompter
-	fs           *mock_awsctl.MockFileSystemInterface
-	ec2Client    *mock_awsctl.MockEC2ClientInterface
-	instanceConn *mock_awsctl.MockEC2InstanceConnectInterface
-	ssmClient    *mock_awsctl.MockSSMClientInterface
-	executor     *mock_awsctl.MockSSHExecutorInterface
-	osDetector   *mock_awsctl.MockOSDetector
-	ssmStarter   *mock_awsctl.MockSSMStarterInterface
-	configLoader *mock_awsctl.MockAWSConfigLoader
+	ctrl            *gomock.Controller
+	prompter        *mock_awsctl.MockConnectionPrompter
+	fs              *mock_awsctl.MockFileSystemInterface
+	ec2Client       *mock_awsctl.MockEC2ClientInterface
+	instanceConn    *mock_awsctl.MockEC2InstanceConnectInterface
+	ssmClient       *mock_awsctl.MockSSMClientInterface
+	executor        *mock_awsctl.MockSSHExecutorInterface
+	osDetector      *mock_awsctl.MockOSDetector
+	ssmStarter      *mock_awsctl.MockSSMStarterInterface
+	configLoader    *mock_awsctl.MockAWSConfigLoader
+	commandExecutor *mock_awsctl.MockCommandExecutor
 }
 
 func setupServiceMocks(t *testing.T) serviceMocks {
 	ctrl := gomock.NewController(t)
 	return serviceMocks{
-		ctrl:         ctrl,
-		prompter:     mock_awsctl.NewMockConnectionPrompter(ctrl),
-		fs:           mock_awsctl.NewMockFileSystemInterface(ctrl),
-		ec2Client:    mock_awsctl.NewMockEC2ClientInterface(ctrl),
-		instanceConn: mock_awsctl.NewMockEC2InstanceConnectInterface(ctrl),
-		ssmClient:    mock_awsctl.NewMockSSMClientInterface(ctrl),
-		executor:     mock_awsctl.NewMockSSHExecutorInterface(ctrl),
-		osDetector:   mock_awsctl.NewMockOSDetector(ctrl),
-		ssmStarter:   mock_awsctl.NewMockSSMStarterInterface(ctrl),
-		configLoader: mock_awsctl.NewMockAWSConfigLoader(ctrl),
+		ctrl:            ctrl,
+		prompter:        mock_awsctl.NewMockConnectionPrompter(ctrl),
+		fs:              mock_awsctl.NewMockFileSystemInterface(ctrl),
+		ec2Client:       mock_awsctl.NewMockEC2ClientInterface(ctrl),
+		instanceConn:    mock_awsctl.NewMockEC2InstanceConnectInterface(ctrl),
+		ssmClient:       mock_awsctl.NewMockSSMClientInterface(ctrl),
+		executor:        mock_awsctl.NewMockSSHExecutorInterface(ctrl),
+		osDetector:      mock_awsctl.NewMockOSDetector(ctrl),
+		ssmStarter:      mock_awsctl.NewMockSSMStarterInterface(ctrl),
+		configLoader:    mock_awsctl.NewMockAWSConfigLoader(ctrl),
+		commandExecutor: mock_awsctl.NewMockCommandExecutor(ctrl),
 	}
 }
 

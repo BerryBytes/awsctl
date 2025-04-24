@@ -45,7 +45,7 @@ func (s *RealSSMStarter) StartPortForwarding(ctx context.Context, instanceID str
 		Target:       aws.String(instanceID),
 		DocumentName: aws.String("AWS-StartPortForwardingSessionToRemoteHost"),
 		Parameters: map[string][]string{
-			"portNumber":      {fmt.Sprintf("%d", localPort)},
+			"portNumber":      {fmt.Sprintf("%d", remotePort)},
 			"localPortNumber": {fmt.Sprintf("%d", localPort)},
 			"host":            {remoteHost},
 		},
