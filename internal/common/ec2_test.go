@@ -1,4 +1,4 @@
-package connection
+package connection_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	connection "github.com/BerryBytes/awsctl/internal/common"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -28,15 +29,15 @@ func (m *MockEC2DescribeInstancesAPI) DescribeInstances(ctx context.Context, par
 
 func TestNewEC2Client(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	assert.NotNil(t, client)
-	assert.IsType(t, &realEC2Client{}, client)
+	assert.IsType(t, &connection.RealEC2Client{}, client)
 }
 
 func TestListBastionInstances_Success(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	output := &ec2.DescribeInstancesOutput{
 		Reservations: []types.Reservation{
@@ -107,7 +108,7 @@ func TestListBastionInstances_Success(t *testing.T) {
 
 func TestListBastionInstances_NoBastion(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	output := &ec2.DescribeInstancesOutput{
 		Reservations: []types.Reservation{
@@ -140,10 +141,10 @@ func TestListBastionInstances_NoBastion(t *testing.T) {
 
 func TestListBastionInstances_RequestExpiredError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	apiErr := &smithy.GenericAPIError{
-		Code:    CodeRequestExpired,
+		Code:    connection.CodeRequestExpired,
 		Message: "Request has expired",
 	}
 
@@ -161,10 +162,10 @@ func TestListBastionInstances_RequestExpiredError(t *testing.T) {
 
 func TestListBastionInstances_AuthFailureError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	apiErr := &smithy.GenericAPIError{
-		Code:    CodeAuthFailure,
+		Code:    connection.CodeAuthFailure,
 		Message: "Auth failure",
 	}
 
@@ -181,10 +182,10 @@ func TestListBastionInstances_AuthFailureError(t *testing.T) {
 
 func TestListBastionInstances_RegionNotEnabledError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	apiErr := &smithy.GenericAPIError{
-		Code:    CodeOptInRequired,
+		Code:    connection.CodeOptInRequired,
 		Message: "Region not enabled",
 	}
 
@@ -201,7 +202,7 @@ func TestListBastionInstances_RegionNotEnabledError(t *testing.T) {
 
 func TestListBastionInstances_MaxAttemptsExceededError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	opErr := &smithy.OperationError{
 		Err: errors.New("exceeded maximum number of attempts"),
@@ -220,7 +221,7 @@ func TestListBastionInstances_MaxAttemptsExceededError(t *testing.T) {
 
 func TestListBastionInstances_GenericOperationError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	opErr := &smithy.OperationError{
 		Err: errors.New("some operation error"),
@@ -239,7 +240,7 @@ func TestListBastionInstances_GenericOperationError(t *testing.T) {
 
 func TestListBastionInstances_UnknownError(t *testing.T) {
 	mockAPI := &MockEC2DescribeInstancesAPI{}
-	client := NewEC2Client(mockAPI)
+	client := connection.NewEC2Client(mockAPI)
 
 	errUnknown := errors.New("some unknown error")
 
@@ -425,7 +426,7 @@ func TestFilterBastionInstance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := filterBastionInstance(tt.input)
+			result := connection.FilterBastionInstance(tt.input)
 			assert.Len(t, result, tt.expectLen)
 
 			if tt.expectLen > 0 {
@@ -497,7 +498,7 @@ func TestFilterBastionInstance_Sorting(t *testing.T) {
 		},
 	}
 
-	result := filterBastionInstance(input)
+	result := connection.FilterBastionInstance(input)
 	assert.Len(t, result, 3)
 	assert.Equal(t, "i-1", result[0].InstanceID)
 	assert.Equal(t, "i-3", result[1].InstanceID)
@@ -518,11 +519,11 @@ func TestNewEC2ClientWithRegion_Success(t *testing.T) {
 		LoadDefaultConfig(gomock.Any()).
 		Return(testConfig, nil)
 
-	client, err := NewEC2ClientWithRegion("us-west-2", mockLoader)
+	client, err := connection.NewEC2ClientWithRegion("us-west-2", mockLoader)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
-	assert.IsType(t, &realEC2Client{}, client)
+	assert.IsType(t, &connection.RealEC2Client{}, client)
 
 }
 
@@ -538,7 +539,7 @@ func TestNewEC2ClientWithRegion_ConfigLoadError(t *testing.T) {
 		LoadDefaultConfig(gomock.Any()).
 		Return(aws.Config{}, expectedErr)
 
-	client, err := NewEC2ClientWithRegion("us-west-2", mockLoader)
+	client, err := connection.NewEC2ClientWithRegion("us-west-2", mockLoader)
 
 	assert.Error(t, err)
 	assert.Nil(t, client)

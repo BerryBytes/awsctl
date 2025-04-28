@@ -38,16 +38,16 @@ type ConnectionDetails struct {
 }
 
 type ConnectionProvider struct {
-	prompter      ConnectionPrompter
-	fs            common.FileSystemInterface
-	awsConfig     aws.Config
-	ec2Client     EC2ClientInterface
-	instanceConn  EC2InstanceConnectInterface
-	ssmClient     SSMClientInterface
-	homeDir       func() (string, error)
-	awsConfigured bool
-	configLoader  AWSConfigLoader
-	newEC2Client  func(region string, loader AWSConfigLoader) (EC2ClientInterface, error)
+	Prompter      ConnectionPrompter
+	Fs            common.FileSystemInterface
+	AwsConfig     aws.Config
+	Ec2Client     EC2ClientInterface
+	InstanceConn  EC2InstanceConnectInterface
+	SsmClient     SSMClientInterface
+	HomeDir       func() (string, error)
+	AwsConfigured bool
+	ConfigLoader  AWSConfigLoader
+	NewEC2Client  func(region string, loader AWSConfigLoader) (EC2ClientInterface, error)
 }
 
 func NewConnectionProvider(
@@ -64,27 +64,27 @@ func NewConnectionProvider(
 		configLoader = &DefaultAWSConfigLoader{}
 	}
 	provider := &ConnectionProvider{
-		prompter:      prompter,
-		fs:            fs,
-		awsConfig:     awsConfig,
-		homeDir:       homeDir,
-		ec2Client:     ec2Client,
-		instanceConn:  instanceConn,
-		ssmClient:     ssmClient,
-		awsConfigured: isAWSConfigured(awsConfig),
-		configLoader:  configLoader,
-		newEC2Client:  NewEC2ClientWithRegion,
+		Prompter:      prompter,
+		Fs:            fs,
+		AwsConfig:     awsConfig,
+		HomeDir:       homeDir,
+		Ec2Client:     ec2Client,
+		InstanceConn:  instanceConn,
+		SsmClient:     ssmClient,
+		AwsConfigured: isAWSConfigured(awsConfig),
+		ConfigLoader:  configLoader,
+		NewEC2Client:  NewEC2ClientWithRegion,
 	}
-	if provider.awsConfigured {
-		provider.ec2Client = ec2Client
-		provider.instanceConn = instanceConn
+	if provider.AwsConfigured {
+		provider.Ec2Client = ec2Client
+		provider.InstanceConn = instanceConn
 	}
 
 	return provider
 }
 
 func (p *ConnectionProvider) GetConnectionDetails(ctx context.Context) (*ConnectionDetails, error) {
-	method, err := p.prompter.ChooseConnectionMethod()
+	method, err := p.Prompter.ChooseConnectionMethod()
 	if err != nil {
 		return nil, fmt.Errorf("failed to select connection method: %w", err)
 	}
@@ -93,31 +93,31 @@ func (p *ConnectionProvider) GetConnectionDetails(ctx context.Context) (*Connect
 	case MethodSSH:
 		return p.getSSHDetails(ctx)
 	case MethodSSM:
-		return p.getSSMDetails(ctx)
+		return p.GetSSMDetails(ctx)
 	default:
 		return nil, fmt.Errorf("unsupported connection method: %s", method)
 	}
 }
 
 func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDetails, error) {
-	host, err := p.getBastionHost(ctx)
+	host, err := p.GetBastionHost(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := p.prompter.PromptForSSHUser("ec2-user")
+	user, err := p.Prompter.PromptForSSHUser("ec2-user")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	keyPath := ""
-	useInstanceConnect := strings.HasPrefix(host, "i-") && p.awsConfigured
+	useInstanceConnect := strings.HasPrefix(host, "i-") && p.AwsConfigured
 	method := MethodSSH
 	instanceID := ""
 	resolvedHost := host
 
 	if useInstanceConnect {
-		instanceDetails, err := p.getInstanceDetails(ctx, host)
+		instanceDetails, err := p.GetInstanceDetails(ctx, host)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get instance details for %s: %w", host, err)
 		}
@@ -132,25 +132,22 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 			} else {
 				return nil, fmt.Errorf("instance %s has no valid public IP or DNS name", host)
 			}
-		} else {
-			method = MethodSSM
-			useInstanceConnect = false
 		}
 	}
 
 	if !useInstanceConnect && method == MethodSSH {
-		keyPath, err = p.prompter.PromptForSSHKeyPath("~/.ssh/id_ed25519")
+		keyPath, err = p.Prompter.PromptForSSHKeyPath("~/.ssh/id_ed25519")
 		if err != nil {
 			return nil, fmt.Errorf("failed to get key path: %w", err)
 		}
 		if strings.HasPrefix(keyPath, "~/") {
-			homeDir, err := p.homeDir()
+			homeDir, err := p.HomeDir()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get home directory: %w", err)
 			}
 			keyPath = filepath.Join(homeDir, keyPath[2:])
 		}
-		if err := common.ValidateSSHKey(p.fs, keyPath); err != nil {
+		if err := common.ValidateSSHKey(p.Fs, keyPath); err != nil {
 			return nil, fmt.Errorf("invalid SSH key: %w", err)
 		}
 	}
@@ -165,12 +162,12 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	}
 
 	if useInstanceConnect {
-		publicKey, tempKeyPath, err := p.generateTempSSHKey()
+		publicKey, tempKeyPath, err := p.GenerateTempSSHKey()
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate temporary SSH key: %w", err)
 		}
 
-		az, err := p.getInstanceAvailabilityZone(ctx, host)
+		az, err := p.GetInstanceAvailabilityZone(ctx, host)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get availability zone for instance %s: %w", host, err)
 		}
@@ -182,11 +179,10 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 			AvailabilityZone: &az,
 		}
 
-		resp, err := p.instanceConn.SendSSHPublicKey(ctx, input)
+		_, err = p.InstanceConn.SendSSHPublicKey(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("failed to send SSH public key to instance %s for user %s: %w", host, user, err)
 		}
-		fmt.Printf("SendSSHPublicKey success: %v\n", resp.Success)
 
 		details.KeyPath = tempKeyPath
 	}
@@ -194,24 +190,24 @@ func (p *ConnectionProvider) getSSHDetails(ctx context.Context) (*ConnectionDeta
 	return details, nil
 }
 
-func (p *ConnectionProvider) getSSMDetails(ctx context.Context) (*ConnectionDetails, error) {
-	if !p.awsConfigured {
+func (p *ConnectionProvider) GetSSMDetails(ctx context.Context) (*ConnectionDetails, error) {
+	if !p.AwsConfigured {
 		return nil, errors.New("AWS configuration required for SSM access")
 	}
 
-	instanceID, awsErr := p.getBastionInstanceID(ctx, true)
+	instanceID, awsErr := p.GetBastionInstanceID(ctx, true)
 	if awsErr == nil {
 		return &ConnectionDetails{
 			InstanceID: instanceID,
 			Method:     MethodSSM,
-			SSMClient:  p.ssmClient,
+			SSMClient:  p.SsmClient,
 		}, nil
 	}
 
 	fmt.Printf("AWS lookup failed: %v\n", awsErr)
 	fmt.Println("Please enter the instance ID manually (e.g., i-1234567890abcdef0)")
 
-	host, err := p.prompter.PromptForInstanceID()
+	host, err := p.Prompter.PromptForInstanceID()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get instance ID: %w", err)
 	}
@@ -223,24 +219,24 @@ func (p *ConnectionProvider) getSSMDetails(ctx context.Context) (*ConnectionDeta
 	return &ConnectionDetails{
 		InstanceID: host,
 		Method:     MethodSSM,
-		SSMClient:  p.ssmClient,
+		SSMClient:  p.SsmClient,
 	}, nil
 }
 
-func (p *ConnectionProvider) getBastionInstanceID(ctx context.Context, isSSM bool) (string, error) {
-	defaultRegion, err := p.getDefaultRegion()
+func (p *ConnectionProvider) GetBastionInstanceID(ctx context.Context, isSSM bool) (string, error) {
+	defaultRegion, err := p.GetDefaultRegion()
 	if err != nil {
 		fmt.Printf("Failed to load default region: %v\n", err)
 		defaultRegion = ""
 	}
 
-	region, err := p.prompter.PromptForRegion(defaultRegion)
+	region, err := p.Prompter.PromptForRegion(defaultRegion)
 	if err != nil {
 		return "", fmt.Errorf("failed to get region: %w", err)
 	}
 
 	loader := &DefaultAWSConfigLoader{}
-	ec2Client, err := p.newEC2Client(region, loader)
+	ec2Client, err := p.NewEC2Client(region, loader)
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize EC2 client: %w", err)
 	}
@@ -254,53 +250,53 @@ func (p *ConnectionProvider) getBastionInstanceID(ctx context.Context, isSSM boo
 		return "", errors.New("no bastion hosts found in AWS")
 	}
 
-	return p.prompter.PromptForBastionInstance(instances, isSSM)
+	return p.Prompter.PromptForBastionInstance(instances, isSSM)
 }
 
-func (p *ConnectionProvider) getBastionHost(ctx context.Context) (string, error) {
-	if !p.awsConfigured {
+func (p *ConnectionProvider) GetBastionHost(ctx context.Context) (string, error) {
+	if !p.AwsConfigured {
 		fmt.Println("AWS configuration not found...")
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
-	confirm, err := p.prompter.PromptForConfirmation("Look for bastion hosts in AWS?")
+	confirm, err := p.Prompter.PromptForConfirmation("Look for bastion hosts in AWS?")
 	if err != nil || !confirm {
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
-	defaultRegion, err := p.getDefaultRegion()
+	defaultRegion, err := p.GetDefaultRegion()
 	if err != nil {
 		fmt.Printf("Failed to load default region: %v\n", err)
 		defaultRegion = ""
 	}
 
-	region, err := p.prompter.PromptForRegion(defaultRegion)
+	region, err := p.Prompter.PromptForRegion(defaultRegion)
 	if err != nil {
 		fmt.Printf("Failed to get region: %v\n", err)
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
 	loader := &DefaultAWSConfigLoader{}
-	ec2Client, err := p.newEC2Client(region, loader)
+	ec2Client, err := p.NewEC2Client(region, loader)
 	if err != nil {
 		log.Printf("Failed to initialize EC2 client: %v", err)
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
 	instances, err := ec2Client.ListBastionInstances(ctx)
 	if err != nil {
 		log.Printf("AWS lookup failed: %v", err)
 		log.Println("Please enter bastion host details below:")
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
 	if len(instances) == 0 {
 		fmt.Println("No bastion hosts found in AWS")
 		fmt.Println("Please enter bastion host details below:")
-		return p.prompter.PromptForBastionHost()
+		return p.Prompter.PromptForBastionHost()
 	}
 
-	return p.prompter.PromptForBastionInstance(instances, false)
+	return p.Prompter.PromptForBastionInstance(instances, false)
 }
 
 func isAWSConfigured(cfg aws.Config) bool {
@@ -313,11 +309,11 @@ func isAWSConfigured(cfg aws.Config) bool {
 	return true
 }
 
-func (p *ConnectionProvider) getDefaultRegion() (string, error) {
-	if p.awsConfig.Region != "" {
-		return p.awsConfig.Region, nil
+func (p *ConnectionProvider) GetDefaultRegion() (string, error) {
+	if p.AwsConfig.Region != "" {
+		return p.AwsConfig.Region, nil
 	}
-	cfg, err := p.configLoader.LoadDefaultConfig(context.TODO())
+	cfg, err := p.ConfigLoader.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return "", fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
@@ -327,7 +323,7 @@ func (p *ConnectionProvider) getDefaultRegion() (string, error) {
 	return cfg.Region, nil
 }
 
-func (p *ConnectionProvider) generateTempSSHKey() (publicKey, tempKeyPath string, err error) {
+func (p *ConnectionProvider) GenerateTempSSHKey() (publicKey, tempKeyPath string, err error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate private key: %w", err)
@@ -347,19 +343,19 @@ func (p *ConnectionProvider) generateTempSSHKey() (publicKey, tempKeyPath string
 
 	if err := pem.Encode(tempFile, privateKeyPEM); err != nil {
 		_ = tempFile.Close()
-		_ = os.Remove(tempKeyPath)
+		_ = p.Fs.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to write private key: %w", err)
 	}
 	_ = tempFile.Close()
 
 	if err := os.Chmod(tempKeyPath, 0600); err != nil {
-		_ = os.Remove(tempKeyPath)
+		_ = p.Fs.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to set key permissions: %w", err)
 	}
 
 	sshPublicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		_ = os.Remove(tempKeyPath)
+		_ = p.Fs.Remove(tempKeyPath)
 		return "", "", fmt.Errorf("failed to generate public key: %w", err)
 	}
 	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
@@ -368,8 +364,8 @@ func (p *ConnectionProvider) generateTempSSHKey() (publicKey, tempKeyPath string
 	return publicKey, tempKeyPath, nil
 }
 
-func (p *ConnectionProvider) getInstanceAvailabilityZone(ctx context.Context, instanceID string) (string, error) {
-	if p.ec2Client == nil {
+func (p *ConnectionProvider) GetInstanceAvailabilityZone(ctx context.Context, instanceID string) (string, error) {
+	if p.Ec2Client == nil {
 		return "", fmt.Errorf("EC2 client not initialized")
 	}
 
@@ -377,7 +373,7 @@ func (p *ConnectionProvider) getInstanceAvailabilityZone(ctx context.Context, in
 		InstanceIds: []string{instanceID},
 	}
 
-	result, err := p.ec2Client.DescribeInstances(ctx, input)
+	result, err := p.Ec2Client.DescribeInstances(ctx, input)
 	if err != nil {
 		return "", fmt.Errorf("failed to describe instance %s: %w", instanceID, err)
 	}
@@ -394,8 +390,8 @@ func (p *ConnectionProvider) getInstanceAvailabilityZone(ctx context.Context, in
 	return *instance.Placement.AvailabilityZone, nil
 }
 
-func (p *ConnectionProvider) getInstanceDetails(ctx context.Context, instanceID string) (*types.Instance, error) {
-	if p.ec2Client == nil {
+func (p *ConnectionProvider) GetInstanceDetails(ctx context.Context, instanceID string) (*types.Instance, error) {
+	if p.Ec2Client == nil {
 		return nil, fmt.Errorf("EC2 client not initialized")
 	}
 
@@ -403,7 +399,7 @@ func (p *ConnectionProvider) getInstanceDetails(ctx context.Context, instanceID 
 		InstanceIds: []string{instanceID},
 	}
 
-	result, err := p.ec2Client.DescribeInstances(ctx, input)
+	result, err := p.Ec2Client.DescribeInstances(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe instance %s: %w", instanceID, err)
 	}

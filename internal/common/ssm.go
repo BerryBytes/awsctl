@@ -13,35 +13,35 @@ import (
 )
 
 type RealSSMStarter struct {
-	client          SSMClientInterface
-	region          string
-	commandExecutor sso.CommandExecutor
+	Client          SSMClientInterface
+	Region          string
+	CommandExecutor sso.CommandExecutor
 }
 
 func NewRealSSMStarter(client SSMClientInterface, region string) *RealSSMStarter {
 	return &RealSSMStarter{
-		client:          client,
-		region:          region,
-		commandExecutor: &sso.RealCommandExecutor{},
+		Client:          client,
+		Region:          region,
+		CommandExecutor: &sso.RealCommandExecutor{},
 	}
 }
 
 func (s *RealSSMStarter) StartSession(ctx context.Context, instanceID string) error {
-	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+	session, err := s.Client.StartSession(ctx, &ssm.StartSessionInput{
 		Target: aws.String(instanceID),
 	})
 	if err != nil {
 		return fmt.Errorf("SSM session failed: %w", err)
 	}
-	defer s.terminateSession(ctx, session.SessionId)
+	defer s.TerminateSession(ctx, session.SessionId)
 
 	fmt.Printf("Starting SSM session with instance %s...\n", instanceID)
-	return s.runSessionManagerPlugin(ctx, session, instanceID, "StartSession")
+	return s.RunSessionManagerPlugin(ctx, session, instanceID, "StartSession")
 }
 
 func (s *RealSSMStarter) StartPortForwarding(ctx context.Context, instanceID string, localPort int, remoteHost string, remotePort int) error {
 	fmt.Printf("remote host %s", remoteHost)
-	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+	session, err := s.Client.StartSession(ctx, &ssm.StartSessionInput{
 		Target:       aws.String(instanceID),
 		DocumentName: aws.String("AWS-StartPortForwardingSessionToRemoteHost"),
 		Parameters: map[string][]string{
@@ -53,14 +53,14 @@ func (s *RealSSMStarter) StartPortForwarding(ctx context.Context, instanceID str
 	if err != nil {
 		return fmt.Errorf("SSM port forwarding failed: %w", err)
 	}
-	defer s.terminateSession(ctx, session.SessionId)
+	defer s.TerminateSession(ctx, session.SessionId)
 
 	fmt.Printf("Starting SSM port forwarding for instance %s (localhost:%d to %s:%d)...\n", instanceID, localPort, remoteHost, remotePort)
-	return s.runSessionManagerPlugin(ctx, session, instanceID, "PortForwarding")
+	return s.RunSessionManagerPlugin(ctx, session, instanceID, "PortForwarding")
 }
 
 func (s *RealSSMStarter) StartSOCKSProxy(ctx context.Context, instanceID string, localPort int) error {
-	session, err := s.client.StartSession(ctx, &ssm.StartSessionInput{
+	session, err := s.Client.StartSession(ctx, &ssm.StartSessionInput{
 		Target:       aws.String(instanceID),
 		DocumentName: aws.String("AWS-StartPortForwardingSession"),
 		Parameters: map[string][]string{
@@ -71,17 +71,17 @@ func (s *RealSSMStarter) StartSOCKSProxy(ctx context.Context, instanceID string,
 	if err != nil {
 		return fmt.Errorf("SSM SOCKS proxy failed: %w", err)
 	}
-	defer s.terminateSession(ctx, session.SessionId)
+	defer s.TerminateSession(ctx, session.SessionId)
 
 	fmt.Printf("Starting SSM SOCKS proxy for instance %s on localhost:%d...\n", instanceID, localPort)
-	return s.runSessionManagerPlugin(ctx, session, instanceID, "SOCKSProxy")
+	return s.RunSessionManagerPlugin(ctx, session, instanceID, "SOCKSProxy")
 }
 
-func (s *RealSSMStarter) terminateSession(ctx context.Context, sessionID *string) {
+func (s *RealSSMStarter) TerminateSession(ctx context.Context, sessionID *string) {
 	if sessionID == nil {
 		return
 	}
-	_, err := s.client.TerminateSession(ctx, &ssm.TerminateSessionInput{
+	_, err := s.Client.TerminateSession(ctx, &ssm.TerminateSessionInput{
 		SessionId: sessionID,
 	})
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *RealSSMStarter) terminateSession(ctx context.Context, sessionID *string
 	}
 }
 
-func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *ssm.StartSessionOutput, instanceID, sessionType string) error {
+func (s *RealSSMStarter) RunSessionManagerPlugin(ctx context.Context, session *ssm.StartSessionOutput, instanceID, sessionType string) error {
 	pluginName := "session-manager-plugin"
 	if runtime.GOOS == "windows" {
 		pluginName = "session-manager-plugin.exe"
@@ -99,7 +99,7 @@ func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *s
 		pluginName = customPath
 	}
 
-	pluginPath, err := s.commandExecutor.LookPath(pluginName)
+	pluginPath, err := s.CommandExecutor.LookPath(pluginName)
 	if err != nil {
 		return fmt.Errorf("session-manager-plugin not found. Install it from below: \n%s(%w)",
 			"https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html \n", err)
@@ -119,12 +119,12 @@ func (s *RealSSMStarter) runSessionManagerPlugin(ctx context.Context, session *s
 
 	args := []string{
 		string(paramsJSON),
-		s.region,
+		s.Region,
 		"StartSession",
 		"",
 		fmt.Sprintf(`{"Target": "%s"}`, instanceID),
 	}
 
 	fmt.Printf("Executing %s session for instance %s...\n", sessionType, instanceID)
-	return s.commandExecutor.RunInteractiveCommand(ctx, pluginPath, args...)
+	return s.CommandExecutor.RunInteractiveCommand(ctx, pluginPath, args...)
 }

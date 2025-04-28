@@ -1,9 +1,10 @@
-package sso
+package sso_test
 
 import (
 	"errors"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func TestRealAWSUtilityClient_AbortSetup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &RealAWSUtilityClient{
+			client := &sso.RealAWSUtilityClient{
 				GeneralManager: nil,
 			}
 
@@ -63,7 +64,7 @@ func TestRealAWSUtilityClient_PrintCurrentRole(t *testing.T) {
 		PrintCurrentRole(profile, accountID, accountName, roleName, roleARN, expiration).
 		Times(1)
 
-	client := &RealAWSUtilityClient{
+	client := &sso.RealAWSUtilityClient{
 		GeneralManager: mockGeneralManager,
 	}
 

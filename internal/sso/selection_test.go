@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
@@ -39,20 +40,20 @@ func TestAWSSelectionClient(t *testing.T) {
 	tests := []struct {
 		name     string
 		setup    func(*mock_awsctl.MockPrompter)
-		testFunc func(*RealAWSSelectionClient) error
+		testFunc func(*sso.RealAWSSelectionClient) error
 		wantErr  bool
 		errType  error
 	}{
 		{
 			name: "FindProfile success",
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.FindProfile(validConfig, "profile1")
 				return err
 			},
 		},
 		{
 			name: "FindProfile not found",
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.FindProfile(validConfig, "missing")
 				return err
 			},
@@ -65,7 +66,7 @@ func TestAWSSelectionClient(t *testing.T) {
 				m.EXPECT().PromptForSelection("Select an AWS SSO Profile", []string{"p1"}).
 					Return("p1", nil)
 			},
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectProfile([]string{"p1"})
 				return err
 			},
@@ -76,7 +77,7 @@ func TestAWSSelectionClient(t *testing.T) {
 				m.EXPECT().PromptForSelection(gomock.Any(), gomock.Any()).
 					Return("", promptUtils.ErrInterrupted)
 			},
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectProfile([]string{"p1"})
 				return err
 			},
@@ -90,14 +91,14 @@ func TestAWSSelectionClient(t *testing.T) {
 				m.EXPECT().PromptForSelection(gomock.Any(), gomock.Any()).
 					Return("profile1", nil)
 			},
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectProfileFromConfig(validConfig)
 				return err
 			},
 		},
 		{
 			name: "SelectProfileFromConfig no profiles",
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectProfileFromConfig(emptyConfig)
 				return err
 			},
@@ -110,14 +111,14 @@ func TestAWSSelectionClient(t *testing.T) {
 				m.EXPECT().PromptForSelection("Select an AWS Role", []string{"role1"}).
 					Return("role1", nil)
 			},
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectRoleFromAccount(&models.SSOAccount{Roles: []string{"role1"}})
 				return err
 			},
 		},
 		{
 			name: "SelectRoleFromAccount no roles",
-			testFunc: func(c *RealAWSSelectionClient) error {
+			testFunc: func(c *sso.RealAWSSelectionClient) error {
 				_, err := c.SelectRoleFromAccount(&models.SSOAccount{Roles: []string{}})
 				return err
 			},
@@ -134,7 +135,7 @@ func TestAWSSelectionClient(t *testing.T) {
 				tt.setup(mockPrompter)
 			}
 
-			client := &RealAWSSelectionClient{Prompter: mockPrompter}
+			client := &sso.RealAWSSelectionClient{Prompter: mockPrompter}
 			err := tt.testFunc(client)
 
 			if tt.wantErr {
@@ -158,7 +159,7 @@ func TestExtractAccountNames(t *testing.T) {
 		},
 	}
 
-	client := &RealAWSSelectionClient{}
+	client := &sso.RealAWSSelectionClient{}
 	names := client.ExtractAccountNames(profile)
 
 	assert.Equal(t, []string{"a1", "a2"}, names)
@@ -177,7 +178,7 @@ func TestGetUniqueProfiles(t *testing.T) {
 		},
 	}
 
-	client := &RealAWSSelectionClient{}
+	client := &sso.RealAWSSelectionClient{}
 	profiles, err := client.GetUniqueProfiles(cfg)
 
 	assert.NoError(t, err)
@@ -216,7 +217,7 @@ func TestFindAccount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &RealAWSSelectionClient{}
+			client := &sso.RealAWSSelectionClient{}
 			account, err := client.FindAccount(tt.profile, tt.accountName)
 
 			if tt.wantErr {
@@ -287,7 +288,7 @@ func TestSelectAccount(t *testing.T) {
 				PromptForSelection("Select an AWS Account", expectedAccountNames).
 				Return(tt.mockReturn, tt.mockError)
 
-			client := &RealAWSSelectionClient{Prompter: mockPrompter}
+			client := &sso.RealAWSSelectionClient{Prompter: mockPrompter}
 			_, err := client.SelectAccount(tt.accounts)
 
 			if tt.wantErr {
@@ -357,7 +358,7 @@ func TestSelectAccountFromProfile_ErrorCases(t *testing.T) {
 				tt.setup(mockPrompter)
 			}
 
-			client := &RealAWSSelectionClient{Prompter: mockPrompter}
+			client := &sso.RealAWSSelectionClient{Prompter: mockPrompter}
 			_, err := client.SelectAccountFromProfile(tt.profile)
 
 			if tt.wantErr {
@@ -408,7 +409,7 @@ func TestSelectRoleFromAccount_ErrorCases(t *testing.T) {
 				PromptForSelection("Select an AWS Role", tt.account.Roles).
 				Return("", tt.mockError)
 
-			client := &RealAWSSelectionClient{Prompter: mockPrompter}
+			client := &sso.RealAWSSelectionClient{Prompter: mockPrompter}
 			_, err := client.SelectRoleFromAccount(tt.account)
 
 			if tt.wantErr {
@@ -432,7 +433,7 @@ func TestSelectProfileFromConfig_Interrupt(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	client := &RealAWSSelectionClient{Prompter: mockPrompter}
+	client := &sso.RealAWSSelectionClient{Prompter: mockPrompter}
 
 	cfg := &models.Config{
 		Aws: struct {

@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -118,18 +119,18 @@ func stringPtr(s string) *string {
 
 func TestNewRealAWSSSOClient(t *testing.T) {
 	mockExecutor := &MockCommandExecutor{}
-	client, err := NewRealAWSSSOClient(mockExecutor)
+	client, err := sso.NewRealAWSSSOClient(mockExecutor)
 	require.NoError(t, err)
 	assert.NotNil(t, client)
 	assert.Equal(t, mockExecutor, client.Executor)
 	assert.NotNil(t, client.CredentialsClient)
-	assert.NotNil(t, client.getHomeDir)
+	assert.NotNil(t, client.GetHomeDir)
 }
 
 func TestGetCachedSsoAccessToken(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		profile       string
 		wantToken     string
 		wantErr       bool
@@ -137,7 +138,7 @@ func TestGetCachedSsoAccessToken(t *testing.T) {
 	}{
 		{
 			name: "valid cached token",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -153,9 +154,9 @@ sso_start_url = https://test-start-url
 					StartURL:    stringPtr("https://test-start-url"),
 				}
 				createTempSSOCache(t, cacheDir, cache)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					TokenCache: models.TokenCache{},
-					getHomeDir: func() (string, error) { return homeDir, nil },
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:   "test-profile",
@@ -164,7 +165,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "expired token with successful re-login",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -198,10 +199,10 @@ sso_start_url = https://test-start-url
 				mockExecutor.On("RunInteractiveCommand", mock.Anything, "aws", "sso", "login", "--profile", "test-profile").Return(nil)
 				mockCreds := &MockAWSCredentialsClient{}
 				mockCreds.On("IsCallerIdentityValid", "test-profile").Return(false)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					Executor:          mockExecutor,
 					CredentialsClient: mockCreds,
-					getHomeDir:        func() (string, error) { return homeDir, nil },
+					GetHomeDir:        func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:   "test-profile",
@@ -210,7 +211,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "no cache file",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -218,8 +219,8 @@ sso_session = test-session
 [sso-session test-session]
 sso_start_url = https://test-start-url
 `)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -228,9 +229,9 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "failed to get home directory",
-			setup: func(t *testing.T) *RealAWSSSOClient {
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return "", errors.New("home dir error") },
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return "", errors.New("home dir error") },
 				}
 			},
 			profile:       "test-profile",
@@ -239,7 +240,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "invalid expiration time format",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -254,8 +255,8 @@ sso_start_url = https://test-start-url
 					StartURL:    stringPtr("https://test-start-url"),
 				}
 				createTempSSOCache(t, cacheDir, cache)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -264,7 +265,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "no access token in cache",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -280,9 +281,9 @@ sso_start_url = https://test-start-url
 					StartURL:    stringPtr("https://test-start-url"),
 				}
 				createTempSSOCache(t, cacheDir, cache)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					TokenCache: models.TokenCache{},
-					getHomeDir: func() (string, error) { return homeDir, nil },
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -291,7 +292,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "token refresh failure",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -310,10 +311,10 @@ sso_start_url = https://test-start-url
 				mockExecutor.On("RunInteractiveCommand", mock.Anything, "aws", "sso", "login", "--profile", "test-profile").Return(errors.New("login failed"))
 				mockCreds := &MockAWSCredentialsClient{}
 				mockCreds.On("IsCallerIdentityValid", "test-profile").Return(false)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					Executor:          mockExecutor,
 					CredentialsClient: mockCreds,
-					getHomeDir:        func() (string, error) { return homeDir, nil },
+					GetHomeDir:        func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -322,7 +323,7 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "failed_to_read_cache_directory",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 		[profile test-profile]
 		sso_session = test-session
@@ -343,8 +344,8 @@ sso_start_url = https://test-start-url
 						t.Errorf("failed to remove temp directory %s: %v", homeDir, err)
 					}
 				})
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -412,7 +413,7 @@ func TestConfigureSSO(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockExecutor := &MockCommandExecutor{}
 			tt.mockSetup(mockExecutor)
-			client := &RealAWSSSOClient{
+			client := &sso.RealAWSSSOClient{
 				Executor: mockExecutor,
 			}
 			err := client.ConfigureSSO()
@@ -432,14 +433,14 @@ func TestConfigureSSO(t *testing.T) {
 func TestGetSSOProfiles(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		wantProfiles  []string
 		wantErr       bool
 		expectedError string
 	}{
 		{
 			name: "valid profiles",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -447,8 +448,8 @@ sso_session = test-session
 [sso-session test-session]
 sso_start_url = https://test-start-url
 `)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			wantProfiles: []string{"test-profile"},
@@ -456,11 +457,11 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "no config file",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir, err := os.MkdirTemp("", "aws_test")
 				require.NoError(t, err)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			wantErr:       true,
@@ -468,9 +469,9 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "failed to get home directory",
-			setup: func(t *testing.T) *RealAWSSSOClient {
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return "", errors.New("home dir error") },
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return "", errors.New("home dir error") },
 				}
 			},
 			wantErr:       true,
@@ -481,7 +482,7 @@ sso_start_url = https://test-start-url
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.setup(t)
-			homeDir, err := client.getHomeDir()
+			homeDir, err := client.GetHomeDir()
 			if err == nil && homeDir != "" {
 				defer func() {
 					if err := os.RemoveAll(homeDir); err != nil {
@@ -506,7 +507,7 @@ sso_start_url = https://test-start-url
 func TestGetSSOAccountName(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		accountID     string
 		profile       string
 		wantName      string
@@ -515,7 +516,7 @@ func TestGetSSOAccountName(t *testing.T) {
 	}{
 		{
 			name: "valid account name",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				response := struct {
 					AccountList []models.SSOAccount `json:"accountList"`
@@ -527,7 +528,7 @@ func TestGetSSOAccountName(t *testing.T) {
 				jsonResponse, _ := json.Marshal(response)
 				mockExecutor.On("RunCommand", "aws", "sso", "list-accounts", "--access-token", "test-token", "--output", "json").
 					Return(jsonResponse, nil)
-				client := &RealAWSSSOClient{
+				client := &sso.RealAWSSSOClient{
 					Executor: mockExecutor,
 					TokenCache: models.TokenCache{
 						AccessToken: "test-token",
@@ -543,7 +544,7 @@ func TestGetSSOAccountName(t *testing.T) {
 		},
 		{
 			name: "account not found",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				response := struct {
 					AccountList []models.SSOAccount `json:"accountList"`
@@ -553,7 +554,7 @@ func TestGetSSOAccountName(t *testing.T) {
 				jsonResponse, _ := json.Marshal(response)
 				mockExecutor.On("RunCommand", "aws", "sso", "list-accounts", "--access-token", "test-token", "--output", "json").
 					Return(jsonResponse, nil)
-				client := &RealAWSSSOClient{
+				client := &sso.RealAWSSSOClient{
 					Executor: mockExecutor,
 					TokenCache: models.TokenCache{
 						AccessToken: "test-token",
@@ -589,7 +590,7 @@ func TestGetSSOAccountName(t *testing.T) {
 func TestGetSSORoles(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		profile       string
 		accountID     string
 		wantRoles     []string
@@ -598,7 +599,7 @@ func TestGetSSORoles(t *testing.T) {
 	}{
 		{
 			name: "valid roles",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				response := struct {
 					RoleList []struct {
@@ -614,7 +615,7 @@ func TestGetSSORoles(t *testing.T) {
 				mockExecutor.On("RunCommand", "aws", "sso", "list-account-roles", "--profile", "test-profile", "--account-id", "123456789012", "--access-token", "test-token", "--output", "json").
 					Return(jsonResponse, nil)
 
-				client := &RealAWSSSOClient{
+				client := &sso.RealAWSSSOClient{
 					Executor: mockExecutor,
 					TokenCache: models.TokenCache{
 						AccessToken: "test-token",
@@ -630,7 +631,7 @@ func TestGetSSORoles(t *testing.T) {
 		},
 		{
 			name: "no roles found",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				response := struct {
 					RoleList []struct {
@@ -646,7 +647,7 @@ func TestGetSSORoles(t *testing.T) {
 				mockExecutor.On("RunCommand", "aws", "sso", "list-account-roles", "--profile", "test-profile", "--account-id", "123456789012", "--access-token", "test-token", "--output", "json").
 					Return(jsonResponse, nil)
 
-				client := &RealAWSSSOClient{
+				client := &sso.RealAWSSSOClient{
 					Executor: mockExecutor,
 					TokenCache: models.TokenCache{
 						AccessToken: "test-token",
@@ -682,7 +683,7 @@ func TestGetSSORoles(t *testing.T) {
 func TestGetSessionName(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		profile       string
 		wantSession   string
 		wantErr       bool
@@ -690,7 +691,7 @@ func TestGetSessionName(t *testing.T) {
 	}{
 		{
 			name: "valid session from sso_session",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_session = test-session
@@ -698,8 +699,8 @@ sso_session = test-session
 [sso-session test-session]
 sso_start_url = https://test-start-url
 `)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:     "test-profile",
@@ -708,13 +709,13 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "valid session from sso_start_url",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile test-profile]
 sso_start_url = https://test-start-url
 `)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:     "test-profile",
@@ -723,13 +724,13 @@ sso_start_url = https://test-start-url
 		},
 		{
 			name: "profile not found",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				homeDir := createTempAWSConfig(t, `
 [profile other-profile]
 sso_start_url = https://test-start-url
 `)
-				return &RealAWSSSOClient{
-					getHomeDir: func() (string, error) { return homeDir, nil },
+				return &sso.RealAWSSSOClient{
+					GetHomeDir: func() (string, error) { return homeDir, nil },
 				}
 			},
 			profile:       "test-profile",
@@ -741,7 +742,7 @@ sso_start_url = https://test-start-url
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.setup(t)
-			homeDir, err := client.getHomeDir()
+			homeDir, err := client.GetHomeDir()
 			if err == nil && homeDir != "" {
 				defer func() {
 					if err := os.RemoveAll(homeDir); err != nil {
@@ -749,7 +750,7 @@ sso_start_url = https://test-start-url
 					}
 				}()
 			}
-			session, err := client.getSessionName(tt.profile)
+			session, err := client.GetSessionName(tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.expectedError != "" {
@@ -766,7 +767,7 @@ sso_start_url = https://test-start-url
 func TestSSOLogin(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(t *testing.T) *RealAWSSSOClient
+		setup         func(t *testing.T) *sso.RealAWSSSOClient
 		profile       string
 		refresh       bool
 		noBrowser     bool
@@ -775,12 +776,12 @@ func TestSSOLogin(t *testing.T) {
 	}{
 		{
 			name: "successful login",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				mockExecutor.On("RunInteractiveCommand", mock.Anything, "aws", "sso", "login", "--profile", "test-profile").Return(nil)
 				mockCreds := &MockAWSCredentialsClient{}
 				mockCreds.On("IsCallerIdentityValid", "test-profile").Return(false)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					Executor:          mockExecutor,
 					CredentialsClient: mockCreds,
 				}
@@ -792,13 +793,13 @@ func TestSSOLogin(t *testing.T) {
 		},
 		{
 			name: "login timeout",
-			setup: func(t *testing.T) *RealAWSSSOClient {
+			setup: func(t *testing.T) *sso.RealAWSSSOClient {
 				mockExecutor := &MockCommandExecutor{}
 				mockExecutor.On("RunInteractiveCommand", mock.Anything, "aws", "sso", "login", "--profile", "test-profile").
 					Return(context.DeadlineExceeded)
 				mockCreds := &MockAWSCredentialsClient{}
 				mockCreds.On("IsCallerIdentityValid", "test-profile").Return(false)
-				return &RealAWSSSOClient{
+				return &sso.RealAWSSSOClient{
 					Executor:          mockExecutor,
 					CredentialsClient: mockCreds,
 				}

@@ -1,4 +1,4 @@
-package common
+package common_test
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,13 +38,13 @@ func (m mockFileInfo) IsDir() bool        { return false }
 func (m mockFileInfo) Sys() interface{}   { return nil }
 
 func TestRuntimeOSDetector_GetOS(t *testing.T) {
-	detector := RuntimeOSDetector{}
+	detector := common.RuntimeOSDetector{}
 	os := detector.GetOS()
 	assert.Equal(t, runtime.GOOS, os)
 }
 func TestRealSSHExecutor(t *testing.T) {
 	t.Run("Execute success", func(t *testing.T) {
-		executor := &RealSSHExecutor{}
+		executor := &common.RealSSHExecutor{}
 		var stdout, stderr bytes.Buffer
 
 		err := executor.Execute([]string{"echo", "hello"}, strings.NewReader(""), &stdout, &stderr)
@@ -52,7 +53,7 @@ func TestRealSSHExecutor(t *testing.T) {
 	})
 
 	t.Run("Execute failure", func(t *testing.T) {
-		executor := &RealSSHExecutor{}
+		executor := &common.RealSSHExecutor{}
 		var stdout, stderr bytes.Buffer
 
 		err := executor.Execute([]string{"false"}, nil, &stdout, &stderr)
@@ -65,14 +66,14 @@ func TestExecuteSSHCommand_EmptyCommand(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockExecutor := mock_awsctl.NewMockSSHExecutorInterface(ctrl)
-	err := ExecuteSSHCommand(mockExecutor, []string{})
+	err := common.ExecuteSSHCommand(mockExecutor, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no command provided")
 }
 
 func TestSSHCommandBuilder(t *testing.T) {
 	t.Run("Basic command", func(t *testing.T) {
-		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
+		builder := common.NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.Build()
 
 		expected := []string{
@@ -88,7 +89,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 	})
 
 	t.Run("With instance connect", func(t *testing.T) {
-		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", true)
+		builder := common.NewSSHCommandBuilder("example.com", "user", "/path/to/key", true)
 		cmd := builder.Build()
 
 		expected := []string{
@@ -101,7 +102,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 	})
 
 	t.Run("With port forwarding", func(t *testing.T) {
-		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
+		builder := common.NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithForwarding(8080, "localhost", 80).Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o", "ConnectTimeout=30",
@@ -113,7 +114,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 	})
 
 	t.Run("With SOCKS proxy", func(t *testing.T) {
-		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
+		builder := common.NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithSOCKS(1080).Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
@@ -124,7 +125,7 @@ func TestSSHCommandBuilder(t *testing.T) {
 	})
 
 	t.Run("With background", func(t *testing.T) {
-		builder := NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
+		builder := common.NewSSHCommandBuilder("example.com", "user", "/path/to/key", false)
 		cmd := builder.WithBackground().Build()
 
 		expected := []string{"ssh", "-i", "/path/to/key", "-o", "BatchMode=no", "-o",
@@ -244,7 +245,7 @@ func TestExecuteSSHCommand(t *testing.T) {
 			mockExecutor := mock_awsctl.NewMockSSHExecutorInterface(ctrl)
 			tt.mockSetup(mockExecutor)
 
-			err := ExecuteSSHCommand(mockExecutor, tt.cmd)
+			err := common.ExecuteSSHCommand(mockExecutor, tt.cmd)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -310,7 +311,7 @@ func TestValidateSSHKey(t *testing.T) {
 			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 			tt.mockSetup(mockFS)
 
-			err := ValidateSSHKey(mockFS, tt.keyPath)
+			err := common.ValidateSSHKey(mockFS, tt.keyPath)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -392,7 +393,7 @@ func TestTerminateSOCKSProxy(t *testing.T) {
 			}
 
 			osDetector := mockOSDetector{os: tt.os}
-			err := TerminateSOCKSProxy(mockExecutor, tt.port, osDetector)
+			err := common.TerminateSOCKSProxy(mockExecutor, tt.port, osDetector)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -411,7 +412,7 @@ func TestValidateSSHKey_AccessError(t *testing.T) {
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 	mockFS.EXPECT().Stat("/test/key").Return(nil, errors.New("permission denied"))
 
-	err := ValidateSSHKey(mockFS, "/test/key")
+	err := common.ValidateSSHKey(mockFS, "/test/key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to access SSH key file")
 }
@@ -424,14 +425,14 @@ func TestValidateSSHKey_ReadError(t *testing.T) {
 	mockFS.EXPECT().Stat("/test/key").Return(&mockFileInfo{mode: 0600}, nil)
 	mockFS.EXPECT().ReadFile("/test/key").Return(nil, errors.New("read error"))
 
-	err := ValidateSSHKey(mockFS, "/test/key")
+	err := common.ValidateSSHKey(mockFS, "/test/key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read SSH key file")
 }
 
 func TestTerminateSOCKSProxy_NilExecutor(t *testing.T) {
 	osDetector := mockOSDetector{os: "linux"}
-	err := TerminateSOCKSProxy(nil, 1080, osDetector)
+	err := common.TerminateSOCKSProxy(nil, 1080, osDetector)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "executor cannot be nil")
 }
@@ -451,7 +452,7 @@ func TestTerminateSOCKSProxyWindows_NetstatError(t *testing.T) {
 		return errors.New("netstat error")
 	})
 
-	err := terminateSOCKSProxyWindows(mockExecutor, 1080)
+	err := common.TerminateSOCKSProxyWindows(mockExecutor, 1080)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to find SOCKS proxy process")
 }
@@ -471,7 +472,7 @@ func TestTerminateSOCKSProxyWindows_InvalidPID(t *testing.T) {
 		return nil
 	})
 
-	err := terminateSOCKSProxyWindows(mockExecutor, 1080)
+	err := common.TerminateSOCKSProxyWindows(mockExecutor, 1080)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid PID in netstat output")
 }
@@ -495,7 +496,7 @@ func TestTerminateSOCKSProxyWindows_KillError(t *testing.T) {
 		nil, nil, nil,
 	).Return(errors.New("kill failed"))
 
-	err := terminateSOCKSProxyWindows(mockExecutor, 1080)
+	err := common.TerminateSOCKSProxyWindows(mockExecutor, 1080)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to kill SOCKS proxy process")
 }
@@ -514,6 +515,6 @@ func TestTerminateSOCKSProxyWindows_EmptyOutput(t *testing.T) {
 		return nil
 	})
 
-	err := terminateSOCKSProxyWindows(mockExecutor, 1080)
+	err := common.TerminateSOCKSProxyWindows(mockExecutor, 1080)
 	assert.NoError(t, err)
 }

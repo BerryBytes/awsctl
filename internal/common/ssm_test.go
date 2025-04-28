@@ -1,10 +1,11 @@
-package connection
+package connection_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
+	connection "github.com/BerryBytes/awsctl/internal/common"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -19,11 +20,11 @@ func TestRealSSMStarter(t *testing.T) {
 	mockSSMClient := mock_awsctl.NewMockSSMClientInterface(ctrl)
 	mockCommandExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
-	newTestSSMStarter := func() *RealSSMStarter {
-		return &RealSSMStarter{
-			client:          mockSSMClient,
-			region:          "us-west-2",
-			commandExecutor: mockCommandExecutor,
+	newTestSSMStarter := func() *connection.RealSSMStarter {
+		return &connection.RealSSMStarter{
+			Client:          mockSSMClient,
+			Region:          "us-west-2",
+			CommandExecutor: mockCommandExecutor,
 		}
 	}
 
@@ -205,19 +206,19 @@ func TestRealSSMStarter(t *testing.T) {
 			}).Return(&ssm.TerminateSessionOutput{}, nil)
 
 			s := newTestSSMStarter()
-			s.terminateSession(context.Background(), aws.String("test-session"))
+			s.TerminateSession(context.Background(), aws.String("test-session"))
 		})
 
 		t.Run("nil session ID", func(t *testing.T) {
 			s := newTestSSMStarter()
-			s.terminateSession(context.Background(), nil)
+			s.TerminateSession(context.Background(), nil)
 		})
 
 		t.Run("termination fails", func(t *testing.T) {
 			mockSSMClient.EXPECT().TerminateSession(gomock.Any(), gomock.Any()).Return(nil, errors.New("terminate error"))
 
 			s := newTestSSMStarter()
-			s.terminateSession(context.Background(), aws.String("test-session"))
+			s.TerminateSession(context.Background(), aws.String("test-session"))
 		})
 	})
 
@@ -257,7 +258,7 @@ func TestRealSSMStarter(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tt.setupMocks()
 				s := newTestSSMStarter()
-				err := s.runSessionManagerPlugin(
+				err := s.RunSessionManagerPlugin(
 					context.Background(),
 					&ssm.StartSessionOutput{
 						SessionId:  aws.String("test-session"),

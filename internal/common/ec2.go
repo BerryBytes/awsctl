@@ -39,19 +39,19 @@ const (
 	CodeOptInRequired  = "OptInRequired"
 )
 
-type realEC2Client struct {
+type RealEC2Client struct {
 	client EC2DescribeInstancesAPI
 }
 
 func NewEC2Client(client EC2DescribeInstancesAPI) EC2ClientInterface {
-	return &realEC2Client{client: client}
+	return &RealEC2Client{client: client}
 }
 
-func (r *realEC2Client) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput, opts ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error) {
+func (r *RealEC2Client) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput, opts ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error) {
 	return r.client.DescribeInstances(ctx, input, opts...)
 }
 
-func (c *realEC2Client) ListBastionInstances(ctx context.Context) ([]models.EC2Instance, error) {
+func (c *RealEC2Client) ListBastionInstances(ctx context.Context) ([]models.EC2Instance, error) {
 	input := &ec2.DescribeInstancesInput{
 		Filters: []types.Filter{
 			{Name: aws.String(InstanceStateName), Values: []string{RunningState}},
@@ -63,7 +63,7 @@ func (c *realEC2Client) ListBastionInstances(ctx context.Context) ([]models.EC2I
 		return nil, handleAWSError(err)
 	}
 
-	instances := filterBastionInstance(result.Reservations)
+	instances := FilterBastionInstance(result.Reservations)
 
 	return instances, nil
 }
@@ -92,7 +92,7 @@ func handleAWSError(err error) error {
 	return fmt.Errorf(ErrListBastionInstances, err)
 }
 
-func filterBastionInstance(reservations []types.Reservation) []models.EC2Instance {
+func FilterBastionInstance(reservations []types.Reservation) []models.EC2Instance {
 	var instances []models.EC2Instance
 
 	for _, reservation := range reservations {
@@ -158,5 +158,5 @@ func NewEC2ClientWithRegion(region string, loader AWSConfigLoader) (EC2ClientInt
 	cfg.Region = region
 
 	ec2Client := ec2.NewFromConfig(cfg)
-	return &realEC2Client{client: ec2Client}, nil
+	return &RealEC2Client{client: ec2Client}, nil
 }

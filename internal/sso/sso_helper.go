@@ -31,7 +31,7 @@ type RealAWSSSOClient struct {
 	TokenCache        models.TokenCache
 	CredentialsClient AWSCredentialsClient
 	Executor          CommandExecutor
-	getHomeDir        func() (string, error)
+	GetHomeDir        func() (string, error)
 	AWSClient         *AWSClient
 }
 
@@ -42,17 +42,17 @@ func NewRealAWSSSOClient(executor CommandExecutor) (*RealAWSSSOClient, error) {
 	return &RealAWSSSOClient{
 		CredentialsClient: credentialsClient,
 		Executor:          executor,
-		getHomeDir:        os.UserHomeDir,
+		GetHomeDir:        os.UserHomeDir,
 	}, nil
 }
 
 func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*models.SSOCache, time.Time, error) {
-	sessionName, err := client.getSessionName(profile)
+	sessionName, err := client.GetSessionName(profile)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
-	homeDir, err := client.getHomeDir()
+	homeDir, err := client.GetHomeDir()
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
 	}
@@ -168,7 +168,7 @@ func (c *RealAWSSSOClient) ConfigureSSO() error {
 
 func (c *RealAWSSSOClient) GetSSOProfiles() ([]string, error) {
 
-	homeDir, err := c.getHomeDir()
+	homeDir, err := c.GetHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user home directory: %v", err)
 	}
@@ -294,12 +294,12 @@ func (c *RealAWSSSOClient) SSOLogin(awsProfile string, refresh, noBrowser bool) 
 	return nil
 }
 
-func (c *RealAWSSSOClient) getSessionName(profile string) (string, error) {
+func (c *RealAWSSSOClient) GetSessionName(profile string) (string, error) {
 
-	if c.getHomeDir == nil {
+	if c.GetHomeDir == nil {
 		return "", fmt.Errorf("home dir  is nil in RealAWSSSOClient")
 	}
-	homeDir, err := c.getHomeDir()
+	homeDir, err := c.GetHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("unable to find home directory: %v", err)
 	}

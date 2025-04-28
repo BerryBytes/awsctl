@@ -1,4 +1,4 @@
-package connection
+package connection_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	connection "github.com/BerryBytes/awsctl/internal/common"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/BerryBytes/awsctl/utils/common"
@@ -62,15 +63,15 @@ func TestStartSOCKSProxy_SSM_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
-	provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
+	provider.NewEC2Client = func(region string, loader connection.AWSConfigLoader) (connection.EC2ClientInterface, error) {
 		return m.ec2Client, nil
 	}
-	services := &Services{
-		provider:   provider,
-		executor:   m.executor,
-		osDetector: m.osDetector,
-		ssmStarter: m.ssmStarter,
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
 	}
 
 	ctx := context.Background()
@@ -100,7 +101,7 @@ func TestStartSOCKSProxy_SSM_Success(t *testing.T) {
 		<-done
 	}()
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSM, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSM, nil)
 	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("us-west-2", nil)
 	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
 		{InstanceID: instanceID, Name: "bastion-1"},
@@ -131,15 +132,15 @@ func TestStartPortForwarding_SSM_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
-	provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
+	provider.NewEC2Client = func(region string, loader connection.AWSConfigLoader) (connection.EC2ClientInterface, error) {
 		return m.ec2Client, nil
 	}
-	services := &Services{
-		provider:   provider,
-		executor:   m.executor,
-		osDetector: m.osDetector,
-		ssmStarter: m.ssmStarter,
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
 	}
 
 	ctx := context.Background()
@@ -171,7 +172,7 @@ func TestStartPortForwarding_SSM_Success(t *testing.T) {
 		<-done
 	}()
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSM, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSM, nil)
 	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("us-west-2", nil)
 	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
 		{InstanceID: instanceID, Name: "bastion-1"},
@@ -201,15 +202,15 @@ func TestSSHIntoBastion_SSM_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
-	provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
+	provider.NewEC2Client = func(region string, loader connection.AWSConfigLoader) (connection.EC2ClientInterface, error) {
 		return m.ec2Client, nil
 	}
-	services := &Services{
-		provider:   provider,
-		executor:   m.executor,
-		osDetector: m.osDetector,
-		ssmStarter: m.ssmStarter,
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
 	}
 
 	ctx := context.Background()
@@ -238,7 +239,7 @@ func TestSSHIntoBastion_SSM_Success(t *testing.T) {
 		<-done
 	}()
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSM, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSM, nil)
 	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("us-west-2", nil)
 	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
 		{InstanceID: instanceID, Name: "bastion-1"},
@@ -265,13 +266,13 @@ func TestNewServices(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
 
-	services := NewServices(provider)
+	services := connection.NewServices(provider)
 	assert.NotNil(t, services)
-	assert.Equal(t, provider, services.provider)
-	assert.IsType(t, &common.RealSSHExecutor{}, services.executor)
-	assert.IsType(t, common.RuntimeOSDetector{}, services.osDetector)
+	assert.Equal(t, provider, services.Provider)
+	assert.IsType(t, &common.RealSSHExecutor{}, services.Executor)
+	assert.IsType(t, common.RuntimeOSDetector{}, services.OsDetector)
 }
 
 func TestSSHIntoBastion_Success(t *testing.T) {
@@ -282,14 +283,19 @@ func TestSSHIntoBastion_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
 	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -321,8 +327,12 @@ func TestSSHIntoBastion_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter}
 
 	ctx := context.Background()
 
@@ -341,14 +351,19 @@ func TestSSHIntoBastion_ExecuteFails(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
 	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -381,8 +396,13 @@ func TestStartSOCKSProxy_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	port := 1080
@@ -402,15 +422,20 @@ func TestStartSOCKSProxy_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
 	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
 	port := 1080
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -447,15 +472,20 @@ func TestStartSOCKSProxy_ExecuteFails(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
 	keyPath := filepath.Join(homeDir, ".ssh/id_ed25519")
 	port := 1080
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -495,8 +525,13 @@ func TestStartPortForwarding_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
@@ -505,7 +540,7 @@ func TestStartPortForwarding_Success(t *testing.T) {
 	remoteHost := "internal.example.com"
 	remotePort := 80
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -539,8 +574,13 @@ func TestStartPortForwarding_GetDetailsFails(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
 
-	provider := NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, aws.Config{}, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	localPort := 8080
@@ -562,8 +602,13 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
-	services := &Services{provider: provider, executor: m.executor, osDetector: m.osDetector}
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, nil)
+	services := &connection.Services{
+		Provider:   provider,
+		Executor:   m.executor,
+		OsDetector: m.osDetector,
+		SsmStarter: m.ssmStarter,
+	}
 
 	ctx := context.Background()
 	homeDir, _ := os.UserHomeDir()
@@ -572,7 +617,7 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 	remoteHost := "internal.example.com"
 	remotePort := 80
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(false, nil)
 	m.prompter.EXPECT().PromptForBastionHost().Return("bastion.example.com", nil)
 	m.prompter.EXPECT().PromptForSSHUser("ec2-user").Return("ec2-user", nil)
@@ -611,16 +656,16 @@ func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}
 	awsConfig := aws.Config{Region: "us-west-2", Credentials: credProvider}
-	provider := NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
-	provider.newEC2Client = func(region string, loader AWSConfigLoader) (EC2ClientInterface, error) {
+	provider := connection.NewConnectionProvider(m.prompter, m.fs, awsConfig, m.ec2Client, m.ssmClient, m.instanceConn, m.configLoader)
+	provider.NewEC2Client = func(region string, loader connection.AWSConfigLoader) (connection.EC2ClientInterface, error) {
 		return m.ec2Client, nil
 	}
-	services := &Services{
-		provider:        provider,
-		executor:        m.executor,
-		osDetector:      m.osDetector,
-		ssmStarter:      m.ssmStarter,
-		commandExecutor: m.commandExecutor,
+	services := &connection.Services{
+		Provider:        provider,
+		Executor:        m.executor,
+		OsDetector:      m.osDetector,
+		SsmStarter:      m.ssmStarter,
+		CommandExecutor: m.commandExecutor,
 	}
 
 	ctx := context.Background()
@@ -650,7 +695,7 @@ func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
 		<-done
 	}()
 
-	m.prompter.EXPECT().ChooseConnectionMethod().Return(MethodSSH, nil)
+	m.prompter.EXPECT().ChooseConnectionMethod().Return(connection.MethodSSH, nil)
 	m.prompter.EXPECT().PromptForConfirmation("Look for bastion hosts in AWS?").Return(true, nil)
 	m.prompter.EXPECT().PromptForRegion("us-west-2").Return("us-west-2", nil)
 	m.ec2Client.EXPECT().ListBastionInstances(ctx).Return([]models.EC2Instance{
@@ -701,4 +746,120 @@ func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
 	t.Logf("Captured stdout: %q", output)
 	assert.Contains(t, output, "Using EC2 Instance Connect Endpoint (EIC-E) for authentication")
 	assert.Contains(t, output, fmt.Sprintf("Connecting to %s@%s using EC2 Instance Connect...\n", user, instanceID))
+}
+
+func TestIsAWSConfigured(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupProvider  func(*connection.ConnectionProvider)
+		expectedResult bool
+	}{
+		{
+			name: "fully configured AWS credentials",
+			setupProvider: func(p *connection.ConnectionProvider) {
+				p.AwsConfig = aws.Config{
+					Credentials: credentials.StaticCredentialsProvider{
+						Value: aws.Credentials{
+							AccessKeyID:     "AKIAEXAMPLE",
+							SecretAccessKey: "secret",
+							Source:          "test",
+						},
+					},
+				}
+			},
+			expectedResult: true,
+		},
+		{
+			name: "nil provider",
+			setupProvider: func(p *connection.ConnectionProvider) {
+			},
+			expectedResult: false,
+		},
+		{
+			name: "nil credentials",
+			setupProvider: func(p *connection.ConnectionProvider) {
+				p.AwsConfig = aws.Config{
+					Credentials: nil,
+				}
+			},
+			expectedResult: false,
+		},
+		{
+			name: "empty credentials",
+			setupProvider: func(p *connection.ConnectionProvider) {
+				p.AwsConfig = aws.Config{
+					Credentials: credentials.StaticCredentialsProvider{
+						Value: aws.Credentials{},
+					},
+				}
+			},
+			expectedResult: false,
+		},
+
+		{
+			name: "missing access key",
+			setupProvider: func(p *connection.ConnectionProvider) {
+				p.AwsConfig = aws.Config{
+					Credentials: credentials.StaticCredentialsProvider{
+						Value: aws.Credentials{
+							SecretAccessKey: "secret",
+							Source:          "test",
+						},
+					},
+				}
+			},
+			expectedResult: false,
+		},
+		{
+			name: "missing secret key",
+			setupProvider: func(p *connection.ConnectionProvider) {
+				p.AwsConfig = aws.Config{
+					Credentials: credentials.StaticCredentialsProvider{
+						Value: aws.Credentials{
+							AccessKeyID: "AKIAEXAMPLE",
+							Source:      "test",
+						},
+					},
+				}
+			},
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var provider *connection.ConnectionProvider
+			if tt.name != "nil provider" {
+				m := setupServiceMocks(t)
+				defer m.ctrl.Finish()
+
+				provider = connection.NewConnectionProvider(
+					m.prompter,
+					m.fs,
+					aws.Config{},
+					m.ec2Client,
+					m.ssmClient,
+					m.instanceConn,
+					m.configLoader,
+				)
+
+				if tt.setupProvider != nil {
+					tt.setupProvider(provider)
+				}
+			}
+
+			var service *connection.Services
+			if tt.name != "nil services" {
+				service = &connection.Services{
+					Provider: provider,
+				}
+			}
+
+			result := service.IsAWSConfigured()
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
 }

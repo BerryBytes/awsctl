@@ -447,6 +447,20 @@ func (m *MockServicesInterface) EXPECT() *MockServicesInterfaceMockRecorder {
 	return m.recorder
 }
 
+// IsAWSConfigured mocks base method.
+func (m *MockServicesInterface) IsAWSConfigured() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsAWSConfigured")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsAWSConfigured indicates an expected call of IsAWSConfigured.
+func (mr *MockServicesInterfaceMockRecorder) IsAWSConfigured() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAWSConfigured", reflect.TypeOf((*MockServicesInterface)(nil).IsAWSConfigured))
+}
+
 // SSHIntoBastion mocks base method.
 func (m *MockServicesInterface) SSHIntoBastion(ctx context.Context) error {
 	m.ctrl.T.Helper()

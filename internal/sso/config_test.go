@@ -1,16 +1,17 @@
-package sso
+package sso_test
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRealCommandExecutor_RunCommand(t *testing.T) {
-	executor := &RealCommandExecutor{}
+	executor := &sso.RealCommandExecutor{}
 
 	output, err := executor.RunCommand("echo", "hello")
 	assert.NoError(t, err)
@@ -25,7 +26,7 @@ func TestConfigureGet_Error(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	expectedErr := fmt.Errorf("command failed")
 	mockExecutor.EXPECT().
@@ -48,7 +49,7 @@ func TestConfigureSet(t *testing.T) {
 
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "region", "us-west-2", "--profile", "test-profile").Return([]byte{}, nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	err := client.ConfigureSet("region", "us-west-2", "test-profile")
 	assert.NoError(t, err)
@@ -62,7 +63,7 @@ func TestConfigureGet(t *testing.T) {
 
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "get", "region", "--profile", "test-profile").Return([]byte("us-west-2\n"), nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	region, err := client.ConfigureGet("region", "test-profile")
 	assert.NoError(t, err)
@@ -77,7 +78,7 @@ func TestValidProfiles(t *testing.T) {
 
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "list-profiles").Return([]byte("test-profile\nanother-profile\n"), nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	profiles, err := client.ValidProfiles()
 	assert.NoError(t, err)
@@ -93,7 +94,7 @@ func TestConfigureDefaultProfile(t *testing.T) {
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "region", "us-west-2", "--profile", "default").Return([]byte{}, nil).Times(1)
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "output", "json", "--profile", "default").Return([]byte{}, nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	err := client.ConfigureDefaultProfile("us-west-2", "json")
 	assert.NoError(t, err)
@@ -112,7 +113,7 @@ func TestConfigureSSOProfile(t *testing.T) {
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "region", "us-west-2", "--profile", "test-profile").Return([]byte{}, nil).Times(1)
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "output", "json", "--profile", "test-profile").Return([]byte{}, nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	err := client.ConfigureSSOProfile("test-profile", "us-west-2", "123456789012", "my-role", "https://my-sso-url")
 	assert.NoError(t, err)
@@ -126,7 +127,7 @@ func TestGetAWSRegion(t *testing.T) {
 
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "get", "region", "--profile", "test-profile").Return([]byte("us-west-2\n"), nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	region, err := client.GetAWSRegion("test-profile")
 	assert.NoError(t, err)
@@ -141,7 +142,7 @@ func TestGetAWSOutput(t *testing.T) {
 
 	mockExecutor.EXPECT().RunCommand("aws", "configure", "get", "output", "--profile", "test-profile").Return([]byte("json\n"), nil).Times(1)
 
-	client := &RealAWSConfigClient{Executor: mockExecutor}
+	client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 	output, err := client.GetAWSOutput("test-profile")
 	assert.NoError(t, err)
@@ -176,7 +177,7 @@ func TestGetAWSRegion_ErrorCases(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
-			client := &RealAWSConfigClient{Executor: mockExecutor}
+			client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 			mockExecutor.EXPECT().
 				RunCommand("aws", "configure", "get", "region", "--profile", "test-profile").
@@ -221,7 +222,7 @@ func TestGetAWSOutput_ErrorCases(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
-			client := &RealAWSConfigClient{Executor: mockExecutor}
+			client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 			mockExecutor.EXPECT().
 				RunCommand("aws", "configure", "get", "output", "--profile", "test-profile").
@@ -263,7 +264,7 @@ func TestConfigureDefaultProfile_ErrorCases(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
-			client := &RealAWSConfigClient{Executor: mockExecutor}
+			client := &sso.RealAWSConfigClient{Executor: mockExecutor}
 
 			mockExecutor.EXPECT().
 				RunCommand("aws", "configure", "set", "region", "us-west-2", "--profile", "default").

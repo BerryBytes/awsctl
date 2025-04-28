@@ -229,7 +229,7 @@ func TerminateSOCKSProxy(executor SSHExecutorInterface, port int, osDetector OSD
 			fmt.Sprintf("pkill -f 'ssh.*-D.*%d'", port),
 		}
 	case "windows":
-		return terminateSOCKSProxyWindows(executor, port)
+		return TerminateSOCKSProxyWindows(executor, port)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", osDetector.GetOS())
 	}
@@ -245,7 +245,7 @@ func TerminateSOCKSProxy(executor SSHExecutorInterface, port int, osDetector OSD
 	return nil
 }
 
-func terminateSOCKSProxyWindows(executor SSHExecutorInterface, port int) error {
+func TerminateSOCKSProxyWindows(executor SSHExecutorInterface, port int) error {
 	netstatCmd := []string{
 		"cmd", "/c",
 		fmt.Sprintf("netstat -aon | findstr :%d", port),
