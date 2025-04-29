@@ -71,8 +71,16 @@ func TestPromptForProfile_FromEnv(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Setenv("AWS_PROFILE", "test-profile")
-	defer os.Unsetenv("AWS_PROFILE")
+	err := os.Setenv("AWS_PROFILE", "test-profile")
+	if err != nil {
+		t.Fatalf("Failed to set AWS_PROFILE: %v", err)
+	}
+
+	defer func() {
+		if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+			t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+		}
+	}()
 
 	prompter := rds.NewRPrompter(mockPrompter, mockConfigClient)
 	profile, err := prompter.PromptForProfile()
@@ -88,7 +96,9 @@ func TestPromptForProfile_FromConfig(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
 
 	expectedProfiles := []string{"profile1", "profile2"}
 	mockConfigClient.EXPECT().ValidProfiles().Return(expectedProfiles, nil)
@@ -111,7 +121,9 @@ func TestPromptForProfile_Error(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
 
 	mockConfigClient.EXPECT().ValidProfiles().Return(nil, errors.New("config error"))
 
@@ -222,11 +234,20 @@ func TestGetAWSConfig_FromEnv(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Setenv("AWS_PROFILE", "test-profile")
-	os.Setenv("AWS_REGION", "us-east-1")
+	if err := os.Setenv("AWS_PROFILE", "test-profile"); err != nil {
+		t.Fatalf("failed to set AWS_PROFILE: %v", err)
+	}
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Fatalf("failed to set AWS_REGION: %v", err)
+	}
+
 	defer func() {
-		os.Unsetenv("AWS_PROFILE")
-		os.Unsetenv("AWS_REGION")
+		if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+			t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+		}
+		if err := os.Unsetenv("AWS_REGION"); err != nil {
+			t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+		}
 	}()
 
 	prompter := rds.NewRPrompter(mockPrompter, mockConfigClient)
