@@ -1,0 +1,524 @@
+package rds_test
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/BerryBytes/awsctl/internal/rds"
+	"github.com/BerryBytes/awsctl/models"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+)
+
+func setupTest(t *testing.T) (*rds.RDSService, *gomock.Controller, *mock_rds.MockRDSPromptInterface, *mock_rds.MockRDSAdapterInterface, *mock_awsctl.MockConnectionPrompter, *mock_awsctl.MockServicesInterface, *mock_awsctl.MockPrompter) {
+	ctrl := gomock.NewController(t)
+	mockRPrompter := mock_rds.NewMockRDSPromptInterface(ctrl)
+	mockRDSClient := mock_rds.NewMockRDSAdapterInterface(ctrl)
+	mockConnPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
+	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
+	mockGPrompter := mock_awsctl.NewMockPrompter(ctrl)
+
+	service := &rds.RDSService{
+		RPrompter:    mockRPrompter,
+		RDSClient:    mockRDSClient,
+		CPrompter:    mockConnPrompter,
+		ConnServices: mockConnServices,
+		GPrompter:    mockGPrompter,
+	}
+
+	return service, ctrl, mockRPrompter, mockRDSClient, mockConnPrompter, mockConnServices, mockGPrompter
+}
+
+func TestRDSService_Run(t *testing.T) {
+	svc, ctrl, mockRPrompter, _, _, _, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("ExitAction", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ExitRDS, nil)
+
+		err := svc.Run()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Interrupted", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ExitRDS, promptUtils.ErrInterrupted)
+
+		err := svc.Run()
+		assert.Equal(t, promptUtils.ErrInterrupted, err)
+	})
+}
+
+func TestHandleDirectConnection_Success(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+	mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+	mockRPrompter.EXPECT().PromptForManualEndpoint().Return("localhost:5432", "admin", "us-west-2", nil)
+	mockRDSAdapter.EXPECT().GenerateAuthToken("localhost:5432", "admin", "us-west-2").Return("mock-auth-token", nil)
+	err := svc.HandleDirectConnection()
+	assert.NoError(t, err)
+}
+
+func TestRDSService_HandleTunnelConnection(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("HappyPath", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForLocalPort("RDS", 3306).Return(3306, nil)
+		mockRDSAdapter.EXPECT().GenerateAuthToken("test-rds:3306", "test-user", "us-east-1").Return("mock-auth-token", nil)
+		mockConnServices.EXPECT().StartPortForwarding(gomock.Any(), 3306, "test-rds", 3306).Return(nil)
+
+		err := svc.HandleTunnelConnection()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_InvalidPort", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:invalid", "test-user", "us-east-1", nil)
+
+		err := svc.HandleTunnelConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid port")
+	})
+
+	t.Run("AWSNotConfigured", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForLocalPort("RDS", 3306).Return(3306, nil)
+		mockRDSAdapter.EXPECT().GenerateAuthToken("test-rds:3306", "test-user", "us-east-1").Return("mock-auth-token", nil)
+		mockConnServices.EXPECT().StartPortForwarding(gomock.Any(), 3306, "test-rds", 3306).Return(nil)
+
+		err := svc.HandleTunnelConnection()
+		assert.NoError(t, err)
+	})
+}
+
+func TestRDSService_CleanupSOCKS(t *testing.T) {
+	svc, ctrl, _, _, _, _, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("NoSOCKSPort", func(t *testing.T) {
+		err := svc.CleanupSOCKS()
+		assert.NoError(t, err)
+	})
+}
+
+func TestRDSService_HandleSOCKSConnection(t *testing.T) {
+	svc, ctrl, mockRPrompter, _, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("HappyPath", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1080, nil)
+		mockConnServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1080).Return(nil)
+
+		err := svc.HandleSOCKSConnection()
+		assert.NoError(t, err)
+		assert.Equal(t, 1080, svc.SOCKSPort())
+	})
+
+	t.Run("Error_SOCKSProxyFailure", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1080, nil)
+		mockConnServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1080).Return(errors.New("SOCKS failure"))
+
+		err := svc.HandleSOCKSConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "SOCKS proxy failed")
+	})
+
+	t.Run("AWSNotConfigured", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1080, nil)
+		mockConnServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1080).Return(nil)
+
+		err := svc.HandleSOCKSConnection()
+		assert.NoError(t, err)
+		assert.Equal(t, 1080, svc.SOCKSPort())
+	})
+}
+
+func TestNewRDSService(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
+
+	t.Run("BasicInitialization", func(t *testing.T) {
+		service := rds.NewRDSService(mockConnServices)
+
+		assert.NotNil(t, service)
+		assert.Equal(t, mockConnServices, service.ConnServices)
+		assert.NotNil(t, service.RPrompter)
+	})
+
+	t.Run("WithOptions", func(t *testing.T) {
+		mockRDSClient := mock_rds.NewMockRDSAdapterInterface(ctrl)
+		mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
+
+		opts := []func(*rds.RDSService){
+			func(s *rds.RDSService) { s.RDSClient = mockRDSClient },
+			func(s *rds.RDSService) { s.GPrompter = mockPrompter },
+		}
+
+		service := rds.NewRDSService(mockConnServices, opts...)
+
+		assert.Equal(t, mockRDSClient, service.RDSClient)
+		assert.Equal(t, mockPrompter, service.GPrompter)
+	})
+}
+
+func TestRDSService_Run_SwitchCases(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("ConnectDirect", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectDirect, nil)
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("localhost:5432", "admin", "us-west-2", nil)
+		mockRDSAdapter.EXPECT().GenerateAuthToken("localhost:5432", "admin", "us-west-2").Return("mock-auth-token", nil)
+		err := svc.Run()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ConnectViaTunnel", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectViaTunnel, nil)
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForLocalPort("RDS", 3306).Return(3306, nil)
+		mockRDSAdapter.EXPECT().GenerateAuthToken("test-rds:3306", "test-user", "us-east-1").Return("mock-auth-token", nil)
+		mockConnServices.EXPECT().StartPortForwarding(gomock.Any(), 3306, "test-rds", 3306).Return(nil)
+
+		err := svc.Run()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ConnectViaSOCKS", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectViaSOCKS, nil)
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1080, nil)
+		mockConnServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1080).Return(nil)
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ExitRDS, nil)
+
+		err := svc.Run()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ConnectViaSOCKS_WithCleanup", func(t *testing.T) {
+		mockSSH := mock_awsctl.NewMockSSHExecutorInterface(ctrl)
+		mockOS := mock_awsctl.NewMockOSDetector(ctrl)
+
+		svc := &rds.RDSService{
+			RPrompter:    mockRPrompter,
+			CPrompter:    mockConnPrompter,
+			ConnServices: mockConnServices,
+			SSHExecutor:  mockSSH,
+			OsDetector:   mockOS,
+			GPrompter:    mockGPrompter,
+		}
+
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectViaSOCKS, nil)
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+		mockConnPrompter.EXPECT().PromptForSOCKSProxyPort(1080).Return(1080, nil)
+		mockConnServices.EXPECT().StartSOCKSProxy(gomock.Any(), 1080).Return(nil)
+
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ExitRDS, promptUtils.ErrInterrupted)
+
+		mockOS.EXPECT().GetOS().Return("linux")
+		mockSSH.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+		err := svc.Run()
+		assert.Equal(t, promptUtils.ErrInterrupted, err)
+		assert.Equal(t, 0, svc.SOCKSPort())
+	})
+	t.Run("ActionSelectionError", func(t *testing.T) {
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectDirect, errors.New("some error"))
+
+		err := svc.Run()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "action selection aborted")
+	})
+
+}
+
+func TestRDSService_GetConnectionDetails(t *testing.T) {
+
+	svc, ctrl, mockRPrompter, mockRDSClient, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("ManualConnection", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, dbUser, region, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+		assert.Equal(t, "test-user", dbUser)
+		assert.Equal(t, "us-east-1", region)
+	})
+
+	t.Run("AWSConnection", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSClient.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}, nil)
+		mockRPrompter.EXPECT().PromptForRDSInstance([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}).Return("test-rds", nil)
+		mockRDSClient.EXPECT().GetConnectionEndpoint(gomock.Any(), "test-rds").Return("test-rds:3306", nil)
+		mockGPrompter.EXPECT().PromptForInput("Enter database username:", "").Return("test-user", nil)
+
+		endpoint, dbUser, region, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+		assert.Equal(t, "test-user", dbUser)
+		assert.Equal(t, "us-east-1", region)
+	})
+
+	t.Run("AWSNotConfigured", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, dbUser, region, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+		assert.Equal(t, "test-user", dbUser)
+		assert.Equal(t, "us-east-1", region)
+	})
+	t.Run("ProfilePromptError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("", errors.New("profile error"))
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+	})
+	t.Run("AWSConfigError", func(t *testing.T) {
+
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("invalid-profile", nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+	})
+	t.Run("NoRDSResources", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSClient.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{}, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+	})
+
+	t.Run("RDSResourcesError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSClient.EXPECT().ListRDSResources(gomock.Any()).Return(nil, errors.New("AWS error"))
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("test-rds:3306", "test-user", "us-east-1", nil)
+
+		endpoint, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+		assert.Equal(t, "test-rds:3306", endpoint)
+	})
+
+}
+
+func TestRDSService_Run_ErrorCases(t *testing.T) {
+	svc, ctrl, mockRPrompter, _, _, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("HandleDirectConnectionError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectDirect, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("", "", "", errors.New("manual endpoint error"))
+
+		err := svc.Run()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "direct connection failed")
+	})
+
+	t.Run("HandleTunnelConnectionError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectViaTunnel, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("invalid-endpoint", "", "", nil)
+
+		err := svc.Run()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "tunnel connection failed")
+	})
+
+	t.Run("HandleSOCKSConnectionError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(false)
+		mockRPrompter.EXPECT().SelectRDSAction().Return(rds.ConnectViaSOCKS, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("invalid-endpoint", "", "", nil)
+
+		err := svc.Run()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "SOCKS connection failed")
+	})
+}
+
+func TestHandleTunnelConnection_ErrorCases(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("InvalidEndpointFormat", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("invalid-endpoint", "user", "region", nil)
+
+		err := svc.HandleTunnelConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid RDS endpoint format")
+	})
+
+	t.Run("InvalidPort", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:invalid", "user", "region", nil)
+
+		err := svc.HandleTunnelConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid port in RDS endpoint")
+	})
+
+	t.Run("LocalPortPromptError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+		mockConnPrompter.EXPECT().PromptForLocalPort("RDS", 3306).Return(0, errors.New("port error"))
+
+		err := svc.HandleTunnelConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get local port")
+	})
+
+	t.Run("AuthTokenError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+		mockConnPrompter.EXPECT().PromptForLocalPort("RDS", 3306).Return(3306, nil)
+		mockRDSAdapter.EXPECT().GenerateAuthToken("host:3306", "user", "region").Return("", errors.New("auth error"))
+
+		err := svc.HandleTunnelConnection()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to generate RDS auth token")
+	})
+}
+
+func TestGetRDSConnectionDetails_ErrorCases(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("RegionPromptError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("", errors.New("region error"))
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+
+		_, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ProfilePromptError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("", errors.New("profile error"))
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+
+		_, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+	})
+
+	t.Run("NoRDSResources", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{}, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+
+		_, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+	})
+
+	t.Run("RDSResourcesError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return(nil, errors.New("AWS error"))
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
+
+		_, _, _, err := svc.GetConnectionDetails()
+		assert.NoError(t, err)
+	})
+
+	t.Run("UsernamePromptError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
+		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
+		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
+		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}, nil)
+		mockRPrompter.EXPECT().PromptForRDSInstance([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}).Return("test-rds", nil)
+		mockRDSAdapter.EXPECT().GetConnectionEndpoint(gomock.Any(), "test-rds").Return("test-rds:3306", nil)
+		mockGPrompter.EXPECT().PromptForInput("Enter database username:", "").Return("", errors.New("username error"))
+
+		_, _, _, err := svc.GetConnectionDetails()
+		assert.Error(t, err)
+	})
+}
+
+func TestHandleDirectConnection_AuthTokenError(t *testing.T) {
+	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	defer ctrl.Finish()
+
+	t.Run("GenerateAuthTokenError", func(t *testing.T) {
+		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
+		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(false, nil)
+		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("localhost:5432", "admin", "us-west-2", nil)
+
+		mockRDSAdapter.EXPECT().GenerateAuthToken("localhost:5432", "admin", "us-west-2").
+			Return("", errors.New("token generation failed"))
+
+		err := svc.HandleDirectConnection()
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to generate RDS auth token")
+		assert.Contains(t, err.Error(), "token generation failed") // Verify the wrapped error
+	})
+}
