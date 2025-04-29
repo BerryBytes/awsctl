@@ -651,7 +651,7 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
-
+	m.fs.EXPECT().Stat(gomock.Any()).Return(nil, os.ErrNotExist).AnyTimes()
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}

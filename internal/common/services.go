@@ -37,7 +37,29 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get connection details: %w", err)
 	}
+	cleanupKey := func() {
+		if details.UseInstanceConnect && details.KeyPath != "" {
+			if _, err := s.Provider.Fs.Stat(details.KeyPath); os.IsNotExist(err) {
+				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
+				return
+			}
+			if err := s.Provider.Fs.Remove(details.KeyPath); err != nil {
+				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
+			} else {
+				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
+			}
+		}
+	}
 
+	defer cleanupKey()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cleanupKey()
+		os.Exit(1)
+	}()
 	if details.Method == MethodSSM {
 		fmt.Printf("Initiating SSM session with instance %s...\n", details.InstanceID)
 		return s.SsmStarter.StartSession(ctx, details.InstanceID)
@@ -68,7 +90,13 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	fmt.Println("Using traditional SSH authentication")
 
 	fmt.Printf("Connecting to %s@%s...\n", details.User, details.Host)
-	return common.ExecuteSSHCommand(s.Executor, cmd)
+	err = common.ExecuteSSHCommand(s.Executor, cmd)
+	if err != nil {
+		fmt.Printf("SSH session failed with error: %v\n", err)
+	}
+	cleanupKey()
+
+	return err
 }
 
 func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
