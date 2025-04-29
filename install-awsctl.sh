@@ -70,7 +70,7 @@ detect_platform() {
 # Build the Go binary
 build_binary() {
   log "Building binary for OS: $OS, Architecture: $ARCH"
-  GOOS="$OS" GOARCH="$ARCH" go build -gcflags="$GC_FLAGS" -ldflags="$LD_FLAGS" -o "$BUILD_DIR/$BINARY_NAME" ./cmd/main.go
+  GOOS="$OS" GOARCH="$ARCH" go build -gcflags="$GC_FLAGS" -ldflags="$LD_FLAGS" -o "$BUILD_DIR/$BINARY_NAME" ./main.go
   if [ $? -ne 0 ]; then
     error "Failed to build the binary."
   fi
