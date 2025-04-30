@@ -233,16 +233,15 @@ func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string,
 		return s.handleManualConnection()
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(region),
-		config.WithSharedConfigProfile(profile),
-	)
-
-	if err != nil {
-		fmt.Printf("AWS config failed: %v\n", err)
-		return s.handleManualConnection()
-	}
 	if s.RDSClient == nil {
+		cfg, err := config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion(region),
+			config.WithSharedConfigProfile(profile),
+		)
+		if err != nil {
+			fmt.Printf("AWS config failed: %v\n", err)
+			return s.handleManualConnection()
+		}
 		s.RDSClient = NewRDSClient(cfg, &sso.RealCommandExecutor{})
 	}
 
