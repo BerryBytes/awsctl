@@ -3,7 +3,10 @@ package rds
 import (
 	"context"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 )
 
@@ -31,4 +34,12 @@ type RDSPromptInterface interface {
 	SelectRDSAction() (RDSAction, error)
 	PromptForDBUser() (string, error)
 	GetAWSConfig() (profile, region string, err error)
+}
+
+type ConfigLoader interface {
+	LoadDefaultConfig(ctx context.Context, opts ...func(*config.LoadOptions) error) (aws.Config, error)
+}
+
+type RDSClientFactory interface {
+	NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) RDSAdapterInterface
 }

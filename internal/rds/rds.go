@@ -11,20 +11,35 @@ import (
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 type RDSService struct {
-	RPrompter    RDSPromptInterface
-	CPrompter    connection.ConnectionPrompter
-	GPrompter    promptUtils.Prompter
-	RDSClient    RDSAdapterInterface
-	ConnServices connection.ServicesInterface
-	ConnProvider *connection.ConnectionProvider
-	SSHExecutor  common.SSHExecutorInterface
-	Fs           common.FileSystemInterface
-	socksPort    int
-	OsDetector   common.OSDetector
+	RPrompter        RDSPromptInterface
+	CPrompter        connection.ConnectionPrompter
+	GPrompter        promptUtils.Prompter
+	RDSClient        RDSAdapterInterface
+	ConnServices     connection.ServicesInterface
+	ConnProvider     *connection.ConnectionProvider
+	SSHExecutor      common.SSHExecutorInterface
+	Fs               common.FileSystemInterface
+	socksPort        int
+	OsDetector       common.OSDetector
+	ConfigLoader     ConfigLoader
+	RDSClientFactory RDSClientFactory
+}
+
+type RealConfigLoader struct{}
+
+func (r *RealConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
+	return config.LoadDefaultConfig(ctx, opts...)
+}
+
+type RealRDSClientFactory struct{}
+
+func (r *RealRDSClientFactory) NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) RDSAdapterInterface {
+	return NewRDSClient(cfg, executor)
 }
 
 func NewRDSService(
@@ -35,9 +50,11 @@ func NewRDSService(
 	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
 
 	service := &RDSService{
-		RPrompter:    NewRPrompter(prompter, configClient),
-		ConnServices: connServices,
-		socksPort:    0,
+		RPrompter:        NewRPrompter(prompter, configClient),
+		ConnServices:     connServices,
+		socksPort:        0,
+		ConfigLoader:     &RealConfigLoader{},
+		RDSClientFactory: &RealRDSClientFactory{},
 	}
 
 	for _, opt := range opts {
@@ -234,7 +251,7 @@ func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string,
 	}
 
 	if s.RDSClient == nil {
-		cfg, err := config.LoadDefaultConfig(context.TODO(),
+		cfg, err := s.ConfigLoader.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(region),
 			config.WithSharedConfigProfile(profile),
 		)
@@ -242,7 +259,7 @@ func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string,
 			fmt.Printf("AWS config failed: %v\n", err)
 			return s.handleManualConnection()
 		}
-		s.RDSClient = NewRDSClient(cfg, &sso.RealCommandExecutor{})
+		s.RDSClient = s.RDSClientFactory.NewRDSClient(cfg, &sso.RealCommandExecutor{})
 	}
 
 	resources, err := s.RDSClient.ListRDSResources(context.TODO())

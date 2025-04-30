@@ -9,7 +9,10 @@ import (
 	reflect "reflect"
 
 	rds "github.com/BerryBytes/awsctl/internal/rds"
+	sso "github.com/BerryBytes/awsctl/internal/sso"
 	models "github.com/BerryBytes/awsctl/models"
+	aws "github.com/aws/aws-sdk-go-v2/aws"
+	config "github.com/aws/aws-sdk-go-v2/config"
 	rds0 "github.com/aws/aws-sdk-go-v2/service/rds"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -336,4 +339,84 @@ func (m *MockRDSPromptInterface) SelectRDSAction() (rds.RDSAction, error) {
 func (mr *MockRDSPromptInterfaceMockRecorder) SelectRDSAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectRDSAction", reflect.TypeOf((*MockRDSPromptInterface)(nil).SelectRDSAction))
+}
+
+// MockConfigLoader is a mock of ConfigLoader interface.
+type MockConfigLoader struct {
+	ctrl     *gomock.Controller
+	recorder *MockConfigLoaderMockRecorder
+}
+
+// MockConfigLoaderMockRecorder is the mock recorder for MockConfigLoader.
+type MockConfigLoaderMockRecorder struct {
+	mock *MockConfigLoader
+}
+
+// NewMockConfigLoader creates a new mock instance.
+func NewMockConfigLoader(ctrl *gomock.Controller) *MockConfigLoader {
+	mock := &MockConfigLoader{ctrl: ctrl}
+	mock.recorder = &MockConfigLoaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConfigLoader) EXPECT() *MockConfigLoaderMockRecorder {
+	return m.recorder
+}
+
+// LoadDefaultConfig mocks base method.
+func (m *MockConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "LoadDefaultConfig", varargs...)
+	ret0, _ := ret[0].(aws.Config)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadDefaultConfig indicates an expected call of LoadDefaultConfig.
+func (mr *MockConfigLoaderMockRecorder) LoadDefaultConfig(ctx interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadDefaultConfig", reflect.TypeOf((*MockConfigLoader)(nil).LoadDefaultConfig), varargs...)
+}
+
+// MockRDSClientFactory is a mock of RDSClientFactory interface.
+type MockRDSClientFactory struct {
+	ctrl     *gomock.Controller
+	recorder *MockRDSClientFactoryMockRecorder
+}
+
+// MockRDSClientFactoryMockRecorder is the mock recorder for MockRDSClientFactory.
+type MockRDSClientFactoryMockRecorder struct {
+	mock *MockRDSClientFactory
+}
+
+// NewMockRDSClientFactory creates a new mock instance.
+func NewMockRDSClientFactory(ctrl *gomock.Controller) *MockRDSClientFactory {
+	mock := &MockRDSClientFactory{ctrl: ctrl}
+	mock.recorder = &MockRDSClientFactoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRDSClientFactory) EXPECT() *MockRDSClientFactoryMockRecorder {
+	return m.recorder
+}
+
+// NewRDSClient mocks base method.
+func (m *MockRDSClientFactory) NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) rds.RDSAdapterInterface {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewRDSClient", cfg, executor)
+	ret0, _ := ret[0].(rds.RDSAdapterInterface)
+	return ret0
+}
+
+// NewRDSClient indicates an expected call of NewRDSClient.
+func (mr *MockRDSClientFactoryMockRecorder) NewRDSClient(cfg, executor interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewRDSClient", reflect.TypeOf((*MockRDSClientFactory)(nil).NewRDSClient), cfg, executor)
 }
