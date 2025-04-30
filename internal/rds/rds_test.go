@@ -1,6 +1,7 @@
 package rds_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
+	"github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -493,13 +495,28 @@ func TestGetRDSConnectionDetails_ErrorCases(t *testing.T) {
 		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
 		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
 		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
-		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}, nil)
-		mockRPrompter.EXPECT().PromptForRDSInstance([]models.RDSInstance{{DBInstanceIdentifier: "test-rds"}}).Return("test-rds", nil)
+
+		_, err := config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion("us-east-1"),
+			config.WithSharedConfigProfile("default"),
+		)
+		assert.NoError(t, err)
+
+		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{
+			{DBInstanceIdentifier: "test-rds"},
+		}, nil)
+
+		mockRPrompter.EXPECT().PromptForRDSInstance([]models.RDSInstance{
+			{DBInstanceIdentifier: "test-rds"},
+		}).Return("test-rds", nil)
+
 		mockRDSAdapter.EXPECT().GetConnectionEndpoint(gomock.Any(), "test-rds").Return("test-rds:3306", nil)
+
 		mockGPrompter.EXPECT().PromptForInput("Enter database username:", "").Return("", errors.New("username error"))
 
-		_, _, _, err := svc.GetConnectionDetails()
+		_, _, _, err = svc.GetConnectionDetails()
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "username error")
 	})
 }
 
