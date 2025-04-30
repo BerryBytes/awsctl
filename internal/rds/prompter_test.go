@@ -472,8 +472,12 @@ func TestGetAWSConfig_FromPrompts(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
-	os.Unsetenv("AWS_REGION")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
+	if err := os.Unsetenv("AWS_REGION"); err != nil {
+		t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+	}
 
 	profiles := []string{"profile1", "profile2"}
 	mockConfigClient.EXPECT().ValidProfiles().Return(profiles, nil)
@@ -502,8 +506,12 @@ func TestGetAWSConfig_NoProfiles(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
-	os.Unsetenv("AWS_REGION")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
+	if err := os.Unsetenv("AWS_REGION"); err != nil {
+		t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+	}
 
 	mockConfigClient.EXPECT().ValidProfiles().Return([]string{}, nil)
 
@@ -521,8 +529,12 @@ func TestGetAWSConfig_ProfileSelectionError(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
-	os.Unsetenv("AWS_REGION")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
+	if err := os.Unsetenv("AWS_REGION"); err != nil {
+		t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+	}
 
 	profiles := []string{"profile1", "profile2"}
 	mockConfigClient.EXPECT().ValidProfiles().Return(profiles, nil)
@@ -604,7 +616,9 @@ func TestPromptForProfile_SingleProfile(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
 
 	singleProfile := []string{"profile1"}
 	mockConfigClient.EXPECT().ValidProfiles().Return(singleProfile, nil)
@@ -623,7 +637,9 @@ func TestPromptForProfile_NoValidProfiles(t *testing.T) {
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
 	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
+	}
 
 	mockConfigClient.EXPECT().ValidProfiles().Return([]string{}, nil)
 
