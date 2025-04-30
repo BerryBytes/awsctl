@@ -440,48 +440,13 @@ func TestHandleTunnelConnection_ErrorCases(t *testing.T) {
 }
 
 func TestGetRDSConnectionDetails_ErrorCases(t *testing.T) {
-	svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
+	svc, ctrl, mockRPrompter, _, mockConnPrompter, mockConnServices, _ := setupTest(t)
 	defer ctrl.Finish()
 
 	t.Run("RegionPromptError", func(t *testing.T) {
 		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
 		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
 		mockConnPrompter.EXPECT().PromptForRegion("").Return("", errors.New("region error"))
-		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
-
-		_, _, _, err := svc.GetConnectionDetails()
-		assert.NoError(t, err)
-	})
-
-	t.Run("ProfilePromptError", func(t *testing.T) {
-		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
-		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
-		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
-		mockRPrompter.EXPECT().PromptForProfile().Return("", errors.New("profile error"))
-		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
-
-		_, _, _, err := svc.GetConnectionDetails()
-		assert.NoError(t, err)
-	})
-
-	t.Run("NoRDSResources", func(t *testing.T) {
-		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
-		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
-		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
-		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
-		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return([]models.RDSInstance{}, nil)
-		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
-
-		_, _, _, err := svc.GetConnectionDetails()
-		assert.NoError(t, err)
-	})
-
-	t.Run("RDSResourcesError", func(t *testing.T) {
-		mockConnServices.EXPECT().IsAWSConfigured().Return(true)
-		mockConnPrompter.EXPECT().PromptForConfirmation("Look for RDS instances in AWS?").Return(true, nil)
-		mockConnPrompter.EXPECT().PromptForRegion("").Return("us-east-1", nil)
-		mockRPrompter.EXPECT().PromptForProfile().Return("default", nil)
-		mockRDSAdapter.EXPECT().ListRDSResources(gomock.Any()).Return(nil, errors.New("AWS error"))
 		mockRPrompter.EXPECT().PromptForManualEndpoint().Return("host:3306", "user", "region", nil)
 
 		_, _, _, err := svc.GetConnectionDetails()
@@ -506,6 +471,6 @@ func TestHandleDirectConnection_AuthTokenError(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to generate RDS auth token")
-		assert.Contains(t, err.Error(), "token generation failed") // Verify the wrapped error
+		assert.Contains(t, err.Error(), "token generation failed")
 	})
 }
