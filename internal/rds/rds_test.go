@@ -954,7 +954,11 @@ func TestDownloadSSLCertificate(t *testing.T) {
 	defer func() { os.Stdout = stdout }()
 	_, w, _ := os.Pipe()
 	os.Stdout = w
-	defer w.Close()
+	defer func() {
+		if err := w.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close write pipe: %v\n", err)
+		}
+	}()
 
 	t.Run("Success", func(t *testing.T) {
 		transport := &mockTransport{

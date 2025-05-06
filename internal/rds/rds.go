@@ -174,7 +174,11 @@ ssl-ca=%s
 		if err != nil {
 			return fmt.Errorf("failed to create temp config: %w", err)
 		}
-		defer tmpFile.Close()
+		defer func() {
+			if err := tmpFile.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close tmp file: %v\n", err)
+			}
+		}()
 
 		if _, err := tmpFile.WriteString(configContent); err != nil {
 			return fmt.Errorf("failed to write config: %w", err)
@@ -377,7 +381,11 @@ func DownloadSSLCertificate(s *RDSService, region string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to download from %s: %w", certURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to download certificate: HTTP %d", resp.StatusCode)
