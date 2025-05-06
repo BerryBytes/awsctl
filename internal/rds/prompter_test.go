@@ -160,12 +160,7 @@ func TestSelectRDSAction(t *testing.T) {
 			expectedAction: rds.ConnectViaTunnel,
 			expectError:    false,
 		},
-		{
-			name:           "Connect Via SOCKS",
-			selectedAction: "Connect Via SOCKS (SSH SOCKS proxy)",
-			expectedAction: rds.ConnectViaSOCKS,
-			expectError:    false,
-		},
+
 		{
 			name:           "Exit",
 			selectedAction: "Exit",
@@ -185,7 +180,6 @@ func TestSelectRDSAction(t *testing.T) {
 			actions := []string{
 				"Connect Direct (Just show RDS endpoint)",
 				"Connect Via Tunnel (SSH port forwarding)",
-				"Connect Via SOCKS (SSH SOCKS proxy)",
 				"Exit",
 			}
 
@@ -207,7 +201,6 @@ func TestSelectRDSAction(t *testing.T) {
 		})
 	}
 }
-
 func TestPromptForManualEndpoint_Invalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -690,4 +683,74 @@ func TestPromptForManualEndpoint_EndpointError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to input endpoint")
 	assert.ErrorContains(t, err, testErr.Error())
+}
+
+func TestPromptForAuthMethod(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
+	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+
+	testCases := []struct {
+		name           string
+		message        string
+		options        []string
+		mockSelection  string
+		mockError      error
+		expectedMethod string
+		expectedError  string
+		isInterrupted  bool
+	}{
+		{
+			name:           "Successful selection",
+			message:        "Select authentication method for RDS:",
+			options:        []string{"Token", "Native password"},
+			mockSelection:  "Token",
+			mockError:      nil,
+			expectedMethod: "Token",
+			expectedError:  "",
+		},
+		{
+			name:           "Interrupted prompt",
+			message:        "Select authentication method for RDS:",
+			options:        []string{"Token", "Native password"},
+			mockSelection:  "",
+			mockError:      promptUtils.ErrInterrupted,
+			expectedMethod: "",
+			isInterrupted:  true,
+		},
+		{
+			name:           "Selection error",
+			message:        "Select authentication method for RDS:",
+			options:        []string{"Token", "Native password"},
+			mockSelection:  "",
+			mockError:      errors.New("selection error"),
+			expectedMethod: "",
+			expectedError:  "failed to select authentication method: selection error",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockPrompter.EXPECT().PromptForSelection(
+				tc.message,
+				tc.options,
+			).Return(tc.mockSelection, tc.mockError)
+
+			prompter := rds.NewRPrompter(mockPrompter, mockConfigClient)
+			method, err := prompter.PromptForAuthMethod(tc.message, tc.options)
+
+			if tc.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError)
+			} else if tc.isInterrupted {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, promptUtils.ErrInterrupted))
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectedMethod, method)
+		})
+	}
 }

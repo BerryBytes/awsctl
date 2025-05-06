@@ -4,8 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	connection "github.com/BerryBytes/awsctl/internal/common"
 	"github.com/BerryBytes/awsctl/internal/sso"
@@ -13,6 +19,7 @@ import (
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/spf13/afero"
 )
 
 type RDSService struct {
@@ -89,11 +96,6 @@ func (s *RDSService) Run() error {
 				return fmt.Errorf("tunnel connection failed: %w", err)
 			}
 			return nil
-		case ConnectViaSOCKS:
-			if err := s.HandleSOCKSConnection(); err != nil {
-				return fmt.Errorf("SOCKS connection failed: %w", err)
-			}
-			fmt.Println("SOCKS proxy is running. Select 'Exit' to terminate it.")
 		case ExitRDS:
 			return nil
 		}
@@ -121,6 +123,10 @@ func (s *RDSService) HandleDirectConnection() error {
 }
 
 func (s *RDSService) HandleTunnelConnection() error {
+	authMethod, err := s.RPrompter.PromptForAuthMethod("Select authentication method for RDS:", []string{"Token", "Native password"})
+	if err != nil {
+		return fmt.Errorf("failed to get authentication method: %w", err)
+	}
 	rdsEndpoint, dbUser, region, err := s.getRDSConnectionDetails()
 	if err != nil {
 		return fmt.Errorf("failed to get RDS connection details: %w", err)
@@ -141,9 +147,51 @@ func (s *RDSService) HandleTunnelConnection() error {
 		return fmt.Errorf("failed to get local port: %w", err)
 	}
 
-	authToken, err := s.RDSClient.GenerateAuthToken(rdsEndpoint, dbUser, region)
-	if err != nil {
-		return fmt.Errorf("failed to generate RDS auth token: %w", err)
+	var tempFiles []common.TempFile
+	var rdsCleanup func()
+	var mysqlCommand string
+
+	if authMethod == "Token" {
+		authToken, err := s.RDSClient.GenerateAuthToken(rdsEndpoint, dbUser, region)
+		if err != nil {
+			return fmt.Errorf("failed to generate RDS auth token: %w", err)
+		}
+
+		certPath, err := s.HandleSSLCertificate(region)
+		if err != nil {
+			return fmt.Errorf("failed to handle SSL certificate: %w", err)
+		}
+
+		configContent := fmt.Sprintf(`[client]
+host=127.0.0.1
+port=%d
+user=%s
+password=%s
+ssl-ca=%s
+`, localPort, dbUser, authToken, certPath)
+
+		tmpFile, err := os.CreateTemp("", "mysql-config-*.cnf")
+		if err != nil {
+			return fmt.Errorf("failed to create temp config: %w", err)
+		}
+		defer tmpFile.Close()
+
+		if _, err := tmpFile.WriteString(configContent); err != nil {
+			return fmt.Errorf("failed to write config: %w", err)
+		}
+
+		if err := os.Chmod(tmpFile.Name(), 0600); err != nil {
+			return fmt.Errorf("failed to set config file permissions: %w", err)
+		}
+
+		tempFiles = []common.TempFile{
+			{Path: tmpFile.Name(), Desc: "temporary MySQL config"},
+		}
+
+		rdsCleanup = common.SetupCleanup(afero.NewOsFs(), tempFiles)
+		mysqlCommand = fmt.Sprintf("\nRun this command:\nmysql --defaults-file=%s\n", tmpFile.Name())
+	} else {
+		rdsCleanup = func() {}
 	}
 
 	fmt.Printf("\nSSH Tunnel Configuration:\n")
@@ -153,67 +201,38 @@ func (s *RDSService) HandleTunnelConnection() error {
 	fmt.Printf(" - Host: 127.0.0.1\n")
 	fmt.Printf(" - Port: %d\n", localPort)
 	fmt.Printf(" - User: %s\n", dbUser)
-	fmt.Printf(" - Token: %s\n\n", authToken)
-	fmt.Println("Starting port forwarding... Press Ctrl+C to stop.")
 
-	err = s.ConnServices.StartPortForwarding(
-		context.Background(),
-		localPort,
-		remoteHost,
-		remotePort,
-	)
+	if authMethod == "Token" {
+		fmt.Print(mysqlCommand)
+		fmt.Println("\nNote: This temporary configuration will be deleted when port forwarding ends.")
+	} else {
+		fmt.Println("\nNote: Use your database client (e.g., mysql -h 127.0.0.1 -P <port> -u <user> -p) to connect.")
+	}
 
+	portForwardCleanup, stopPortForwarding, err := s.ConnServices.StartPortForwarding(context.Background(), localPort, remoteHost, remotePort)
 	if err != nil {
-		return fmt.Errorf("port forwarding failed: %w", err)
+		rdsCleanup()
+		return fmt.Errorf("tunnel connection failed: port forwarding failed: %w", err)
 	}
 
-	fmt.Println("Port forwarding terminated.")
-	return nil
-}
-
-func (s *RDSService) HandleSOCKSConnection() error {
-	// Get all connection details first
-	rdsEndpoint, dbUser, _, err := s.getRDSConnectionDetails()
-	if err != nil {
-		return err
+	cleanup := func() {
+		stopPortForwarding()
+		rdsCleanup()
+		portForwardCleanup()
 	}
+	defer cleanup()
 
-	// Parse endpoint information
-	parts := strings.Split(rdsEndpoint, ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid RDS endpoint format: %s", rdsEndpoint)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-sigChan:
+		fmt.Println("Port forwarding session closed.")
+		return nil
+	case <-context.Background().Done():
+		fmt.Println("Port forwarding session closed due to context cancellation.")
+		return context.Background().Err()
 	}
-	remoteHost := parts[0]
-	remotePort, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return fmt.Errorf("invalid port in RDS endpoint: %w", err)
-	}
-
-	// Get SOCKS port
-	socksPort, err := s.CPrompter.PromptForSOCKSProxyPort(1080)
-	if err != nil {
-		return err
-	}
-
-	// authToken, err := s.RDSClient.GenerateAuthToken(rdsEndpoint, dbUser, region)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to generate RDS auth token: %w", err)
-	// }
-
-	fmt.Printf("\nSOCKS Proxy Configuration:\n")
-	fmt.Printf("SOCKS Proxy: 127.0.0.1:%d\n", socksPort)
-	fmt.Printf("RDS Endpoint: %s:%d\n", remoteHost, remotePort)
-	fmt.Printf("User: %s\n", dbUser)
-	// fmt.Printf("Auth Token: %s\n\n", authToken)
-	fmt.Println("Starting SOCKS proxy... Press Ctrl+C to stop.")
-
-	s.socksPort = socksPort
-
-	if err := s.ConnServices.StartSOCKSProxy(context.Background(), socksPort); err != nil {
-		return fmt.Errorf("SOCKS proxy failed: %w", err)
-	}
-
-	return nil
 }
 
 func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string, err error) {
@@ -303,6 +322,88 @@ func (s *RDSService) CleanupSOCKS() error {
 		s.socksPort = 0
 	}
 	return err
+}
+
+func (s *RDSService) HandleSSLCertificate(region string) (string, error) {
+	downloadChoice, err := s.GPrompter.PromptForSelection(
+		"To connect securely, an RDS SSL certificate is required:",
+		[]string{"Download certificate automatically", "Provide custom certificate path"},
+	)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", fmt.Errorf("operation cancelled by user")
+		}
+		return "", fmt.Errorf("certificate selection failed: %w", err)
+	}
+
+	if downloadChoice == "Download certificate automatically" {
+		certPath, err := DownloadSSLCertificate(s, region)
+		if err != nil {
+			return "", fmt.Errorf("failed to download certificate: %w", err)
+		}
+		return certPath, nil
+	}
+	rdsCertificate := fmt.Sprintf(".rds-certs/%s-bundle.pem", region)
+
+	homeDir, err := s.Fs.UserHomeDir()
+	if err != nil {
+		homeDir = os.Getenv("HOME")
+	}
+	defaultCertPath := filepath.Join(homeDir, rdsCertificate)
+
+	certPath, err := s.GPrompter.PromptForInput(
+		"Enter path to your RDS SSL CA certificate file",
+		defaultCertPath,
+	)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", fmt.Errorf("operation cancelled by user")
+		}
+		return "", fmt.Errorf("certificate path input failed: %w", err)
+	}
+
+	if _, err := s.Fs.Stat(certPath); err != nil {
+		return "", fmt.Errorf("certificate not found at %s: %w", certPath, err)
+	}
+
+	return certPath, nil
+}
+
+func DownloadSSLCertificate(s *RDSService, region string) (string, error) {
+	certURL := fmt.Sprintf("https://truststore.pki.rds.amazonaws.com/%s/%s-bundle.pem", region, region)
+	fmt.Printf("Downloading RDS SSL certificate from %s...\n", certURL)
+
+	resp, err := http.Get(certURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download from %s: %w", certURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download certificate: HTTP %d", resp.StatusCode)
+	}
+
+	certData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	homeDir, err := s.Fs.UserHomeDir()
+	if err != nil {
+		homeDir = os.Getenv("HOME")
+	}
+	certDir := filepath.Join(homeDir, ".rds-certs")
+	if err := s.Fs.MkdirAll(certDir, 0700); err != nil {
+		return "", fmt.Errorf("failed to create cert directory: %w", err)
+	}
+
+	certPath := filepath.Join(certDir, fmt.Sprintf("%s-bundle.pem", region))
+	if err := s.Fs.WriteFile(certPath, certData, 0600); err != nil {
+		return "", fmt.Errorf("failed to write certificate: %w", err)
+	}
+
+	fmt.Printf("Certificate saved to: %s\n", certPath)
+	return certPath, nil
 }
 
 func (s *RDSService) isAWSConfigured() bool {

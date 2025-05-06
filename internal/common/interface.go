@@ -60,7 +60,7 @@ func NewEC2InstanceConnectAdapter(client *ec2instanceconnect.Client) EC2Instance
 type ServicesInterface interface {
 	SSHIntoBastion(ctx context.Context) error
 	StartSOCKSProxy(ctx context.Context, port int) error
-	StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) error
+	StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) (cleanup func(), stop func(), err error)
 	IsAWSConfigured() bool
 }
 

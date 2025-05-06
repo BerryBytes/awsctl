@@ -3,7 +3,9 @@ package bastion
 import (
 	"context"
 	"errors"
+	"syscall"
 	"testing"
+	"time"
 
 	connection "github.com/BerryBytes/awsctl/internal/common"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
@@ -84,7 +86,11 @@ func TestBastionService_Run(t *testing.T) {
 				mockPrompter.EXPECT().PromptForLocalPort("forwarding", 8080).Return(9000, nil)
 				mockPrompter.EXPECT().PromptForRemoteHost().Return("remote.host", nil)
 				mockPrompter.EXPECT().PromptForRemotePort("remote service").Return(8081, nil)
-				mockServices.EXPECT().StartPortForwarding(gomock.Any(), 9000, "remote.host", 8081).Return(nil)
+				mockServices.EXPECT().StartPortForwarding(gomock.Any(), 9000, "remote.host", 8081).Return(
+					func() {},
+					func() {},
+					nil,
+				)
 			},
 		},
 		{
@@ -121,7 +127,11 @@ func TestBastionService_Run(t *testing.T) {
 				mockPrompter.EXPECT().PromptForLocalPort("forwarding", 8080).Return(9000, nil)
 				mockPrompter.EXPECT().PromptForRemoteHost().Return("remote.host", nil)
 				mockPrompter.EXPECT().PromptForRemotePort("remote service").Return(8081, nil)
-				mockServices.EXPECT().StartPortForwarding(gomock.Any(), 9000, "remote.host", 8081).Return(errors.New("forwarding error"))
+				mockServices.EXPECT().StartPortForwarding(gomock.Any(), 9000, "remote.host", 8081).Return(
+					func() {},
+					func() {},
+					errors.New("forwarding error"),
+				)
 			},
 			expectedError: "port forwarding error: forwarding error",
 		},
@@ -163,16 +173,37 @@ func TestBastionService_Run(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.setupMocks()
+			if tt.name == "User selects PortForwarding successfully" {
+				done := make(chan error)
+				tt.setupMocks()
+				service := NewBastionService(mockServices, mockPrompter)
+				go func() {
+					err := service.Run(context.Background())
+					done <- err
+				}()
 
-			service := NewBastionService(mockServices, mockPrompter)
-			err := service.Run(context.Background())
+				time.Sleep(100 * time.Millisecond)
+				if err := syscall.Kill(syscall.Getpid(), syscall.SIGINT); err != nil {
+					t.Fatalf("failed to send SIGINT: %v", err)
+				}
 
-			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				err := <-done
+				if tt.expectedError != "" {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.expectedError)
+				} else {
+					assert.NoError(t, err)
+				}
 			} else {
-				assert.NoError(t, err)
+				tt.setupMocks()
+				service := NewBastionService(mockServices, mockPrompter)
+				err := service.Run(context.Background())
+				if tt.expectedError != "" {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.expectedError)
+				} else {
+					assert.NoError(t, err)
+				}
 			}
 		})
 	}

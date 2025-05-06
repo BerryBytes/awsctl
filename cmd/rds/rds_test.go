@@ -32,7 +32,7 @@ func TestNewRDSCmd(t *testing.T) {
 				mockSvc.EXPECT().Run().Return(promptutils.ErrInterrupted)
 			},
 			args:          []string{},
-			expectedError: nil, // Should convert interruption to nil
+			expectedError: nil,
 		},
 		{
 			name: "service error",
@@ -82,13 +82,11 @@ func TestRDSCmdConfiguration(t *testing.T) {
 
 	cmd := rds.NewRDSCmd(deps)
 
-	// Test command metadata
 	assert.Equal(t, "rds", cmd.Use)
 	assert.Equal(t, "Interactive RDS connection manager", cmd.Short)
 	assert.Contains(t, cmd.Long, "Interactive menu for managing RDS database connections")
 	assert.True(t, cmd.SilenceUsage)
 
-	// Test command hierarchy
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -142,7 +140,7 @@ func TestRDSCmdArgsHandling(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockService := mock_rds.NewMockRDSServiceInterface(ctrl)
-	mockService.EXPECT().Run().Return(nil).AnyTimes() // Allow any number of calls
+	mockService.EXPECT().Run().Return(nil).AnyTimes()
 
 	deps := rds.RDSDependencies{
 		Service: mockService,

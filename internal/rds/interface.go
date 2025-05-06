@@ -34,6 +34,7 @@ type RDSPromptInterface interface {
 	SelectRDSAction() (RDSAction, error)
 	PromptForDBUser() (string, error)
 	GetAWSConfig() (profile, region string, err error)
+	PromptForAuthMethod(message string, options []string) (string, error)
 }
 
 type ConfigLoader interface {

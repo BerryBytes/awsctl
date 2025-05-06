@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/BerryBytes/awsctl/internal/sso"
+	"github.com/spf13/afero"
 )
 
 type SSHExecutorInterface interface {
@@ -296,4 +297,19 @@ func containsProxyCommand(args []string) bool {
 		}
 	}
 	return false
+}
+
+type TempFile struct {
+	Path string
+	Desc string
+}
+
+func SetupCleanup(fs afero.Fs, files []TempFile) func() {
+	return func() {
+		for _, file := range files {
+			if exists, _ := afero.Exists(fs, file.Path); exists {
+				_ = fs.Remove(file.Path)
+			}
+		}
+	}
 }

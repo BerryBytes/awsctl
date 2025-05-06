@@ -10,6 +10,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
+	"github.com/spf13/afero"
 )
 
 type Services struct {
@@ -37,29 +38,26 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get connection details: %w", err)
 	}
-	cleanupKey := func() {
-		if details.UseInstanceConnect && details.KeyPath != "" {
-			if _, err := s.Provider.Fs.Stat(details.KeyPath); os.IsNotExist(err) {
-				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
-				return
-			}
-			if err := s.Provider.Fs.Remove(details.KeyPath); err != nil {
-				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
-			} else {
-				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
-			}
-		}
+
+	tempFiles := []common.TempFile{}
+	if details.KeyPath != "" && details.UseInstanceConnect {
+		tempFiles = append(tempFiles, common.TempFile{
+			Path: details.KeyPath,
+			Desc: "temporary SSH key",
+		})
 	}
 
-	defer cleanupKey()
+	cleanup := common.SetupCleanup(afero.NewOsFs(), tempFiles)
+	defer cleanup()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		cleanupKey()
+		cleanup()
 		os.Exit(1)
 	}()
+
 	if details.Method == MethodSSM {
 		fmt.Printf("Initiating SSM session with instance %s...\n", details.InstanceID)
 		return s.SsmStarter.StartSession(ctx, details.InstanceID)
@@ -94,7 +92,6 @@ func (s *Services) SSHIntoBastion(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("SSH session failed with error: %v\n", err)
 	}
-	cleanupKey()
 
 	return err
 }
@@ -105,27 +102,22 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 		return fmt.Errorf("failed to get connection details: %w", err)
 	}
 
-	cleanupKey := func() {
-		if details.UseInstanceConnect && details.KeyPath != "" {
-			if _, err := s.Provider.Fs.Stat(details.KeyPath); os.IsNotExist(err) {
-				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
-				return
-			}
-			if err := s.Provider.Fs.Remove(details.KeyPath); err != nil {
-				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
-			} else {
-				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
-			}
-		}
+	tempFiles := []common.TempFile{}
+	if details.KeyPath != "" && details.UseInstanceConnect {
+		tempFiles = append(tempFiles, common.TempFile{
+			Path: details.KeyPath,
+			Desc: "temporary SSH key",
+		})
 	}
+
+	cleanup := common.SetupCleanup(afero.NewOsFs(), tempFiles)
+	defer cleanup()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	defer cleanupKey()
 	go func() {
 		<-sigChan
-		cleanupKey()
+		cleanup()
 		os.Exit(1)
 	}()
 
@@ -157,39 +149,30 @@ func (s *Services) StartSOCKSProxy(ctx context.Context, localPort int) error {
 	return err
 }
 
-func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) error {
+func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) (cleanup func(), stop func(), err error) {
 	details, err := s.Provider.GetConnectionDetails(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get connection details: %w", err)
-	}
-	cleanupKey := func() {
-		if details.UseInstanceConnect && details.KeyPath != "" {
-			if _, err := s.Provider.Fs.Stat(details.KeyPath); os.IsNotExist(err) {
-				fmt.Printf("Temporary key %s already removed or never existed\n", details.KeyPath)
-				return
-			}
-			if err := s.Provider.Fs.Remove(details.KeyPath); err != nil {
-				fmt.Printf("Warning: failed to remove temporary key %s: %v\n", details.KeyPath, err)
-			} else {
-				fmt.Printf("Successfully removed temporary key %s\n", details.KeyPath)
-			}
-		}
+		return func() {}, func() {}, fmt.Errorf("failed to get connection details: %w", err)
 	}
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	tempFiles := []common.TempFile{}
+	if details.KeyPath != "" && details.UseInstanceConnect {
+		tempFiles = append(tempFiles, common.TempFile{
+			Path: details.KeyPath,
+			Desc: "temporary SSH key",
+		})
+	}
 
-	defer cleanupKey()
-	go func() {
-		<-sigChan
-		cleanupKey()
-		os.Exit(1)
-	}()
+	cleanup = func() {
+		common.SetupCleanup(afero.NewOsFs(), tempFiles)()
+	}
 
 	if details.Method == MethodSSM {
-		fmt.Printf("Setting up SSM port forwarding from localhost:%d to %s:%d via instance %s...\n", localPort, remoteHost, remotePort, details.InstanceID)
+		fmt.Printf("Setting up SSM port forwarding from localhost:%d to %s:%d via instance %s...\n",
+			localPort, remoteHost, remotePort, details.InstanceID)
 		fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
-		return s.SsmStarter.StartPortForwarding(ctx, details.InstanceID, localPort, remoteHost, remotePort)
+		err := s.SsmStarter.StartPortForwarding(ctx, details.InstanceID, localPort, remoteHost, remotePort)
+		return cleanup, func() {}, err
 	}
 
 	builder := common.NewSSHCommandBuilder(
@@ -208,14 +191,26 @@ func (s *Services) StartPortForwarding(ctx context.Context, localPort int, remot
 		via = fmt.Sprintf("EC2 Instance Connect for instance %s", details.Host)
 	}
 
-	fmt.Printf("Setting up port forwarding from localhost:%d to %s:%d via %s...\n", localPort, remoteHost, remotePort, via)
+	fmt.Printf("Setting up port forwarding from localhost:%d to %s:%d via %s...\n",
+		localPort, remoteHost, remotePort, via)
 	fmt.Println("Port forwarding active. Press Ctrl+C to stop.")
 
-	err = common.ExecuteSSHCommand(s.Executor, cmd)
-	if details.UseInstanceConnect && details.KeyPath != "" {
-		_ = s.Provider.Fs.Remove(details.KeyPath)
+	cmdErr := make(chan error, 1)
+	stopChan := make(chan struct{})
+	go func() {
+		err := common.ExecuteSSHCommand(s.Executor, cmd)
+		select {
+		case <-stopChan:
+		default:
+			cmdErr <- err
+		}
+	}()
+
+	stop = func() {
+		close(stopChan)
 	}
-	return err
+
+	return cleanup, stop, nil
 }
 
 func (s *Services) IsAWSConfigured() bool {

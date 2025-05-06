@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	connection "github.com/BerryBytes/awsctl/internal/common"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
@@ -84,14 +87,28 @@ func (b *BastionService) Run(ctx context.Context) error {
 				return fmt.Errorf("failed to get remote port: %v", err)
 			}
 
-			if err := b.services.StartPortForwarding(ctx, localPort, remoteHost, remotePort); err != nil {
+			cleanup, stopPortForwarding, err := b.services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
+			if err != nil {
 				if errors.Is(err, promptUtils.ErrInterrupted) {
 					return nil
 				}
 				return fmt.Errorf("port forwarding error: %v", err)
 			}
-			fmt.Println("Port forwarding session closed. Exiting.")
-			return nil
+			defer cleanup()
+
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+			select {
+			case <-sigChan:
+				stopPortForwarding()
+				fmt.Println("Port forwarding session closed.")
+				return nil
+			case <-ctx.Done():
+				stopPortForwarding()
+				fmt.Println("Port forwarding session closed due to context cancellation.")
+				return ctx.Err()
+			}
 
 		case connection.ExitBastion:
 			fmt.Println("Exiting bastion tool.")

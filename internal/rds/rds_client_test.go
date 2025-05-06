@@ -187,7 +187,6 @@ func TestListRDSResources(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Successfully lists both clusters and instances", func(t *testing.T) {
-		// Mock cluster response
 		mockClusters := &awsrds.DescribeDBClustersOutput{
 			DBClusters: []types.DBCluster{
 				{
@@ -199,7 +198,6 @@ func TestListRDSResources(t *testing.T) {
 		}
 		mockClient.EXPECT().DescribeDBClusters(ctx, gomock.Any(), gomock.Any()).Return(mockClusters, nil)
 
-		// Mock instance response
 		mockInstances := &awsrds.DescribeDBInstancesOutput{
 			DBInstances: []types.DBInstance{
 				{
@@ -222,7 +220,6 @@ func TestListRDSResources(t *testing.T) {
 			t.Fatalf("Expected 2 resources, got %d", len(resources))
 		}
 
-		// Verify sorting
 		if resources[0].DBInstanceIdentifier != "cluster-1" {
 			t.Error("Resources not sorted correctly")
 		}

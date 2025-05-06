@@ -264,6 +264,21 @@ func (mr *MockRDSPromptInterfaceMockRecorder) GetAWSConfig() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAWSConfig", reflect.TypeOf((*MockRDSPromptInterface)(nil).GetAWSConfig))
 }
 
+// PromptForAuthMethod mocks base method.
+func (m *MockRDSPromptInterface) PromptForAuthMethod(message string, options []string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PromptForAuthMethod", message, options)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PromptForAuthMethod indicates an expected call of PromptForAuthMethod.
+func (mr *MockRDSPromptInterfaceMockRecorder) PromptForAuthMethod(message, options interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForAuthMethod", reflect.TypeOf((*MockRDSPromptInterface)(nil).PromptForAuthMethod), message, options)
+}
+
 // PromptForDBUser mocks base method.
 func (m *MockRDSPromptInterface) PromptForDBUser() (string, error) {
 	m.ctrl.T.Helper()

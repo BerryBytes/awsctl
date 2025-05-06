@@ -13,6 +13,7 @@ require (
 	github.com/aws/smithy-go v1.22.2
 	github.com/golang/mock v1.6.0
 	github.com/manifoldco/promptui v0.9.0
+	github.com/spf13/afero v1.14.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
@@ -37,4 +38,5 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	golang.org/x/text v0.23.0 // indirect
 )

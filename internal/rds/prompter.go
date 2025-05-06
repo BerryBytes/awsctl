@@ -21,7 +21,6 @@ type RDSAction int
 const (
 	ConnectDirect RDSAction = iota
 	ConnectViaTunnel
-	ConnectViaSOCKS
 	ExitRDS
 )
 
@@ -114,7 +113,6 @@ func (p *RPrompter) SelectRDSAction() (RDSAction, error) {
 	actions := []string{
 		"Connect Direct (Just show RDS endpoint)",
 		"Connect Via Tunnel (SSH port forwarding)",
-		"Connect Via SOCKS (SSH SOCKS proxy)",
 		"Exit",
 	}
 
@@ -128,8 +126,6 @@ func (p *RPrompter) SelectRDSAction() (RDSAction, error) {
 		return ConnectDirect, nil
 	case actions[ConnectViaTunnel]:
 		return ConnectViaTunnel, nil
-	case actions[ConnectViaSOCKS]:
-		return ConnectViaSOCKS, nil
 	case actions[ExitRDS]:
 		return ExitRDS, nil
 	default:
@@ -187,6 +183,17 @@ func (p *RPrompter) GetAWSConfig() (profile, region string, err error) {
 	}
 
 	return profile, region, nil
+}
+
+func (p *RPrompter) PromptForAuthMethod(message string, options []string) (string, error) {
+	selected, err := p.Prompt.PromptForSelection(message, options)
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
+		return "", fmt.Errorf("failed to select authentication method: %w", err)
+	}
+	return selected, nil
 }
 
 func (p *RPrompter) PromptForDBUser() (string, error) {
