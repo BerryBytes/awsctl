@@ -567,17 +567,18 @@ func TestPromptForManualCluster_ErrorCases(t *testing.T) {
 				Return(tt.mockResponses[0].([]interface{})...)
 
 			for i := 1; i < len(tt.mockResponses); i++ {
-				if i == 1 {
+				switch i {
+				case 1:
 					call = mockPrompt.EXPECT().
 						PromptForInput("Enter EKS cluster endpoint (e.g., https://<endpoint>):", "").
 						After(call).
 						Return(tt.mockResponses[i].([]interface{})...)
-				} else if i == 2 {
+				case 2:
 					call = mockPrompt.EXPECT().
 						PromptForInput("Enter Certificate Authority data (base64):", "").
 						After(call).
 						Return(tt.mockResponses[i].([]interface{})...)
-				} else if i == 3 {
+				case 3:
 					mockPrompt.EXPECT().
 						PromptForInput("Enter AWS region (e.g., us-east-1):", "").
 						After(call).
