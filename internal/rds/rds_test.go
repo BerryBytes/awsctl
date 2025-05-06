@@ -113,10 +113,8 @@ func TestHandleDirectConnection_Success(t *testing.T) {
 }
 
 func TestRDSService_HandleTunnelConnection(t *testing.T) {
-	t.Parallel()
 
 	t.Run("HappyPath", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
 		defer ctrl.Finish()
 
@@ -180,7 +178,6 @@ func TestRDSService_HandleTunnelConnection(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidPort", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, _, mockConnPrompter, mockConnServices, _ := setupTest(t)
 		defer ctrl.Finish()
 
@@ -195,7 +192,6 @@ func TestRDSService_HandleTunnelConnection(t *testing.T) {
 	})
 
 	t.Run("AWSNotConfigured", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
 		defer ctrl.Finish()
 
@@ -370,10 +366,8 @@ func TestNewRDSService(t *testing.T) {
 }
 
 func TestRDSService_Run_SwitchCases(t *testing.T) {
-	t.Parallel()
 
 	t.Run("ConnectDirect", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, _ := setupTest(t)
 		defer ctrl.Finish()
 
@@ -388,7 +382,6 @@ func TestRDSService_Run_SwitchCases(t *testing.T) {
 	})
 
 	t.Run("ConnectViaTunnel", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, mockRDSAdapter, mockConnPrompter, mockConnServices, mockGPrompter := setupTest(t)
 		defer ctrl.Finish()
 
@@ -454,7 +447,6 @@ func TestRDSService_Run_SwitchCases(t *testing.T) {
 	})
 
 	t.Run("ActionSelectionError", func(t *testing.T) {
-		t.Parallel()
 		svc, ctrl, mockRPrompter, _, _, _, _ := setupTest(t)
 		defer ctrl.Finish()
 
