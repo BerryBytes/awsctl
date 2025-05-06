@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_eks "github.com/BerryBytes/awsctl/tests/mock/eks"
 	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ func TestNewRootCmd(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface)
+		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface, *mock_eks.MockEKSServiceInterface)
 		validateFunc func(*testing.T, *cobra.Command)
 	}{
 		{
@@ -27,6 +28,7 @@ func TestNewRootCmd(t *testing.T) {
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
 				rdsSvc *mock_rds.MockRDSServiceInterface,
+				eksSvc *mock_eks.MockEKSServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
@@ -34,10 +36,11 @@ func TestNewRootCmd(t *testing.T) {
 				assert.Equal(t, "AWS CLI Tool", cmd.Short)
 				assert.NotEmpty(t, cmd.Long)
 
-				assert.Len(t, cmd.Commands(), 3)
+				assert.Len(t, cmd.Commands(), 4)
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[0])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[1])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[2])
+				assert.IsType(t, &cobra.Command{}, cmd.Commands()[3])
 			},
 		},
 		{
@@ -48,11 +51,12 @@ func TestNewRootCmd(t *testing.T) {
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
 				rdsSvc *mock_rds.MockRDSServiceInterface,
+				eksSvc *mock_eks.MockEKSServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
 				assert.NotNil(t, cmd)
-				assert.Len(t, cmd.Commands(), 3)
+				assert.Len(t, cmd.Commands(), 4)
 			},
 		},
 	}
@@ -64,8 +68,9 @@ func TestNewRootCmd(t *testing.T) {
 			mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 			mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
+			mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
 
-			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS)
+			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS, mockEKS)
 
 			deps := RootDependencies{
 				SSOClient:      mockSSO,
@@ -73,6 +78,7 @@ func TestNewRootCmd(t *testing.T) {
 				GeneralManager: mockGeneral,
 				FileSystem:     mockFS,
 				RDSService:     mockRDS,
+				EKSService:     mockEKS,
 			}
 
 			cmd := NewRootCmd(deps)
@@ -90,6 +96,7 @@ func TestRootCmdExecution(t *testing.T) {
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 	mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
+	mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
 
 	deps := RootDependencies{
 		SSOClient:      mockSSO,
@@ -97,6 +104,7 @@ func TestRootCmdExecution(t *testing.T) {
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,
 		RDSService:     mockRDS,
+		EKSService:     mockEKS,
 	}
 
 	t.Run("root command help execution", func(t *testing.T) {
@@ -126,6 +134,7 @@ func TestSubcommandInitialization(t *testing.T) {
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 	mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
+	mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
 
 	deps := RootDependencies{
 		SSOClient:      mockSSO,
@@ -133,6 +142,7 @@ func TestSubcommandInitialization(t *testing.T) {
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,
 		RDSService:     mockRDS,
+		EKSService:     mockEKS,
 	}
 
 	t.Run("SSO subcommand exists", func(t *testing.T) {
@@ -157,5 +167,13 @@ func TestSubcommandInitialization(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, rdsCmd)
 		assert.Equal(t, "rds", rdsCmd.Name())
+	})
+
+	t.Run("EKS subcommand exists", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		eksCmd, _, err := cmd.Find([]string{"eks"})
+		assert.NoError(t, err)
+		assert.NotNil(t, eksCmd)
+		assert.Equal(t, "eks", eksCmd.Name())
 	})
 }
