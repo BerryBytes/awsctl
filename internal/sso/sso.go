@@ -132,7 +132,11 @@ func (c *RealSSOClient) SetupSSO() error {
 	configPath, err := config.FindConfigFile(&c.Config)
 
 	if err != nil {
-		return c.setupNewConfiguration()
+		if errors.Is(err, config.ErrNoConfigFile) {
+			fmt.Println("No configuration file found. Setting up a new configuration...")
+			return c.setupNewConfiguration()
+		}
+		return err
 	}
 
 	fileInfo, err := os.Stat(configPath)
