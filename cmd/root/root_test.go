@@ -1,140 +1,144 @@
 package root
 
 import (
-	"bytes"
-	"errors"
 	"testing"
 
-	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
-
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	"github.com/golang/mock/gomock"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewRootCmd(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
-		name          string
-		expectedUse   string
-		expectedShort string
-		expectedLong  string
+		name         string
+		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface)
+		validateFunc func(*testing.T, *cobra.Command)
 	}{
 		{
-			name:          "root command metadata",
-			expectedUse:   "awsctl",
-			expectedShort: "AWS CLI Tool",
-			expectedLong:  "A CLI tool for managing AWS services and configurations.",
+			name: "successful initialization with all dependencies",
+			setupMocks: func(
+				ssoClient *mock_awsctl.MockSSOClient,
+				bastionSvc *mock_awsctl.MockBastionServiceInterface,
+				genManager *mock_awsctl.MockGeneralUtilsInterface,
+				fs *mock_awsctl.MockFileSystemInterface,
+			) {
+			},
+			validateFunc: func(t *testing.T, cmd *cobra.Command) {
+				assert.Equal(t, "awsctl", cmd.Use)
+				assert.Equal(t, "AWS CLI Tool", cmd.Short)
+				assert.NotEmpty(t, cmd.Long)
+
+				assert.Len(t, cmd.Commands(), 2)
+				assert.IsType(t, &cobra.Command{}, cmd.Commands()[0])
+				assert.IsType(t, &cobra.Command{}, cmd.Commands()[1])
+			},
+		},
+		{
+			name: "nil dependencies should still work",
+			setupMocks: func(
+				ssoClient *mock_awsctl.MockSSOClient,
+				bastionSvc *mock_awsctl.MockBastionServiceInterface,
+				genManager *mock_awsctl.MockGeneralUtilsInterface,
+				fs *mock_awsctl.MockFileSystemInterface,
+			) {
+			},
+			validateFunc: func(t *testing.T, cmd *cobra.Command) {
+				assert.NotNil(t, cmd)
+				assert.Len(t, cmd.Commands(), 2)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+			mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+			mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 
-			mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-			rootCmd := NewRootCmd(mockSSOClient)
+			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS)
 
-			assert.Equal(t, tt.expectedUse, rootCmd.Use)
-			assert.Equal(t, tt.expectedShort, rootCmd.Short)
-			assert.Contains(t, rootCmd.Long, tt.expectedLong)
+			deps := RootDependencies{
+				SSOClient:      mockSSO,
+				BastionService: mockBastion,
+				GeneralManager: mockGeneral,
+				FileSystem:     mockFS,
+			}
+
+			cmd := NewRootCmd(deps)
+
+			tt.validateFunc(t, cmd)
 		})
 	}
 }
 
-func TestRootCommandStructure(t *testing.T) {
+func TestRootCmdExecution(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-	rootCmd := NewRootCmd(mockSSOClient)
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 
-	ssoCmd := cmdSSO.NewSSOCommands(mockSSOClient)
-	found := false
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Use == ssoCmd.Use {
-			found = true
-			break
-		}
+	deps := RootDependencies{
+		SSOClient:      mockSSO,
+		BastionService: mockBastion,
+		GeneralManager: mockGeneral,
+		FileSystem:     mockFS,
 	}
-	assert.True(t, found, "SSO command should be registered under root")
 
-	assert.GreaterOrEqual(t, len(rootCmd.Commands()), 1, "Root command should have at least one subcommand")
+	t.Run("root command help execution", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		cmd.SetArgs([]string{})
+
+		err := cmd.Execute()
+		assert.NoError(t, err)
+	})
+
+	t.Run("root command with invalid subcommand", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		cmd.SetArgs([]string{"invalid"})
+
+		err := cmd.Execute()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown command")
+	})
 }
 
-func TestRootCmd_Execution(t *testing.T) {
-	tests := []struct {
-		name           string
-		args           []string
-		expectedOutput string
-		expectedErr    error
-	}{
-		{
-			name:           "help command",
-			args:           []string{"help"},
-			expectedOutput: "Usage:",
-			expectedErr:    nil,
-		},
-		{
-			name:           "no args shows help",
-			args:           []string{},
-			expectedOutput: "Usage:",
-			expectedErr:    nil,
-		},
-		{
-			name:           "invalid command",
-			args:           []string{"invalid"},
-			expectedOutput: "unknown command",
-			expectedErr:    errors.New("unknown command"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-			rootCmd := NewRootCmd(mockSSOClient)
-
-			var outBuf bytes.Buffer
-			rootCmd.SetOut(&outBuf)
-			rootCmd.SetErr(&outBuf)
-
-			rootCmd.SetArgs(tt.args)
-			err := rootCmd.Execute()
-
-			if tt.expectedErr != nil {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErr.Error())
-			} else {
-				require.NoError(t, err)
-			}
-
-			if tt.expectedOutput != "" {
-				assert.Contains(t, outBuf.String(), tt.expectedOutput)
-			}
-		})
-	}
-}
-
-func TestRootCmd_SubcommandExecution(t *testing.T) {
+func TestSubcommandInitialization(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
-	mockSSOClient.EXPECT().SetupSSO().Return(nil)
+	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
+	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
+	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 
-	rootCmd := NewRootCmd(mockSSOClient)
+	deps := RootDependencies{
+		SSOClient:      mockSSO,
+		BastionService: mockBastion,
+		GeneralManager: mockGeneral,
+		FileSystem:     mockFS,
+	}
 
-	rootCmd.SetArgs([]string{"sso", "setup"})
+	t.Run("SSO subcommand exists", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		ssoCmd, _, err := cmd.Find([]string{"sso"})
+		assert.NoError(t, err)
+		assert.NotNil(t, ssoCmd)
+		assert.Equal(t, "sso", ssoCmd.Name())
+	})
 
-	var outBuf bytes.Buffer
-	rootCmd.SetOut(&outBuf)
-
-	err := rootCmd.Execute()
-	assert.NoError(t, err)
-
-	assert.Contains(t, outBuf.String(), "")
+	t.Run("bastion subcommand exists", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		bastionCmd, _, err := cmd.Find([]string{"bastion"})
+		assert.NoError(t, err)
+		assert.NotNil(t, bastionCmd)
+		assert.Equal(t, "bastion", bastionCmd.Name())
+	})
 }

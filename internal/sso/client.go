@@ -32,10 +32,12 @@ func NewAWSClient(
 func DefaultAWSClient() AWSClient {
 	executor := &RealCommandExecutor{}
 
+	ssoClient, _ := NewRealAWSSSOClient(executor)
+
 	return NewAWSClient(
 		&RealAWSConfigClient{Executor: executor},
-		&RealAWSSSOClient{CredentialsClient: &RealAWSCredentialsClient{configClient: &RealAWSConfigClient{}, executor: executor}},
-		&RealAWSCredentialsClient{configClient: &RealAWSConfigClient{Executor: executor}, executor: executor},
+		ssoClient,
+		ssoClient.CredentialsClient,
 		&RealAWSSelectionClient{Prompter: promptUtils.NewPrompt()},
 		&RealAWSUtilityClient{GeneralManager: generalUtils.NewGeneralUtilsManager()},
 	)

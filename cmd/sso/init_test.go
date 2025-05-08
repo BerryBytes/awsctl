@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	mock_sso "github.com/BerryBytes/awsctl/tests/mocks"
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/golang/mock/gomock"
@@ -16,7 +16,7 @@ func TestInitCmd(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
+	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 
 	tests := []struct {
 		name          string
@@ -109,7 +109,7 @@ func TestInitCmd_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSOClient := mock_sso.NewMockSSOClient(ctrl)
+	mockSSOClient := mock_awsctl.NewMockSSOClient(ctrl)
 	mockSSOClient.EXPECT().InitSSO(false, false).Return(nil)
 
 	cmd := InitCmd(mockSSOClient)

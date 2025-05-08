@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/BerryBytes/awsctl/internal/config"
+	"github.com/BerryBytes/awsctl/models"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 
 	"github.com/manifoldco/promptui"
@@ -23,7 +24,6 @@ type RealSSOClient struct {
 }
 
 func NewSSOClient(awsClient AWSClient) (SSOClient, error) {
-	// Initialize config using NewConfig
 	cfg, err := config.NewConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
@@ -55,7 +55,6 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 				return fmt.Errorf("failed to set up AWS SSO: %w", err)
 			}
 
-			// Fetch profiles again after SSO setup
 			profiles, err = c.AWSClient.ConfigClient.ValidProfiles()
 			if err != nil {
 				return fmt.Errorf("error verifying profiles after SSO setup: %w", err)
@@ -133,7 +132,11 @@ func (c *RealSSOClient) SetupSSO() error {
 	configPath, err := config.FindConfigFile(&c.Config)
 
 	if err != nil {
-		return c.setupNewConfiguration()
+		if errors.Is(err, config.ErrNoConfigFile) {
+			fmt.Println("No configuration file found. Setting up a new configuration...")
+			return c.setupNewConfiguration()
+		}
+		return err
 	}
 
 	fileInfo, err := os.Stat(configPath)
@@ -251,5 +254,31 @@ func (c *RealSSOClient) updateCustomConfiguration(configPath string) error {
 		return fmt.Errorf("failed to configure profile: %v", err)
 	}
 
+	return nil
+}
+
+func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
+	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
+	fmt.Printf("Selected Account: %s\n", account.AccountName)
+	if role != "" {
+		fmt.Printf("Selected Role: %s\n", role)
+	}
+
+	if err := c.AWSClient.ConfigClient.ConfigureDefaultProfile(profile.Region, "json"); err != nil {
+		return fmt.Errorf("failed to configure default profile: %v", err)
+	}
+
+	ssoProfile := fmt.Sprintf("sso-%s-%s", account.AccountName, role)
+	if err := c.AWSClient.ConfigClient.ConfigureSSOProfile(
+		ssoProfile,
+		profile.Region,
+		account.AccountID,
+		role,
+		profile.SsoStartUrl,
+	); err != nil {
+		return fmt.Errorf("failed to configure SSO profile: %v", err)
+	}
+
+	fmt.Printf("Successfully configured profile: %s\n", ssoProfile)
 	return nil
 }

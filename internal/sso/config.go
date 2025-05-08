@@ -1,13 +1,17 @@
 package sso
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
 
 type CommandExecutor interface {
 	RunCommand(name string, args ...string) ([]byte, error)
+	RunInteractiveCommand(ctx context.Context, name string, args ...string) error
+	LookPath(file string) (string, error)
 }
 
 type RealCommandExecutor struct{}
@@ -15,6 +19,19 @@ type RealCommandExecutor struct{}
 func (e *RealCommandExecutor) RunCommand(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
 	return cmd.Output()
+}
+
+func (e *RealCommandExecutor) RunInteractiveCommand(ctx context.Context, name string, args ...string) error {
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (e *RealCommandExecutor) LookPath(file string) (string, error) {
+	return exec.LookPath(file)
 }
 
 type AWSConfigClient interface {
@@ -53,7 +70,7 @@ func (c *RealAWSConfigClient) ValidProfiles() ([]string, error) {
 
 	var validProfiles []string
 	for _, profile := range profiles {
-		if profile != "" {
+		if profile != "" && profile != "default" {
 			validProfiles = append(validProfiles, profile)
 		}
 	}

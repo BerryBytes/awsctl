@@ -86,6 +86,9 @@ func (c *RealAWSSelectionClient) SelectAccount(accounts []models.SSOAccount) (st
 
 	accountName, err := c.Prompter.PromptForSelection("Select an AWS Account", accountNames)
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", promptUtils.ErrInterrupted
+		}
 		return "", fmt.Errorf("account selection aborted: %v", err)
 	}
 	return accountName, nil
@@ -143,7 +146,6 @@ func (c *RealAWSSelectionClient) SelectRoleFromAccount(account *models.SSOAccoun
 		return "", nil
 	}
 	role, err := c.SelectRole(account.Roles)
-
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return "", promptUtils.ErrInterrupted

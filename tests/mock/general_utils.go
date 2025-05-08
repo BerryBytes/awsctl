@@ -2,7 +2,7 @@
 // Source: ./utils/general/general.go
 
 // Package mock_generalutils is a generated GoMock package.
-package mock_sso
+package mock_awsctl
 
 import (
 	context "context"

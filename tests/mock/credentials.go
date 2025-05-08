@@ -2,7 +2,7 @@
 // Source: ./internal/sso/credentials.go
 
 // Package mock_sso is a generated GoMock package.
-package mock_sso
+package mock_awsctl
 
 import (
 	reflect "reflect"

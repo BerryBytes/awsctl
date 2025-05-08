@@ -30,49 +30,39 @@ type AWSSSOClient interface {
 type RealAWSSSOClient struct {
 	TokenCache        models.TokenCache
 	CredentialsClient AWSCredentialsClient
+	Executor          CommandExecutor
+	GetHomeDir        func() (string, error)
+	AWSClient         *AWSClient
 }
 
-func (c *RealSSOClient) configureProfile(profile *models.SSOProfile, account *models.SSOAccount, role string) error {
-	fmt.Printf("Selected Profile: %s\n", profile.ProfileName)
-	fmt.Printf("Selected Account: %s\n", account.AccountName)
-	if role != "" {
-		fmt.Printf("Selected Role: %s\n", role)
-	}
+func NewRealAWSSSOClient(executor CommandExecutor) (*RealAWSSSOClient, error) {
 
-	if err := c.AWSClient.ConfigClient.ConfigureDefaultProfile(profile.Region, "json"); err != nil {
-		return fmt.Errorf("failed to configure default profile: %v", err)
-	}
+	credentialsClient := NewRealAWSCredentialsClient(&RealAWSConfigClient{Executor: executor}, executor)
 
-	ssoProfile := fmt.Sprintf("sso-%s-%s", account.AccountName, role)
-	if err := c.AWSClient.ConfigClient.ConfigureSSOProfile(
-		ssoProfile,
-		profile.Region,
-		account.AccountID,
-		role,
-		profile.SsoStartUrl,
-	); err != nil {
-		return fmt.Errorf("failed to configure SSO profile: %v", err)
-	}
-
-	fmt.Printf("Successfully configured profile: %s\n", ssoProfile)
-	return nil
+	return &RealAWSSSOClient{
+		CredentialsClient: credentialsClient,
+		Executor:          executor,
+		GetHomeDir:        os.UserHomeDir,
+	}, nil
 }
 
 func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*models.SSOCache, time.Time, error) {
-	sessionName, err := getSessionName(profile)
+	sessionName, err := client.GetSessionName(profile)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := client.GetHomeDir()
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("failed to get user home directory: %v", err)
 	}
-
 	cacheDir := filepath.Join(homeDir, ".aws", "sso", "cache")
 
 	files, err := os.ReadDir(cacheDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, time.Time{}, fmt.Errorf("no matching SSO cache file found")
+		}
 		return nil, time.Time{}, fmt.Errorf("failed to read SSO cache directory: %v", err)
 	}
 
@@ -104,7 +94,6 @@ func getSsoAccessTokenFromCache(profile string, client *RealAWSSSOClient) (*mode
 			}
 
 			if (cache.SessionName != nil && *cache.SessionName == sessionName) || (cache.StartURL != nil && strings.TrimSuffix(*cache.StartURL, "#") == sessionName) {
-
 				if fileInfo.ModTime().After(latestModTime) {
 					latestModTime = fileInfo.ModTime()
 					selectedCache = &cache
@@ -151,20 +140,19 @@ func (c *RealAWSSSOClient) GetCachedSsoAccessToken(profile string) (string, erro
 		return "", err
 	}
 
-	accessToken := cachedSSO.AccessToken
+	if cachedSSO.AccessToken == nil {
+		return "", fmt.Errorf("no access token found in cache")
+	}
+
+	c.TokenCache.AccessToken = *cachedSSO.AccessToken
 	c.TokenCache.Expiry = expiry
 
-	return *accessToken, nil
+	return *cachedSSO.AccessToken, nil
 }
 
 func (c *RealAWSSSOClient) ConfigureSSO() error {
-	cmd := exec.Command("aws", "configure", "sso")
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
+	err := c.Executor.RunInteractiveCommand(context.Background(), "aws", "configure", "sso")
+	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
 				if status.ExitStatus() == 130 {
@@ -179,7 +167,8 @@ func (c *RealAWSSSOClient) ConfigureSSO() error {
 }
 
 func (c *RealAWSSSOClient) GetSSOProfiles() ([]string, error) {
-	homeDir, err := os.UserHomeDir()
+
+	homeDir, err := c.GetHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user home directory: %v", err)
 	}
@@ -225,8 +214,7 @@ func (c *RealAWSSSOClient) GetSSOAccountName(accountID, profile string) (string,
 		return "", fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
 
-	cmd := exec.Command("aws", "sso", "list-accounts", "--access-token", accessToken, "--output", "json")
-	output, err := cmd.Output()
+	output, err := c.Executor.RunCommand("aws", "sso", "list-accounts", "--access-token", accessToken, "--output", "json")
 	if err != nil {
 		return "", fmt.Errorf("failed to list AWS accounts: %v", err)
 	}
@@ -251,8 +239,7 @@ func (c *RealAWSSSOClient) GetSSORoles(profile, accountID string) ([]string, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve SSO access token: %v", err)
 	}
-	cmd := exec.Command("aws", "sso", "list-account-roles", "--profile", profile, "--account-id", accountID, "--access-token", accessToken, "--output", "json")
-	output, err := cmd.Output()
+	output, err := c.Executor.RunCommand("aws", "sso", "list-account-roles", "--profile", profile, "--account-id", accountID, "--access-token", accessToken, "--output", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list AWS SSO roles: %v", err)
 	}
@@ -280,6 +267,7 @@ func (c *RealAWSSSOClient) GetSSORoles(profile, accountID string) ([]string, err
 }
 
 func (c *RealAWSSSOClient) SSOLogin(awsProfile string, refresh, noBrowser bool) error {
+
 	if refresh || !c.CredentialsClient.IsCallerIdentityValid(awsProfile) {
 		args := []string{"sso", "login"}
 		if noBrowser {
@@ -289,31 +277,29 @@ func (c *RealAWSSSOClient) SSOLogin(awsProfile string, refresh, noBrowser bool) 
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-
-		cmd := exec.CommandContext(ctx, "aws", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("error starting SSO login: %w", err)
+		if c.Executor == nil {
+			return fmt.Errorf("executor is not initialized")
 		}
-
-		if err := cmd.Wait(); err != nil {
+		err := c.Executor.RunInteractiveCommand(ctx, "aws", args...)
+		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return fmt.Errorf("SSO login timed out: the login flow was canceled or not completed")
 			}
-			// Check for specific AWS CLI errors
 			if exitErr, ok := err.(*exec.ExitError); ok {
-				return fmt.Errorf("SSO login failed: %s", string(exitErr.Stderr))
+				return fmt.Errorf("SSO login failed: %v", exitErr)
 			}
-			return fmt.Errorf("error during SSO login: %w", err)
+			return fmt.Errorf("error during SSO login: %v", err)
 		}
 	}
 	return nil
 }
 
-func getSessionName(profile string) (string, error) {
-	homeDir, err := os.UserHomeDir()
+func (c *RealAWSSSOClient) GetSessionName(profile string) (string, error) {
+
+	if c.GetHomeDir == nil {
+		return "", fmt.Errorf("home dir  is nil in RealAWSSSOClient")
+	}
+	homeDir, err := c.GetHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("unable to find home directory: %v", err)
 	}

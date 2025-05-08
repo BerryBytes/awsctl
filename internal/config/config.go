@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,17 +31,20 @@ func NewConfig() (*Config, error) {
 
 	fileConfig, err := loadConfigFile(cfg)
 	if err != nil {
+		if errors.Is(err, ErrNoConfigFile) {
+			cfg.RawCustomConfig = nil
+			return cfg, nil
+		}
 		return nil, err
 	}
 	cfg.RawCustomConfig = fileConfig
-
 	return cfg, nil
 }
 
 func loadConfigFile(cfg *Config) (*models.Config, error) {
 	configFilePath, err := FindConfigFile(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("config file not found: %w", err)
+		return nil, err
 	}
 
 	fileData, err := os.ReadFile(configFilePath)
@@ -59,11 +63,15 @@ func loadConfigFile(cfg *Config) (*models.Config, error) {
 	return &parsedConfig, nil
 }
 
+var ErrNoConfigFile = errors.New("no config file found")
+
 func FindConfigFile(cfg *Config) (string, error) {
 	extensions := []string{"config.yml", "config.yaml", "config.json"}
 
 	if _, err := os.Stat(cfg.AWSConfigDir); os.IsNotExist(err) {
-		return "", fmt.Errorf("directory %s does not exist", cfg.AWSConfigDir)
+		return "", ErrNoConfigFile
+	} else if err != nil {
+		return "", fmt.Errorf("failed to stat directory %s: %w", cfg.AWSConfigDir, err)
 	}
 
 	for _, ext := range extensions {
@@ -73,7 +81,7 @@ func FindConfigFile(cfg *Config) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no config file found in %s", cfg.AWSConfigDir)
+	return "", ErrNoConfigFile
 }
 
 func getEnv(key, fallback string) string {
