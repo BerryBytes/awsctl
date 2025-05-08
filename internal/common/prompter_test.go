@@ -121,7 +121,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			wantResult:     0,
 			wantErr:        true,
-			wantErrMessage: "port must be between 1 and 65535",
+			wantErrMessage: "invalid port number: 70000 (must be between 1 and 65535)",
 		},
 
 		{
@@ -237,7 +237,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			wantResult:     0,
 			wantErr:        true,
-			wantErrMessage: "invalid default port number",
+			wantErrMessage: "invalid port number: 0 (must be between 1 and 65535)",
 		},
 		{
 			name: "PromptForLocalPort invalid input",
@@ -249,7 +249,7 @@ func TestConnectionPrompter(t *testing.T) {
 			},
 			wantResult:     0,
 			wantErr:        true,
-			wantErrMessage: "invalid port number",
+			wantErrMessage: "invalid port input",
 		},
 
 		{

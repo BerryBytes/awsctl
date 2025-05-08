@@ -23,18 +23,19 @@ import (
 )
 
 type RDSService struct {
-	RPrompter        RDSPromptInterface
-	CPrompter        connection.ConnectionPrompter
-	GPrompter        promptUtils.Prompter
-	RDSClient        RDSAdapterInterface
-	ConnServices     connection.ServicesInterface
-	ConnProvider     *connection.ConnectionProvider
-	SSHExecutor      common.SSHExecutorInterface
-	Fs               common.FileSystemInterface
-	socksPort        int
-	OsDetector       common.OSDetector
-	ConfigLoader     ConfigLoader
-	RDSClientFactory RDSClientFactory
+	RPrompter           RDSPromptInterface
+	CPrompter           connection.ConnectionPrompter
+	GPrompter           promptUtils.Prompter
+	RDSClient           RDSAdapterInterface
+	ConnServices        connection.ServicesInterface
+	ConnProvider        *connection.ConnectionProvider
+	SSHExecutor         common.SSHExecutorInterface
+	Fs                  common.FileSystemInterface
+	socksPort           int
+	OsDetector          common.OSDetector
+	ConfigLoader        ConfigLoader
+	RDSClientFactory    RDSClientFactory
+	TerminateSOCKSProxy func(port int, protocol string) error
 }
 
 type RealConfigLoader struct{}
@@ -57,11 +58,12 @@ func NewRDSService(
 	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
 
 	service := &RDSService{
-		RPrompter:        NewRPrompter(prompter, configClient),
-		ConnServices:     connServices,
-		socksPort:        0,
-		ConfigLoader:     &RealConfigLoader{},
-		RDSClientFactory: &RealRDSClientFactory{},
+		RPrompter:           NewRPrompter(prompter, configClient),
+		ConnServices:        connServices,
+		socksPort:           0,
+		ConfigLoader:        &RealConfigLoader{},
+		RDSClientFactory:    &RealRDSClientFactory{},
+		TerminateSOCKSProxy: common.TerminateSOCKSProxy,
 	}
 
 	for _, opt := range opts {
@@ -320,7 +322,7 @@ func (s *RDSService) CleanupSOCKS() error {
 	if s.socksPort == 0 {
 		return nil
 	}
-	err := common.TerminateSOCKSProxy(s.SSHExecutor, s.socksPort, s.OsDetector)
+	err := s.TerminateSOCKSProxy(s.socksPort, "ssh")
 	if err == nil {
 		fmt.Printf("SOCKS proxy on port %d terminated.\n", s.socksPort)
 		s.socksPort = 0

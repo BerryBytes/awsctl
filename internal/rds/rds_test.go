@@ -258,83 +258,40 @@ func TestRDSService_CleanupSOCKS(t *testing.T) {
 	svc, ctrl, _, _, _, _, _ := setupTest(t)
 	defer ctrl.Finish()
 
-	t.Run("NoSOCKSPort", func(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		svc.SetSOCKSPort(12345)
+		called := false
+		svc.TerminateSOCKSProxy = func(port int, protocol string) error {
+			called = true
+			assert.Equal(t, 12345, port)
+			assert.Equal(t, "ssh", protocol)
+			return nil
+		}
+
+		err := svc.CleanupSOCKS()
+		assert.NoError(t, err)
+		assert.True(t, called, "terminateSOCKSProxy should be called")
+		assert.Equal(t, 0, svc.SOCKSPort(), "socksPort should be reset")
+	})
+
+	t.Run("NoPortSet", func(t *testing.T) {
+		svc.SetSOCKSPort(0)
 		err := svc.CleanupSOCKS()
 		assert.NoError(t, err)
 	})
 
-	t.Run("SuccessfulTermination", func(t *testing.T) {
-		svc.SetSOCKSPort(1080)
-
-		if svc.SSHExecutor == nil {
-			t.Fatal("SSHExecutor is nil in SuccessfulTermination")
+	t.Run("Error", func(t *testing.T) {
+		svc.SetSOCKSPort(12345)
+		svc.TerminateSOCKSProxy = func(port int, protocol string) error {
+			return errors.New("termination failed")
 		}
-		mockSSHExecutor, ok := svc.SSHExecutor.(*mock_awsctl.MockSSHExecutorInterface)
-		if !ok {
-			t.Fatalf("SSHExecutor is not *mock_awsctl.MockSSHExecutorInterface, got %T", svc.SSHExecutor)
-		}
-
-		if svc.OsDetector == nil {
-			t.Fatal("OsDetector is nil in SuccessfulTermination")
-		}
-		mockOsDetector, ok := svc.OsDetector.(*mock_awsctl.MockOSDetector)
-		if !ok {
-			t.Fatalf("OsDetector is not *mock_awsctl.MockOSDetector, got %T", svc.OsDetector)
-		}
-
-		mockSSHExecutor.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		mockOsDetector.EXPECT().GetOS().Return("linux")
-
-		r, w, _ := os.Pipe()
-		origStdout := os.Stdout
-		os.Stdout = w
-		defer func() {
-			os.Stdout = origStdout
-			_ = w.Close()
-		}()
-
-		err := svc.CleanupSOCKS()
-		assert.NoError(t, err)
-		assert.Equal(t, 0, svc.SOCKSPort())
-
-		_ = w.Close()
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			t.Fatalf("failed to read from pipe: %v", err)
-		}
-		output := buf.String()
-		assert.Contains(t, output, "SOCKS proxy on port 1080 terminated.")
-	})
-
-	t.Run("TerminationError", func(t *testing.T) {
-		svc.SetSOCKSPort(1080)
-
-		if svc.SSHExecutor == nil {
-			t.Fatal("SSHExecutor is nil in TerminationError")
-		}
-		mockSSHExecutor, ok := svc.SSHExecutor.(*mock_awsctl.MockSSHExecutorInterface)
-		if !ok {
-			t.Fatalf("SSHExecutor is not *mock_awsctl.MockSSHExecutorInterface, got %T", svc.SSHExecutor)
-		}
-
-		if svc.OsDetector == nil {
-			t.Fatal("OsDetector is nil in TerminationError")
-		}
-		mockOsDetector, ok := svc.OsDetector.(*mock_awsctl.MockOSDetector)
-		if !ok {
-			t.Fatalf("OsDetector is not *mock_awsctl.MockOSDetector, got %T", svc.OsDetector)
-		}
-
-		mockSSHExecutor.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("termination error"))
-		mockOsDetector.EXPECT().GetOS().Return("linux")
 
 		err := svc.CleanupSOCKS()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "termination error")
-		assert.Equal(t, 1080, svc.SOCKSPort())
+		assert.Contains(t, err.Error(), "termination failed")
+		assert.Equal(t, 12345, svc.SOCKSPort(), "socksPort should not be reset on error")
 	})
 }
-
 func TestNewRDSService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
