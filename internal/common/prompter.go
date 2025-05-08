@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/BerryBytes/awsctl/models"
+	"github.com/BerryBytes/awsctl/utils/common"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/manifoldco/promptui"
 )
@@ -63,8 +64,8 @@ func (b *ConnectionPrompterStruct) PromptForSOCKSProxyPort(defaultPort int) (int
 		return 0, fmt.Errorf("invalid port number: %w", err)
 	}
 
-	if port < 1 || port > 65535 {
-		return 0, errors.New("port must be between 1 and 65535")
+	if err := common.ValidatePort(port); err != nil {
+		return 0, err
 	}
 
 	return port, nil
@@ -97,8 +98,8 @@ func (b *ConnectionPrompterStruct) PromptForSSHUser(defaultUser string) (string,
 }
 
 func (b *ConnectionPrompterStruct) PromptForLocalPort(purpose string, defaultPort int) (int, error) {
-	if defaultPort < 1 || defaultPort > 65535 {
-		return 0, fmt.Errorf("invalid default port number")
+	if err := common.ValidatePort(defaultPort); err != nil {
+		return 0, err
 	}
 
 	promptMsg := fmt.Sprintf("Enter local port for %s [default: %d]:", purpose, defaultPort)
@@ -111,8 +112,12 @@ func (b *ConnectionPrompterStruct) PromptForLocalPort(purpose string, defaultPor
 	}
 
 	port, err := strconv.Atoi(result)
-	if err != nil || port < 1 || port > 65535 {
-		return 0, fmt.Errorf("invalid port number")
+	if err != nil {
+		return 0, fmt.Errorf("invalid port input: %w", err)
+	}
+
+	if err := common.ValidatePort(port); err != nil {
+		return 0, err
 	}
 
 	finalPort := findAvailablePort(port)
