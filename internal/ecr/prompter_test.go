@@ -142,7 +142,9 @@ func TestPromptForProfile_FromConfig_SingleProfile(t *testing.T) {
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Fatalf("failed to unset AWS_PROFILE: %v", err)
+	}
 
 	expectedProfiles := []string{"default"}
 	mockConfigClient.EXPECT().
@@ -164,7 +166,9 @@ func TestPromptForProfile_FromConfig_MultipleProfiles(t *testing.T) {
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
-	os.Unsetenv("AWS_PROFILE")
+	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+		t.Fatalf("failed to unset AWS_PROFILE: %v", err)
+	}
 
 	expectedProfiles := []string{"profile1", "profile2", "profile3"}
 	selectedProfile := "profile2"
@@ -220,7 +224,9 @@ func TestPromptForProfile_ErrorCases(t *testing.T) {
 
 			prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
-			os.Unsetenv("AWS_PROFILE")
+			if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+				t.Fatalf("failed to unset AWS_PROFILE: %v", err)
+			}
 
 			mockConfigClient.EXPECT().
 				ValidProfiles().
