@@ -476,11 +476,13 @@ func (mr *MockServicesInterfaceMockRecorder) SSHIntoBastion(ctx interface{}) *go
 }
 
 // StartPortForwarding mocks base method.
-func (m *MockServicesInterface) StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) error {
+func (m *MockServicesInterface) StartPortForwarding(ctx context.Context, localPort int, remoteHost string, remotePort int) (func(), func(), error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StartPortForwarding", ctx, localPort, remoteHost, remotePort)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(func())
+	ret1, _ := ret[1].(func())
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // StartPortForwarding indicates an expected call of StartPortForwarding.

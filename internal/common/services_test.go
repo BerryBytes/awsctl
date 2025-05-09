@@ -180,7 +180,7 @@ func TestStartPortForwarding_SSM_Success(t *testing.T) {
 	m.prompter.EXPECT().PromptForBastionInstance(gomock.Any(), true).Return(instanceID, nil)
 	m.ssmStarter.EXPECT().StartPortForwarding(ctx, instanceID, localPort, remoteHost, remotePort).Return(nil)
 
-	err = services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
+	_, _, err = services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
 	assert.NoError(t, err)
 
 	_ = w.Sync()
@@ -566,8 +566,14 @@ func TestStartPortForwarding_Success(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any(),
 	).Return(nil)
 
-	err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
+	cleanup, stop, err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
 	assert.NoError(t, err)
+	assert.NotNil(t, cleanup, "cleanup function should not be nil")
+	assert.NotNil(t, stop, "stop function should not be nil")
+
+	stop()
+
+	time.Sleep(10 * time.Millisecond)
 }
 
 func TestStartPortForwarding_GetDetailsFails(t *testing.T) {
@@ -589,7 +595,7 @@ func TestStartPortForwarding_GetDetailsFails(t *testing.T) {
 
 	m.prompter.EXPECT().ChooseConnectionMethod().Return("", errors.New("method failed"))
 
-	err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
+	_, _, err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get connection details: failed to select connection method: method failed")
 }
@@ -643,15 +649,21 @@ func TestStartPortForwarding_ExecuteFails(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any(),
 	).Return(errors.New("forwarding failed"))
 
-	err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "forwarding failed")
+	cleanup, stop, err := services.StartPortForwarding(ctx, localPort, remoteHost, remotePort)
+	assert.NoError(t, err, "StartPortForwarding should return nil error immediately")
+	assert.NotNil(t, cleanup, "cleanup function should not be nil")
+	assert.NotNil(t, stop, "stop function should not be nil")
+
+	stop()
+
+	time.Sleep(10 * time.Millisecond)
+
 }
 
 func TestSSHIntoBastion_EC2InstanceConnect_Success(t *testing.T) {
 	m := setupServiceMocks(t)
 	defer m.ctrl.Finish()
-
+	m.fs.EXPECT().Stat(gomock.Any()).Return(nil, os.ErrNotExist).AnyTimes()
 	credProvider := credentials.StaticCredentialsProvider{
 		Value: aws.Credentials{AccessKeyID: "mock-access-key", SecretAccessKey: "mock-secret-key", Source: "test"},
 	}

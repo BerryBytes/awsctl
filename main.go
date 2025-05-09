@@ -8,9 +8,11 @@ import (
 	"github.com/BerryBytes/awsctl/cmd/root"
 	"github.com/BerryBytes/awsctl/internal/bastion"
 	connection "github.com/BerryBytes/awsctl/internal/common"
+	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	generalutils "github.com/BerryBytes/awsctl/utils/general"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
@@ -27,6 +29,7 @@ func main() {
 
 	generalManager := generalutils.NewGeneralUtilsManager()
 	fileSystem := &common.RealFileSystem{}
+	gPrompter := promptUtils.NewPrompt()
 
 	ctx := context.TODO()
 	awsConfig, _ := config.LoadDefaultConfig(ctx)
@@ -49,12 +52,24 @@ func main() {
 
 	services := connection.NewServices(provider)
 	bastionSvc := bastion.NewBastionService(services, prompter)
+	sshExecutor := &common.RealSSHExecutor{}
+	rdsSvc := rds.NewRDSService(
+		services,
+		func(s *rds.RDSService) {
+			s.ConnProvider = provider
+			s.SSHExecutor = sshExecutor
+			s.Fs = fileSystem
+			s.CPrompter = prompter
+			s.GPrompter = gPrompter
+		},
+	)
 
 	rootCmd := root.NewRootCmd(root.RootDependencies{
 		SSOClient:      ssoClient,
 		BastionService: bastionSvc,
 		GeneralManager: generalManager,
 		FileSystem:     fileSystem,
+		RDSService:     rdsSvc,
 	})
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

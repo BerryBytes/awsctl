@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestNewRootCmd(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface)
+		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface)
 		validateFunc func(*testing.T, *cobra.Command)
 	}{
 		{
@@ -25,6 +26,7 @@ func TestNewRootCmd(t *testing.T) {
 				bastionSvc *mock_awsctl.MockBastionServiceInterface,
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
+				rdsSvc *mock_rds.MockRDSServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
@@ -32,9 +34,10 @@ func TestNewRootCmd(t *testing.T) {
 				assert.Equal(t, "AWS CLI Tool", cmd.Short)
 				assert.NotEmpty(t, cmd.Long)
 
-				assert.Len(t, cmd.Commands(), 2)
+				assert.Len(t, cmd.Commands(), 3)
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[0])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[1])
+				assert.IsType(t, &cobra.Command{}, cmd.Commands()[2])
 			},
 		},
 		{
@@ -44,11 +47,12 @@ func TestNewRootCmd(t *testing.T) {
 				bastionSvc *mock_awsctl.MockBastionServiceInterface,
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
+				rdsSvc *mock_rds.MockRDSServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
 				assert.NotNil(t, cmd)
-				assert.Len(t, cmd.Commands(), 2)
+				assert.Len(t, cmd.Commands(), 3)
 			},
 		},
 	}
@@ -59,18 +63,19 @@ func TestNewRootCmd(t *testing.T) {
 			mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 			mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
+			mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
 
-			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS)
+			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS)
 
 			deps := RootDependencies{
 				SSOClient:      mockSSO,
 				BastionService: mockBastion,
 				GeneralManager: mockGeneral,
 				FileSystem:     mockFS,
+				RDSService:     mockRDS,
 			}
 
 			cmd := NewRootCmd(deps)
-
 			tt.validateFunc(t, cmd)
 		})
 	}
@@ -84,12 +89,14 @@ func TestRootCmdExecution(t *testing.T) {
 	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
+	mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
 
 	deps := RootDependencies{
 		SSOClient:      mockSSO,
 		BastionService: mockBastion,
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,
+		RDSService:     mockRDS,
 	}
 
 	t.Run("root command help execution", func(t *testing.T) {
@@ -118,12 +125,14 @@ func TestSubcommandInitialization(t *testing.T) {
 	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
+	mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
 
 	deps := RootDependencies{
 		SSOClient:      mockSSO,
 		BastionService: mockBastion,
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,
+		RDSService:     mockRDS,
 	}
 
 	t.Run("SSO subcommand exists", func(t *testing.T) {
@@ -140,5 +149,13 @@ func TestSubcommandInitialization(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, bastionCmd)
 		assert.Equal(t, "bastion", bastionCmd.Name())
+	})
+
+	t.Run("RDS subcommand exists", func(t *testing.T) {
+		cmd := NewRootCmd(deps)
+		rdsCmd, _, err := cmd.Find([]string{"rds"})
+		assert.NoError(t, err)
+		assert.NotNil(t, rdsCmd)
+		assert.Equal(t, "rds", rdsCmd.Name())
 	})
 }

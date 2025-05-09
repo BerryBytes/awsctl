@@ -8,11 +8,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.65
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.0
 	github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect v1.28.2
+	github.com/aws/aws-sdk-go-v2/service/rds v1.95.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.58.2
 	github.com/aws/smithy-go v1.22.2
 	github.com/golang/mock v1.6.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/spf13/afero v1.14.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
@@ -41,4 +43,5 @@ require (
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 )

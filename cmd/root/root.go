@@ -1,11 +1,14 @@
 package root
 
 import (
+	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	generalUtils "github.com/BerryBytes/awsctl/utils/general"
 
 	bastionCmd "github.com/BerryBytes/awsctl/cmd/bastion"
+	rdsCmd "github.com/BerryBytes/awsctl/cmd/rds"
+
 	cmdSSO "github.com/BerryBytes/awsctl/cmd/sso"
 	"github.com/BerryBytes/awsctl/internal/bastion"
 
@@ -17,6 +20,7 @@ type RootDependencies struct {
 	BastionService bastion.BastionServiceInterface
 	GeneralManager generalUtils.GeneralUtilsInterface
 	FileSystem     common.FileSystemInterface
+	RDSService     rds.RDSServiceInterface
 }
 
 func NewRootCmd(deps RootDependencies) *cobra.Command {
@@ -36,6 +40,10 @@ func NewRootCmd(deps RootDependencies) *cobra.Command {
 
 	rootCmd.AddCommand(bastionCmd.NewBastionCmd(bastionCmd.BastionDependencies{
 		Service: deps.BastionService,
+	}))
+
+	rootCmd.AddCommand(rdsCmd.NewRDSCmd(rdsCmd.RDSDependencies{
+		Service: deps.RDSService,
 	}))
 
 	return rootCmd
