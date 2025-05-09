@@ -352,10 +352,18 @@ func TestECRService_HandleECRLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setupEnv {
-				os.Setenv("AWS_PROFILE", tt.awsProfileEnv)
-				defer os.Unsetenv("AWS_PROFILE")
+				if err := os.Setenv("AWS_PROFILE", tt.awsProfileEnv); err != nil {
+					t.Fatalf("failed to set AWS_PROFILE: %v", err)
+				}
+				defer func() {
+					if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+						t.Logf("failed to unset AWS_PROFILE in defer: %v", err)
+					}
+				}()
 			} else {
-				os.Unsetenv("AWS_PROFILE")
+				if err := os.Unsetenv("AWS_PROFILE"); err != nil {
+					t.Fatalf("failed to unset AWS_PROFILE: %v", err)
+				}
 			}
 
 			ctrl := gomock.NewController(t)
