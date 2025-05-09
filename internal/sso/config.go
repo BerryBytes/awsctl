@@ -12,6 +12,7 @@ type CommandExecutor interface {
 	RunCommand(name string, args ...string) ([]byte, error)
 	RunInteractiveCommand(ctx context.Context, name string, args ...string) error
 	LookPath(file string) (string, error)
+	RunCommandWithInput(name string, input string, args ...string) ([]byte, error)
 }
 
 type RealCommandExecutor struct{}
@@ -28,6 +29,12 @@ func (e *RealCommandExecutor) RunInteractiveCommand(ctx context.Context, name st
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func (e *RealCommandExecutor) RunCommandWithInput(name string, input string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Stdin = strings.NewReader(input)
+	return cmd.Output()
 }
 
 func (e *RealCommandExecutor) LookPath(file string) (string, error) {

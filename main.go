@@ -8,6 +8,7 @@ import (
 	"github.com/BerryBytes/awsctl/cmd/root"
 	"github.com/BerryBytes/awsctl/internal/bastion"
 	connection "github.com/BerryBytes/awsctl/internal/common"
+	"github.com/BerryBytes/awsctl/internal/ecr"
 	"github.com/BerryBytes/awsctl/internal/eks"
 	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/internal/sso"
@@ -72,7 +73,19 @@ func main() {
 			s.CPrompter = prompter
 		},
 	)
+	awsConfigClient := &sso.RealAWSConfigClient{
+		Executor: &sso.RealCommandExecutor{},
+	}
 
+	ecrSvc := ecr.NewECRService(
+		services,
+		awsConfigClient,
+		func(s *ecr.ECRService) {
+			s.ConnProvider = provider
+			s.CPrompter = prompter
+			s.Prompt = gPrompter
+		},
+	)
 	rootCmd := root.NewRootCmd(root.RootDependencies{
 		SSOClient:      ssoClient,
 		BastionService: bastionSvc,
@@ -80,6 +93,7 @@ func main() {
 		FileSystem:     fileSystem,
 		RDSService:     rdsSvc,
 		EKSService:     eksSvc,
+		ECRService:     ecrSvc,
 	})
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

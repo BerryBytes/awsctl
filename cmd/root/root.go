@@ -1,6 +1,7 @@
 package root
 
 import (
+	"github.com/BerryBytes/awsctl/internal/ecr"
 	"github.com/BerryBytes/awsctl/internal/eks"
 	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/internal/sso"
@@ -8,6 +9,7 @@ import (
 	generalUtils "github.com/BerryBytes/awsctl/utils/general"
 
 	bastionCmd "github.com/BerryBytes/awsctl/cmd/bastion"
+	ecrCmd "github.com/BerryBytes/awsctl/cmd/ecr"
 	eksCmd "github.com/BerryBytes/awsctl/cmd/eks"
 	rdsCmd "github.com/BerryBytes/awsctl/cmd/rds"
 
@@ -24,6 +26,7 @@ type RootDependencies struct {
 	FileSystem     common.FileSystemInterface
 	RDSService     rds.RDSServiceInterface
 	EKSService     eks.EKSServiceInterface
+	ECRService     ecr.ECRServiceInterface
 }
 
 func NewRootCmd(deps RootDependencies) *cobra.Command {
@@ -51,6 +54,10 @@ func NewRootCmd(deps RootDependencies) *cobra.Command {
 
 	rootCmd.AddCommand(eksCmd.NewEKSCmd(eksCmd.EKSDependencies{
 		Service: deps.EKSService,
+	}))
+
+	rootCmd.AddCommand(ecrCmd.NewECRCmd(ecrCmd.ECRDependencies{
+		Service: deps.ECRService,
 	}))
 
 	return rootCmd

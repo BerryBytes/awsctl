@@ -69,6 +69,26 @@ func (mr *MockCommandExecutorMockRecorder) RunCommand(name interface{}, args ...
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunCommand", reflect.TypeOf((*MockCommandExecutor)(nil).RunCommand), varargs...)
 }
 
+// RunCommandWithInput mocks base method.
+func (m *MockCommandExecutor) RunCommandWithInput(name, input string, args ...string) ([]byte, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{name, input}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "RunCommandWithInput", varargs...)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunCommandWithInput indicates an expected call of RunCommandWithInput.
+func (mr *MockCommandExecutorMockRecorder) RunCommandWithInput(name, input interface{}, args ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{name, input}, args...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunCommandWithInput", reflect.TypeOf((*MockCommandExecutor)(nil).RunCommandWithInput), varargs...)
+}
+
 // RunInteractiveCommand mocks base method.
 func (m *MockCommandExecutor) RunInteractiveCommand(ctx context.Context, name string, args ...string) error {
 	m.ctrl.T.Helper()

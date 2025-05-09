@@ -33,6 +33,12 @@ func (m *MockCommandExecutor) RunInteractiveCommand(ctx context.Context, name st
 	return ret.Error(0)
 }
 
+func (m *MockCommandExecutor) RunCommandWithInput(name, input string, args ...string) ([]byte, error) {
+	argsForCall := append([]interface{}{name, input}, interfaceSlice(args)...)
+	ret := m.Called(argsForCall...)
+	return ret.Get(0).([]byte), ret.Error(1)
+}
+
 func (m *MockCommandExecutor) LookPath(file string) (string, error) {
 	ret := m.Called(file)
 	return ret.Get(0).(string), ret.Error(1)
