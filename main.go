@@ -8,6 +8,7 @@ import (
 	"github.com/BerryBytes/awsctl/cmd/root"
 	"github.com/BerryBytes/awsctl/internal/bastion"
 	connection "github.com/BerryBytes/awsctl/internal/common"
+	"github.com/BerryBytes/awsctl/internal/eks"
 	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
@@ -64,12 +65,21 @@ func main() {
 		},
 	)
 
+	eksSvc := eks.NewEKSService(
+		services,
+		func(s *eks.EKSService) {
+			s.ConnProvider = provider
+			s.CPrompter = prompter
+		},
+	)
+
 	rootCmd := root.NewRootCmd(root.RootDependencies{
 		SSOClient:      ssoClient,
 		BastionService: bastionSvc,
 		GeneralManager: generalManager,
 		FileSystem:     fileSystem,
 		RDSService:     rdsSvc,
+		EKSService:     eksSvc,
 	})
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
