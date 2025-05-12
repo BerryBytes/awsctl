@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_ecr "github.com/BerryBytes/awsctl/tests/mock/ecr"
 	mock_eks "github.com/BerryBytes/awsctl/tests/mock/eks"
 	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
 	"github.com/golang/mock/gomock"
@@ -17,7 +18,7 @@ func TestNewRootCmd(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface, *mock_eks.MockEKSServiceInterface)
+		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface, *mock_eks.MockEKSServiceInterface, *mock_ecr.MockECRServiceInterface)
 		validateFunc func(*testing.T, *cobra.Command)
 	}{
 		{
@@ -29,6 +30,7 @@ func TestNewRootCmd(t *testing.T) {
 				fs *mock_awsctl.MockFileSystemInterface,
 				rdsSvc *mock_rds.MockRDSServiceInterface,
 				eksSvc *mock_eks.MockEKSServiceInterface,
+				ecrSvc *mock_ecr.MockECRServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
@@ -36,11 +38,12 @@ func TestNewRootCmd(t *testing.T) {
 				assert.Equal(t, "AWS CLI Tool", cmd.Short)
 				assert.NotEmpty(t, cmd.Long)
 
-				assert.Len(t, cmd.Commands(), 4)
+				assert.Len(t, cmd.Commands(), 5)
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[0])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[1])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[2])
 				assert.IsType(t, &cobra.Command{}, cmd.Commands()[3])
+				assert.IsType(t, &cobra.Command{}, cmd.Commands()[4])
 			},
 		},
 		{
@@ -52,11 +55,12 @@ func TestNewRootCmd(t *testing.T) {
 				fs *mock_awsctl.MockFileSystemInterface,
 				rdsSvc *mock_rds.MockRDSServiceInterface,
 				eksSvc *mock_eks.MockEKSServiceInterface,
+				ecrSvc *mock_ecr.MockECRServiceInterface,
 			) {
 			},
 			validateFunc: func(t *testing.T, cmd *cobra.Command) {
 				assert.NotNil(t, cmd)
-				assert.Len(t, cmd.Commands(), 4)
+				assert.Len(t, cmd.Commands(), 5)
 			},
 		},
 	}
@@ -69,8 +73,9 @@ func TestNewRootCmd(t *testing.T) {
 			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
 			mockRDS := mock_rds.NewMockRDSServiceInterface(ctrl)
 			mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
+			mockECR := mock_ecr.NewMockECRServiceInterface(ctrl)
 
-			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS, mockEKS)
+			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS, mockEKS, mockECR)
 
 			deps := RootDependencies{
 				SSOClient:      mockSSO,
@@ -79,6 +84,7 @@ func TestNewRootCmd(t *testing.T) {
 				FileSystem:     mockFS,
 				RDSService:     mockRDS,
 				EKSService:     mockEKS,
+				ECRService:     mockECR,
 			}
 
 			cmd := NewRootCmd(deps)
