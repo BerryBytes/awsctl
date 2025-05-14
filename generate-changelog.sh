@@ -11,7 +11,7 @@ set -euo pipefail
 PROJECT_NAME="awsctl"
 CHANGELOG_FILE="CHANGELOG.md"
 TEMP_FILE=".tmpchangelog"
-RELEASE_TAG="${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0)}"
+RELEASE_TAG="${RELEASE_TAG:-${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0)}}"
 PREVIOUS_TAG="${PREVIOUS_TAG:-$(git describe --tags --abbrev=0 "$RELEASE_TAG"^ 2>/dev/null || echo "")}"
 
 # Ensure dependencies are present
