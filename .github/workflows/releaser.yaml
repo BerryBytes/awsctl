@@ -121,16 +121,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check_commits.outputs.skip != 'true' && steps.changelog_commit.outputs.skip_pr != 'true'
         run: |
-          gh pr create \
+          PR_URL=$(gh pr create \
             --base main \
             --head "${{ steps.changelog_commit.outputs.branch_name }}" \
             --title "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated changelog update for release ${{ steps.new_version.outputs.new_tag }}." \
-            --reviewer leodahal4 || exit 1
+            --reviewer leodahal4)
+          echo "Created PR: $PR_URL"
+          echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+
+      - name: Notify PR URL
+        run: echo "Created PR:${{ steps.create_pr.outputs.PR_URL}}"
 
       - name: Clean Git state
         if: steps.check_commits.outputs.skip != 'true'
