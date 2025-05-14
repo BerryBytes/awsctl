@@ -135,9 +135,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
 
-      - name: Notify PR URL
-        run: echo "Created PR:${{ steps.create_pr.outputs.PR_URL}}"
-
       - name: Clean Git state
         if: steps.check_commits.outputs.skip != 'true'
         run: |
