@@ -1,0 +1,150 @@
+name: Auto-Release CLI on Push to Main
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    if: "github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Get previous tag
+        id: previous_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")
+          echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Check for new commits
+        id: check_commits
+        run: |
+          PREV_TAG=${{ steps.previous_tag.outputs.previous_tag }}
+          COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD --no-merges)
+          if [ "$COMMIT_COUNT" -eq 0 ]; then
+            echo "No new commits since $PREV_TAG. Skipping release."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Install Prettier
+        if: steps.check_commits.outputs.skip != 'true'
+        run: npm install --global prettier
+
+      - name: Run Tests
+        if: steps.check_commits.outputs.skip != 'true'
+        run: go test -cover ./...
+
+      - name: Increment version and ensure unique tag
+        if: steps.check_commits.outputs.skip != 'true'
+        id: new_version
+        run: |
+          PREV_TAG=${{ steps.previous_tag.outputs.previous_tag }}
+          VERSION=$(echo $PREV_TAG | sed 's/^v//')
+          COMMIT_MSGS=$(git log $PREV_TAG..HEAD --no-merges --pretty=%B)
+          if echo "$COMMIT_MSGS" | grep -qi "BREAKING CHANGE"; then
+            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1+1".0.0"}')
+          elif echo "$COMMIT_MSGS" | grep -qi "^feat:"; then
+            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1"."$2+1".0"}')
+          else
+            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1"."$2"."$3+1}')
+          fi
+          NEW_TAG="v$NEW_VERSION"
+          while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
+            NEW_VERSION=$(echo $NEW_VERSION | awk -F. '{print $1"."$2"."$3+1}')
+            NEW_TAG="v$NEW_VERSION"
+          done
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create new tag
+        if: steps.check_commits.outputs.skip != 'true'
+        run: |
+          git tag ${{ steps.new_version.outputs.new_tag }} || exit 1
+          git push origin ${{ steps.new_version.outputs.new_tag }} || exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+
+      - name: Generate Changelog
+        if: steps.check_commits.outputs.skip != 'true'
+        env:
+          RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
+        run: |
+          if [ ! -f generate-changelog.sh ]; then
+            echo "Error: generate-changelog.sh not found"
+            exit 1
+          fi
+          chmod +x generate-changelog.sh
+          ./generate-changelog.sh || exit 1
+          git diff --quiet CHANGELOG.md || echo "Changelog updated"
+
+      - name: Create branch and commit updated changelog
+        if: steps.check_commits.outputs.skip != 'true'
+        id: changelog_commit
+        run: |
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md. Skipping PR creation."
+            echo "skip_pr=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          BRANCH_NAME="changelog-update-${{ steps.new_version.outputs.new_tag }}"
+          git checkout -b "$BRANCH_NAME" || exit 1
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}" || exit 1
+          git push origin "$BRANCH_NAME" || exit 1
+          echo "skip_pr=false" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+
+      - name: Create Pull Request
+        if: steps.check_commits.outputs.skip != 'true' && steps.changelog_commit.outputs.skip_pr != 'true'
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.changelog_commit.outputs.branch_name }}" \
+            --title "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}" \
+            --body "Automated changelog update for release ${{ steps.new_version.outputs.new_tag }}." \
+            --reviewer leodahal4 || exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+
+      - name: Clean Git state
+        if: steps.check_commits.outputs.skip != 'true'
+        run: |
+          git reset --hard || exit 1
+          git clean -fd || exit 1
+          rm -rf dist || true
+
+      - name: Run GoReleaser
+        if: steps.check_commits.outputs.skip != 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.0.0
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
