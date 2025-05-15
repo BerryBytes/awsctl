@@ -46,13 +46,13 @@ main() {
   # Create or update changelog
   if [ -f "$CHANGELOG_FILE" ]; then
     echo "Updating existing changelog..."
-    generate_changelog_content > "$TEMP_FILE"
-    echo "" >> "$TEMP_FILE"
-    cat "$CHANGELOG_FILE" >> "$TEMP_FILE"
+    generate_changelog_content >"$TEMP_FILE"
+    echo "" >>"$TEMP_FILE"
+    cat "$CHANGELOG_FILE" >>"$TEMP_FILE"
     mv "$TEMP_FILE" "$CHANGELOG_FILE"
   else
     echo "Creating new changelog..."
-    generate_changelog_content > "$CHANGELOG_FILE"
+    generate_changelog_content >"$CHANGELOG_FILE"
   fi
 
   # Format and validate the changelog

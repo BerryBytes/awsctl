@@ -12,17 +12,17 @@ LD_FLAGS="-s -w"
 # Detect shell
 detect_shell() {
   case "$SHELL" in
-    */zsh)
-      SHELL_CONFIG_FILE="$HOME/.zshrc"
-      SHELL_NAME="zsh"
-      ;;
-    */bash)
-      SHELL_CONFIG_FILE="$HOME/.bashrc"
-      SHELL_NAME="bash"
-      ;;
-    *)
-      error "Unsupported shell: $SHELL. Please use bash or zsh."
-      ;;
+  */zsh)
+    SHELL_CONFIG_FILE="$HOME/.zshrc"
+    SHELL_NAME="zsh"
+    ;;
+  */bash)
+    SHELL_CONFIG_FILE="$HOME/.bashrc"
+    SHELL_NAME="bash"
+    ;;
+  *)
+    error "Unsupported shell: $SHELL. Please use bash or zsh."
+    ;;
   esac
   log "Detected shell: $SHELL_NAME"
 }
@@ -41,27 +41,27 @@ error() {
 # Detect OS and architecture
 detect_platform() {
   case "$(uname -s)" in
-    Darwin)
-      OS="darwin"
-      ;;
-    Linux)
-      OS="linux"
-      ;;
-    *)
-      error "Unsupported OS: $(uname -s)"
-      ;;
+  Darwin)
+    OS="darwin"
+    ;;
+  Linux)
+    OS="linux"
+    ;;
+  *)
+    error "Unsupported OS: $(uname -s)"
+    ;;
   esac
 
   case "$(uname -m)" in
-    x86_64)
-      ARCH="amd64"
-      ;;
-    aarch64|arm64)
-      ARCH="arm64"
-      ;;
-    *)
-      error "Unsupported architecture: $(uname -m)"
-      ;;
+  x86_64)
+    ARCH="amd64"
+    ;;
+  aarch64 | arm64)
+    ARCH="arm64"
+    ;;
+  *)
+    error "Unsupported architecture: $(uname -m)"
+    ;;
   esac
 
   log "Detected OS: $OS, Architecture: $ARCH"
@@ -103,7 +103,7 @@ update_path() {
   log "Updating $SHELL_CONFIG_FILE to include $INSTALL_DIR in PATH"
 
   if ! grep -q "$INSTALL_DIR" "$SHELL_CONFIG_FILE"; then
-    echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$SHELL_CONFIG_FILE" || error "Failed to update $SHELL_CONFIG_FILE."
+    echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >>"$SHELL_CONFIG_FILE" || error "Failed to update $SHELL_CONFIG_FILE."
     log "Added $INSTALL_DIR to PATH in $SHELL_CONFIG_FILE."
 
     if [[ $- == *i* ]]; then
