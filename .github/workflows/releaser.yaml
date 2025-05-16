@@ -96,21 +96,12 @@ jobs:
 
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
-      - name: Create new tag
-        if: steps.check_commits.outputs.skip != 'true'
-        run: |
-          git tag ${{ steps.new_version.outputs.new_tag }} || exit 1
-          git push origin ${{ steps.new_version.outputs.new_tag }} || exit 1
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
-
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
         env:
           RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
           PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
           GH_TOKEN: ${{ github.token }}
-
         run: |
           SCRIPT_PATH=".github/scripts/generate-changelog.sh"
           if [ ! -f "$SCRIPT_PATH" ]; then
@@ -150,6 +141,16 @@ jobs:
           echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create new tag (after changelog is committed)
+        if: steps.check_commits.outputs.skip != 'true'
+        run: |
+          git fetch --tags
+          git checkout "${{ steps.changelog_commit.outputs.branch_name }}"
+          git tag ${{ steps.new_version.outputs.new_tag }} || exit 1
+          git push origin ${{ steps.new_version.outputs.new_tag }} || exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
 
       - name: Clean Git state
         if: steps.check_commits.outputs.skip != 'true'
