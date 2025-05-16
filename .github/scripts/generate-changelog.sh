@@ -26,6 +26,8 @@ check_dependencies() {
 
 # Generate changelog content
 generate_changelog_content() {
+  release_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
   if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$RELEASE_TAG" ]; then
     echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG ($release_date)"
     git log --pretty=format:"- %s (%h)" "$RELEASE_TAG" \
@@ -38,7 +40,7 @@ generate_changelog_content() {
   fi
 
   echo ""
-  echo "Generated on $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  echo "Generated on $release_date"
 }
 
 # Main execution
