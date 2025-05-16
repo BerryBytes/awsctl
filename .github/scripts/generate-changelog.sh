@@ -64,7 +64,13 @@ main() {
 
   # Create GitHub release notes if running in GitHub Actions
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
-    gh release edit "$RELEASE_TAG" --notes-file "$CHANGELOG_FILE"
+    if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+      gh release edit "$RELEASE_TAG" --notes-file "$CHANGELOG_FILE"
+    else
+      gh release create "$RELEASE_TAG" --notes-file "$CHANGELOG_FILE" --title "$RELEASE_TAG"
+    fi
+  else
+    echo "Note: Not running in GitHub Actions. Skipping GitHub release notes update."
   fi
 
   echo "Changelog generated successfully at $CHANGELOG_FILE"
