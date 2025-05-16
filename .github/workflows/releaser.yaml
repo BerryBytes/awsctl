@@ -51,7 +51,7 @@ jobs:
 
       - name: Install Prettier
         if: steps.check_commits.outputs.skip != 'true'
-        run: npm install --global prettier
+        run: npm install --global prettier@3.5.3
 
       - name: Run Tests
         if: steps.check_commits.outputs.skip != 'true'
@@ -65,15 +65,15 @@ jobs:
           VERSION=$(echo $PREV_TAG | sed 's/^v//')
           COMMIT_MSGS=$(git log $PREV_TAG..HEAD --no-merges --pretty=%B)
           if echo "$COMMIT_MSGS" | grep -qi "BREAKING CHANGE"; then
-            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1+1".0.0"}')
+            NEW_VERSION=$(npx semver "$VERSION" -i major)
           elif echo "$COMMIT_MSGS" | grep -qi "^feat:"; then
-            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1"."$2+1".0"}')
+            NEW_VERSION=$(npx semver "$VERSION" -i minor)
           else
-            NEW_VERSION=$(echo $VERSION | awk -F. '{print $1"."$2"."$3+1}')
+            NEW_VERSION=$(npx semver "$VERSION" -i patch)
           fi
           NEW_TAG="v$NEW_VERSION"
           while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
-            NEW_VERSION=$(echo $NEW_VERSION | awk -F. '{print $1"."$2"."$3+1}')
+            NEW_VERSION=$(npx semver "$NEW_VERSION" -i patch)
             NEW_TAG="v$NEW_VERSION"
           done
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
@@ -92,12 +92,12 @@ jobs:
           RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
           PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
         run: |
-          if [ ! -f generate-changelog.sh ]; then
-            echo "Error: generate-changelog.sh not found"
+          SCRIPT_PATH=".github/scripts/generate-changelog.sh"
+          if [ ! -f "$SCRIPT_PATH" ]; then
+            echo "Error: Missing script at $SCRIPT_PATH"
             exit 1
           fi
-          chmod +x generate-changelog.sh
-          ./generate-changelog.sh || exit 1
+          "$SCRIPT_PATH" || exit 1
           git diff --quiet CHANGELOG.md || echo "Changelog updated"
 
       - name: Create branch and commit updated changelog
