@@ -26,9 +26,9 @@ check_dependencies() {
 
 # Generate changelog content
 generate_changelog_content() {
-  if [ -z "$PREVIOUS_TAG" ]; then
+  if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$RELEASE_TAG" ]; then
     echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
-    git log --pretty=format:"- %s (%h)" | head -n 20
+    git log --pretty=format:"- %s (%h)" "$RELEASE_TAG"
   else
     echo "# $PROJECT_NAME - $RELEASE_TAG"
     echo "## Changes since $PREVIOUS_TAG"

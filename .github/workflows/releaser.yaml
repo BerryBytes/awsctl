@@ -34,7 +34,7 @@ jobs:
       - name: Get previous tag
         id: previous_tag
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")
+          PREV_TAG=$(git tag --sort=-creatordate | sed -n '2p')
           echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
       - name: Check for new commits
