@@ -139,7 +139,7 @@ jobs:
           echo "skip_pr=false" >> $GITHUB_OUTPUT
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Pull Request
         id: create_pr
@@ -154,7 +154,7 @@ jobs:
           echo "Created PR: $PR_URL"
           echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Clean Git state
         if: steps.check_commits.outputs.skip != 'true'
@@ -171,4 +171,4 @@ jobs:
           version: v2.0.0
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
