@@ -69,9 +69,17 @@ jobs:
         if: steps.check_commits.outputs.skip != 'true'
         id: new_version
         run: |
-          PREV_TAG=${{ steps.previous_tag.outputs.previous_tag }}
-          VERSION=$(echo $PREV_TAG | sed 's/^v//')
-          COMMIT_MSGS=$(git log $PREV_TAG..HEAD --no-merges --pretty=%B)
+          if [ -z "$(git tag)" ]; then
+          echo "First release - creating v0.0.1"
+          echo "new_tag=v0.0.1" >> $GITHUB_OUTPUT
+          exit 0
+          fi
+
+          PREV_TAG=$(git describe --tags --abbrev=0)
+          VERSION=$(echo "$PREV_TAG" | sed 's/^v//')
+
+          COMMIT_MSGS=$(git log "$PREV_TAG..HEAD" --no-merges --pretty=%B)
+
           if echo "$COMMIT_MSGS" | grep -qi "BREAKING CHANGE"; then
             NEW_VERSION=$(npx semver "$VERSION" -i major)
           elif echo "$COMMIT_MSGS" | grep -qi "^feat:"; then
@@ -79,11 +87,13 @@ jobs:
           else
             NEW_VERSION=$(npx semver "$VERSION" -i patch)
           fi
+
           NEW_TAG="v$NEW_VERSION"
           while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
             NEW_VERSION=$(npx semver "$NEW_VERSION" -i patch)
             NEW_TAG="v$NEW_VERSION"
           done
+
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
       - name: Create new tag
