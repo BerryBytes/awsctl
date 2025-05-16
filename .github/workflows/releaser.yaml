@@ -109,6 +109,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
           PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
+          GH_TOKEN: ${{ github.token }}
+
         run: |
           SCRIPT_PATH=".github/scripts/generate-changelog.sh"
           if [ ! -f "$SCRIPT_PATH" ]; then
