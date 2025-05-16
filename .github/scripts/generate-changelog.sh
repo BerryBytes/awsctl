@@ -26,22 +26,19 @@ check_dependencies() {
 
 # Generate changelog content
 generate_changelog_content() {
-  release_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
   if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$RELEASE_TAG" ]; then
-    echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG ($release_date)"
-    git log --pretty=format:"- %s (%h)" "$RELEASE_TAG" \
-      | grep -Ei '^(feat|fix|perf|style|ci|build|revert):|^[^-:]+$' || true
+    echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+    git log --pretty=format:"- %s (%h)" "$RELEASE_TAG"
   else
-    echo "# $PROJECT_NAME - $RELEASE_TAG ($release_date)"
+    echo "# $PROJECT_NAME - $RELEASE_TAG"
     echo "## Changes since $PREVIOUS_TAG"
-    git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" \
-      | grep -Ei '^(feat|fix|perf|style|ci|build|revert):|^[^-:]+$' || true
+    git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG"
   fi
 
   echo ""
-  echo "Generated on $release_date"
+  echo "Generated on $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
+
 
 # Main execution
 main() {
