@@ -39,25 +39,38 @@ format_commit_message() {
 
 # Generate changelog content
 generate_changelog_content() {
-  # Verify the release tag exists
+  # For first release or if RELEASE_TAG is not yet fully committed, use HEAD
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    echo "Error: Tag $RELEASE_TAG does not exist"
-    exit 1
-  fi
-
-  if [ -z "$PREVIOUS_TAG" ]; then
-    echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
-    git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
-      --pretty=format:"- %s (%h)" "$RELEASE_TAG" | while read -r line; do
-      format_commit_message "$line"
-    done
+    echo "Warning: Tag $RELEASE_TAG does not exist. Using HEAD for changelog."
+    if [ -z "$PREVIOUS_TAG" ]; then
+      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" HEAD | while read -r line; do
+        format_commit_message "$line"
+      done
+    else
+      echo "# $PROJECT_NAME - $RELEASE_TAG"
+      echo "## Changes since $PREVIOUS_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..HEAD" | while read -r line; do
+        format_commit_message "$line"
+      done
+    fi
   else
-    echo "# $PROJECT_NAME - $RELEASE_TAG"
-    echo "## Changes since $PREVIOUS_TAG"
-    git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
-      --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | while read -r line; do
-      format_commit_message "$line"
-    done
+    if [ -z "$PREVIOUS_TAG" ]; then
+      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$RELEASE_TAG" | while read -r line; do
+        format_commit_message "$line"
+      done
+    else
+      echo "# $PROJECT_NAME - $RELEASE_TAG"
+      echo "## Changes since $PREVIOUS_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | while read -r line; do
+        format_commit_message "$line"
+      done
+    fi
   fi
 
   echo ""
