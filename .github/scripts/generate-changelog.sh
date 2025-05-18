@@ -11,7 +11,7 @@ set -euo pipefail
 PROJECT_NAME="awsctl"
 CHANGELOG_FILE="CHANGELOG.md"
 TEMP_FILE=".tmpchangelog"
-RELEASE_TAG="${RELEASE_TAG:-${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0)}}"
+RELEASE_TAG="${RELEASE_TAG:-${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0 2>/dev/null || echo "")}}"
 PREVIOUS_TAG="${PREVIOUS_TAG:-$(git describe --tags --abbrev=0 "$RELEASE_TAG"^ 2>/dev/null || echo "")}"
 
 # Cleanup temporary file on exit
@@ -39,25 +39,38 @@ format_commit_message() {
 
 # Generate changelog content
 generate_changelog_content() {
-  # Verify the release tag exists
+  # Check if RELEASE_TAG exists; if not, use HEAD
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    echo "Error: Tag $RELEASE_TAG does not exist"
-    exit 1
-  fi
-
-  if [ -z "$PREVIOUS_TAG" ]; then
-    echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
-    git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
-      --pretty=format:"- %s (%h)" "$RELEASE_TAG" | while read -r line; do
-      format_commit_message "$line"
-    done
+    echo "Warning: Tag $RELEASE_TAG does not exist. Using HEAD for changelog."
+    if [ -z "$PREVIOUS_TAG" ]; then
+      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" HEAD | while read -r line; do
+        format_commit_message "$line"
+      done
+    else
+      echo "# $PROJECT_NAME - $RELEASE_TAG"
+      echo "## Changes since $PREVIOUS_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..HEAD" | while read -r line; do
+        format_commit_message "$line"
+      done
+    fi
   else
-    echo "# $PROJECT_NAME - $RELEASE_TAG"
-    echo "## Changes since $PREVIOUS_TAG"
-    git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
-      --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | while read -r line; do
-      format_commit_message "$line"
-    done
+    if [ -z "$PREVIOUS_TAG" ]; then
+      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$RELEASE_TAG" | while read -r line; do
+        format_commit_message "$line"
+      done
+    else
+      echo "# $PROJECT_NAME - $RELEASE_TAG"
+      echo "## Changes since $PREVIOUS_TAG"
+      git log --no-merges --invert-grep --grep="^docs\|^test\|^chore" \
+        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | while read -r line; do
+        format_commit_message "$line"
+      done
+    fi
   fi
 
   echo ""
