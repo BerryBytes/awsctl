@@ -145,7 +145,7 @@ jobs:
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
           gh pr create \
-            --base main \
+            --base develop \
             --head ${{ steps.create_branch.outputs.branch_name }} \
             --title "Release ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated release PR for ${{ steps.new_version.outputs.new_tag }}" \
