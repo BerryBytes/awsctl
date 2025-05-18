@@ -31,19 +31,26 @@ jobs:
           go-version: "1.22"
           cache: true
 
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Install dependencies
+        if: steps.check_commits.outputs.skip != 'true'
+        run: |
+          npm install --global prettier@3.5.3
+          npm install --global semver
+
       - name: Get current and previous tags
         id: tags
         run: |
-          # Get current tag if exists
           CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          # Get previous tag if exists
           if [ -n "$CURRENT_TAG" ]; then
             PREV_TAG=$(git describe --tags --abbrev=0 "$CURRENT_TAG"^ 2>/dev/null || echo "")
           else
             PREV_TAG=""
           fi
-
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
           echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
@@ -51,15 +58,12 @@ jobs:
         id: check_commits
         run: |
           CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
-
           if [ -z "$CURRENT_TAG" ]; then
             echo "No existing tags found - this is the first release"
             echo "skip=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-
           COMMIT_COUNT=$(git rev-list --count "$CURRENT_TAG..HEAD" --no-merges)
-
           if [ "$COMMIT_COUNT" -eq 0 ]; then
             echo "No new commits since $CURRENT_TAG. Skipping release."
             echo "skip=true" >> $GITHUB_OUTPUT
@@ -67,12 +71,6 @@ jobs:
             echo "Found $COMMIT_COUNT new commits since $CURRENT_TAG"
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Install dependencies
-        if: steps.check_commits.outputs.skip != 'true'
-        run: |
-          npm install --global prettier@3.5.3
-          npm install --global semver
 
       - name: Run Tests
         if: steps.check_commits.outputs.skip != 'true'
@@ -83,16 +81,13 @@ jobs:
         id: new_version
         run: |
           CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
-
           if [ -z "$CURRENT_TAG" ]; then
             echo "First release - creating v0.1.0"
             echo "new_tag=v0.1.0" >> $GITHUB_OUTPUT
             exit 0
           fi
-
           VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//')
           COMMIT_MSGS=$(git log "$CURRENT_TAG..HEAD" --no-merges --pretty=%B)
-
           if echo "$COMMIT_MSGS" | grep -qi "BREAKING CHANGE"; then
             NEW_VERSION=$(semver "$VERSION" -i major)
           elif echo "$COMMIT_MSGS" | grep -qi "^feat:"; then
@@ -100,35 +95,22 @@ jobs:
           else
             NEW_VERSION=$(semver "$VERSION" -i patch)
           fi
-
           NEW_TAG="v$NEW_VERSION"
-
-          # Ensure tag is unique
           while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
             NEW_VERSION=$(semver "$NEW_VERSION" -i patch)
             NEW_TAG="v$NEW_VERSION"
           done
-
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
-      - name: Create release branch
+      - name: Create changelog branch
         if: steps.check_commits.outputs.skip != 'true'
         id: create_branch
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          BRANCH_NAME="release/${{ steps.new_version.outputs.new_tag }}"
+          BRANCH_NAME="changelog-update-/${{ steps.new_version.outputs.new_tag }}"
           git checkout -b "$BRANCH_NAME"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create and push new tag
-        if: steps.check_commits.outputs.skip != 'true'
-        id: create_tag
-        run: |
-          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
-          git push origin ${{ steps.new_version.outputs.new_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -145,27 +127,42 @@ jobs:
 
       - name: Commit and push changelog
         if: steps.check_commits.outputs.skip != 'true'
+        id: commit_changelog
         run: |
           git add CHANGELOG.md
+          if git diff --staged --quiet; then
+            echo "No changes to CHANGELOG.md. Skipping commit."
+            echo "skip_pr=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           git commit -m "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}"
           git push origin ${{ steps.create_branch.outputs.branch_name }}
+          echo "skip_pr=false" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Pull Request
-        if: steps.check_commits.outputs.skip != 'true'
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
           gh pr create \
-            --base main \
+            --base develop \
             --head ${{ steps.create_branch.outputs.branch_name }} \
             --title "Release ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated release PR for ${{ steps.new_version.outputs.new_tag }}" \
-            --reviewer leodahal4
+            --reviewer leodahal4 || echo "PR creation failed, possibly no changes or reviewer issue"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push new tag
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin ${{ steps.new_version.outputs.new_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
-        if: steps.check_commits.outputs.skip != 'true'
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
