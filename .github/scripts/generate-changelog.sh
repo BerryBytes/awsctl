@@ -20,16 +20,11 @@ trap 'rm -f "$TEMP_FILE"' EXIT
 # Format commit messages for better readability
 format_commit_message() {
   local msg="$1"
-  # Remove common prefixes and clean up message
   msg=$(echo "$msg" | sed -E '
-    # Remove conventional commit prefixes (feat:, fix:, etc.)
     s/^(feat|fix|perf|refactor|docs|style|chore|test|build|ci|revert)(\([^)]*\))?:[[:space:]]*//i;
-    # Clean up remaining whitespace
     s/^[[:space:]]+//;
     s/[[:space:]]+$//;
-    # Capitalize first letter
     s/^./\U&/;
-    # Remove trailing period if present
     s/\.$//;
   ')
   echo "$msg"
