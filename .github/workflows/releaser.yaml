@@ -114,6 +114,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create and push new tag
+        if: steps.check_commits.outputs.skip != 'true'
+        run: |
+          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin ${{ steps.new_version.outputs.new_tag }}
+          sleep 5
+
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
         env:
@@ -150,23 +157,6 @@ jobs:
             --title "Release ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated release PR for ${{ steps.new_version.outputs.new_tag }}" \
             --reviewer leodahal4 || echo "PR creation failed, possibly no changes or reviewer issue"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create and push new tag
-        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
-        run: |
-          git fetch --tags --force
-
-          git tag -d ${{ steps.new_version.outputs.new_tag }} || true
-
-          git push --delete origin ${{ steps.new_version.outputs.new_tag }} || true
-
-          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
-          git push origin ${{ steps.new_version.outputs.new_tag }}
-
-          git fetch --tags --force
-          echo "Tag points to: $(git rev-parse ${{ steps.new_version.outputs.new_tag }})"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
