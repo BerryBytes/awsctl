@@ -114,13 +114,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push new tag
-        if: steps.check_commits.outputs.skip != 'true'
-        run: |
-          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
-          git push origin ${{ steps.new_version.outputs.new_tag }}
-          sleep 5
-
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
         env:
@@ -132,7 +125,7 @@ jobs:
           .github/scripts/generate-changelog.sh
           git diff --quiet CHANGELOG.md || echo "Changelog updated"
 
-      - name: Commit and push changelog
+      - name: Commit changelog updates
         if: steps.check_commits.outputs.skip != 'true'
         id: commit_changelog
         run: |
@@ -143,8 +136,25 @@ jobs:
             exit 0
           fi
           git commit -m "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}"
-          git push origin ${{ steps.create_branch.outputs.branch_name }}
           echo "skip_pr=false" >> $GITHUB_OUTPUT
+
+      - name: Create and push release tag
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          # Get the exact commit hash we want to tag
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+
+          # Create and push the tag
+          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
+          git push origin ${{ steps.new_version.outputs.new_tag }} --force
+
+          # Wait for tag propagation
+          sleep 5
+
+      - name: Push release branch
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          git push origin ${{ steps.create_branch.outputs.branch_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -156,7 +166,7 @@ jobs:
             --head ${{ steps.create_branch.outputs.branch_name }} \
             --title "Release ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated release PR for ${{ steps.new_version.outputs.new_tag }}" \
-            --reviewer leodahal4 || echo "PR creation failed, possibly no changes or reviewer issue"
+            --reviewer mousamdahal || echo "PR creation failed, possibly no changes or reviewer issue"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

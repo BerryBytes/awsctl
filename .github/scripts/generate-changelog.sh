@@ -22,11 +22,15 @@ format_commit_message() {
   local msg="$1"
   # Remove common prefixes and clean up message
   msg=$(echo "$msg" | sed -E '
-    s/^(feat|fix|perf|refactor|docs|style|chore|test|build|ci|revert):[[:space:]]*//i;
+    # Remove conventional commit prefixes (feat:, fix:, etc.)
+    s/^(feat|fix|perf|refactor|docs|style|chore|test|build|ci|revert)(\([^)]*\))?:[[:space:]]*//i;
+    # Clean up remaining whitespace
     s/^[[:space:]]+//;
-    s/^([A-Z])/\1/;
+    s/[[:space:]]+$//;
+    # Capitalize first letter
+    s/^./\U&/;
+    # Remove trailing period if present
     s/\.$//;
-    s/^./\U&/
   ')
   echo "$msg"
 }
