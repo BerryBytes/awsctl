@@ -17,55 +17,65 @@ PREVIOUS_TAG="${PREVIOUS_TAG:-$(git describe --tags --abbrev=0 "$RELEASE_TAG"^ 2
 # Cleanup temporary file on exit
 trap 'rm -f "$TEMP_FILE"' EXIT
 
-# Format commit messages for better readability
 format_commit_message() {
   local msg="$1"
+  msg=$(echo "$msg" | sed -E 's/\[[^]]*\]//g')
+
   msg=$(echo "$msg" | sed -E '
     s/^(feat|fix|perf|refactor|docs|style|chore|test|build|ci|revert)(\([^)]*\))?:[[:space:]]*//i;
     s/^[[:space:]]+//;
     s/[[:space:]]+$//;
+  ')
+
+  msg=$(echo "$msg" | sed -E '
     s/^./\U&/;
     s/\.$//;
   ')
+
   echo "$msg"
 }
 
 # Generate changelog content
 generate_changelog_content() {
   # Define patterns to exclude
-  local EXCLUDE_PATTERNS="^docs\|^test\|^chore\|^ci\|^build\|^release\|^merge\|^workflow\|^style\|^refactor\|^wip"
-  local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]"
+  local EXCLUDE_PATTERNS="^docs(?!.*readme)|^test|^chore(?!.*golangci)|^ci|^build|\brelease\b|\bworkflow\b|\bchangelog\b|^style|^refactor|^wip|^merge"
+  local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
+
 
   # Check if RELEASE_TAG exists; if not, use HEAD
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    echo "Warning: Tag $RELEASE_TAG does not exist. Using HEAD for changelog."
+    # echo "Warning: Tag $RELEASE_TAG does not exist. Using HEAD for changelog." >&2
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"- %s (%h)" HEAD | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        format_commit_message "$line"
+        --pretty=format:"%s (%h)" HEAD | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        formatted=$(format_commit_message "$line")
+        [ -n "$formatted" ] && echo "- $formatted"
       done
     else
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        format_commit_message "$line"
+        --pretty=format:"%s (%h)" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        formatted=$(format_commit_message "$line")
+        [ -n "$formatted" ] && echo "- $formatted"
       done
     fi
   else
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"- %s (%h)" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        format_commit_message "$line"
+        --pretty=format:"%s (%h)" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        formatted=$(format_commit_message "$line")
+        [ -n "$formatted" ] && echo "- $formatted"
       done
     else
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        format_commit_message "$line"
+        --pretty=format:"%s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        formatted=$(format_commit_message "$line")
+        [ -n "$formatted" ] && echo "- $formatted"
       done
     fi
   fi
@@ -76,7 +86,6 @@ generate_changelog_content() {
 
 # Main execution
 main() {
-  # Create or update changelog
   if [ -f "$CHANGELOG_FILE" ]; then
     echo "Updating existing changelog..."
     generate_changelog_content > "$TEMP_FILE"
