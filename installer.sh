@@ -39,7 +39,7 @@ fi
 OS_NAME=$(uname -s)
 VERSION=${1:-latest} # Accept version as an argument, default to 'latest' if not provided
 if [ "$OS_NAME" = "Darwin" ]; then
-  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/${VERSION}/download/awsctl_Darwin_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
+  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/download/${VERSION}/awsctl_Darwin_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
     kill "$!" 2>/dev/null
     echo ""
     echo "Download completed"
@@ -49,7 +49,7 @@ if [ "$OS_NAME" = "Darwin" ]; then
     exit 1
   fi
 elif [ "$OS_NAME" = "Linux" ]; then
-  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/${VERSION}/download/awsctl_Linux_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
+  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/download/${VERSION}/awsctl_Linux_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
     kill "$!" 2>/dev/null
     echo ""
     echo "Download completed"

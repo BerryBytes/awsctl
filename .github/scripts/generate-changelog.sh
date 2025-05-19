@@ -48,7 +48,7 @@ generate_changelog_content() {
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%h)" HEAD | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        --pretty=format:"%s (%an <%ae>)" HEAD | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
         formatted=$(format_commit_message "$line")
         [ -n "$formatted" ] && echo "- $formatted"
       done
@@ -56,7 +56,7 @@ generate_changelog_content() {
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%h)" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        --pretty=format:"%s (%an <%ae>)" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
         formatted=$(format_commit_message "$line")
         [ -n "$formatted" ] && echo "- $formatted"
       done
@@ -65,7 +65,7 @@ generate_changelog_content() {
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%h)" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        --pretty=format:"%s (%an <%ae>)" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
         formatted=$(format_commit_message "$line")
         [ -n "$formatted" ] && echo "- $formatted"
       done
@@ -73,7 +73,7 @@ generate_changelog_content() {
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%h)" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
+        --pretty=format:"%s (%an <%ae>)" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
         formatted=$(format_commit_message "$line")
         [ -n "$formatted" ] && echo "- $formatted"
       done
