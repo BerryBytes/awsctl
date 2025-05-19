@@ -156,13 +156,17 @@ jobs:
       - name: Create and push new tag
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
-          # Check if tag exists remotely
-          if git ls-remote --tags origin refs/tags/${{ steps.new_version.outputs.new_tag }} | grep -q "${{ steps.new_version.outputs.new_tag }}"; then
-            echo "Tag ${{ steps.new_version.outputs.new_tag }} already exists in remote. Skipping tag creation."
-          else
-            git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
-            git push origin ${{ steps.new_version.outputs.new_tag }}
-          fi
+          git fetch --tags --force
+
+          git tag -d ${{ steps.new_version.outputs.new_tag }} || true
+
+          git push --delete origin ${{ steps.new_version.outputs.new_tag }} || true
+
+          git tag ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin ${{ steps.new_version.outputs.new_tag }}
+
+          git fetch --tags --force
+          echo "Tag points to: $(git rev-parse ${{ steps.new_version.outputs.new_tag }})"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
