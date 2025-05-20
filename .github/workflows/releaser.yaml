@@ -173,6 +173,6 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean
+          args: release --clean --release-notes=RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
