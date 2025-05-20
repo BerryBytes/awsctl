@@ -148,6 +148,11 @@ jobs:
 
           sleep 3
 
+      - name: Stage release notes to avoid dirty state error
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          git add RELEASE_NOTES.md
+
       - name: Push release branch
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
