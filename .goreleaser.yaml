@@ -24,6 +24,8 @@ archives:
   - formats: ["binary"]
     files:
       - README.md
+      - LICENSE
+      - CHANGELOG.md
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -40,9 +42,14 @@ changelog:
   disable: true
 
 release:
+  github:
+    owner: berrybytes
+    name: awsctl
+  release_notes_file: RELEASE_NOTES.md
   extra_files:
     - glob: ./LICENSE
     - glob: ./README.md
+    - glob: ./CHANGELOG.md
   footer: >-
     ---
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

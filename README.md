@@ -145,14 +145,14 @@ aws:
 
 The following table summarizes the available `awsctl` commands:
 
-| Command            | Description                                                                                        |
-| ------------------ | -------------------------------------------------------------------------------------------------- | ------------------ |
-| `awsctl sso setup` | Configures AWS SSO profiles, creating or updating a config file at `~/.config/awsctl/config.yaml`. | `awsctl sso setup` |
-| `awsctl sso init`  | Initializes SSO authentication using a configured profile via `awsctl sso setup`.                  | `awsctl sso init`  |
-| `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.    | `awsctl bastion`   |
-| `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                         | `awsctl rds`       |
-| `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                              | `awsctl eks`       |
-| `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                        | `awsctl ecr`       |
+| Command            | Description                                                                                       |
+|--------------------|---------------------------------------------------------------------------------------------------|
+| `awsctl sso setup` | Configures AWS SSO profiles, creating or updating a config file at `~/.config/awsctl/config.yaml`. |
+| `awsctl sso init`  | Initializes SSO authentication using a configured profile via `awsctl sso setup`.                 |
+| `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.   |
+| `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                        |
+| `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                             |
+| `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                       |
 
 ### Contributing
 
