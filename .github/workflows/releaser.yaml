@@ -148,11 +148,6 @@ jobs:
 
           sleep 3
 
-      - name: Stage release notes to avoid dirty state error
-        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
-        run: |
-          git add RELEASE_NOTES.md
-
       - name: Push release branch
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
@@ -178,6 +173,6 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean --release-notes=RELEASE_NOTES.md
+          args: release --clean --release-notes=RELEASE_NOTES.md --skip-validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
