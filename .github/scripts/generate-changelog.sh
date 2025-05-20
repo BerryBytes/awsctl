@@ -13,6 +13,7 @@ CHANGELOG_FILE="CHANGELOG.md"
 TEMP_FILE=".tmpchangelog"
 RELEASE_TAG="${RELEASE_TAG:-${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0 2>/dev/null || echo "")}}"
 PREVIOUS_TAG="${PREVIOUS_TAG:-$(git describe --tags --abbrev=0 "$RELEASE_TAG"^ 2>/dev/null || echo "")}"
+GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-berrybytes/awsctl}"
 
 # Cleanup temporary file on exit
 trap 'rm -f "$TEMP_FILE"' EXIT
@@ -37,46 +38,46 @@ format_commit_message() {
 
 # Generate changelog content
 generate_changelog_content() {
-  # Define patterns to exclude
   local EXCLUDE_PATTERNS="^docs(?!.*readme)|^test|^chore(?!.*golangci)|^ci|^build|\brelease\b|\bworkflow\b|\bchangelog\b|^style|^refactor|^wip|^merge"
   local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
 
-
-  # Check if RELEASE_TAG exists; if not, use HEAD
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    # echo "Warning: Tag $RELEASE_TAG does not exist. Using HEAD for changelog." >&2
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%an <%ae>)" HEAD | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        formatted=$(format_commit_message "$line")
-        [ -n "$formatted" ] && echo "- $formatted"
-      done
+        --pretty=format:"%s|%h|%H|%an|%ae" HEAD | grep -vE "$INTERNAL_PATTERNS" | \
+        while IFS='|' read -r msg short_hash full_hash author email; do
+          formatted=$(format_commit_message "$msg")
+          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
+        done
     else
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%an <%ae>)" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        formatted=$(format_commit_message "$line")
-        [ -n "$formatted" ] && echo "- $formatted"
-      done
+        --pretty=format:"%s|%h|%H|%an|%ae" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" | \
+        while IFS='|' read -r msg short_hash full_hash author email; do
+          formatted=$(format_commit_message "$msg")
+          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
+        done
     fi
   else
     if [ -z "$PREVIOUS_TAG" ]; then
       echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%an <%ae>)" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        formatted=$(format_commit_message "$line")
-        [ -n "$formatted" ] && echo "- $formatted"
-      done
+        --pretty=format:"%s|%h|%H|%an|%ae" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | \
+        while IFS='|' read -r msg short_hash full_hash author email; do
+          formatted=$(format_commit_message "$msg")
+          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
+        done
     else
       echo "# $PROJECT_NAME - $RELEASE_TAG"
       echo "## Changes since $PREVIOUS_TAG"
       git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s (%an <%ae>)" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | while read -r line; do
-        formatted=$(format_commit_message "$line")
-        [ -n "$formatted" ] && echo "- $formatted"
-      done
+        --pretty=format:"%s|%h|%H|%an|%ae" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" | \
+        while IFS='|' read -r msg short_hash full_hash author email; do
+          formatted=$(format_commit_message "$msg")
+          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
+        done
     fi
   fi
 
