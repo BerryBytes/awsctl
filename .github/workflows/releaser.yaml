@@ -173,6 +173,5 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean --release-notes=RELEASE_NOTES.md --skip-validate
-        env:
+          args: release --clean --release-notes=RELEASE_NOTES.md
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
