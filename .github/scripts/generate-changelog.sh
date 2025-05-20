@@ -20,7 +20,6 @@ RELEASE_TAG="${RELEASE_TAG:-${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0 
 PREVIOUS_TAG="${PREVIOUS_TAG:-$(git describe --tags --abbrev=0 "$RELEASE_TAG"^ 2>/dev/null || echo "")}"
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-berrybytes/awsctl}"
 RELEASE_DATE=$(date -u +"%B %d, %Y")
-GENERATED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Cleanup temporary files on exit
 trap 'rm -f "$TEMP_FILE" "$TEMP_RELEASE_NOTES"' EXIT

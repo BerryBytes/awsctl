@@ -25,7 +25,7 @@ curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh |
 
 ```
 
-# Verify installation
+### Verify installation
 `awsctl --help`
 
 ### Getting Started

@@ -22,7 +22,7 @@ This release of `awsctl` ({{ .Version }}) brings new features, bug fixes, and im
 curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash
 ```
 
-# Verify installation
+### Verify installation
 `awsctl --help`
 
 ### Feedback
