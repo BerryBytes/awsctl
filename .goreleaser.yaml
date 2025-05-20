@@ -45,7 +45,6 @@ release:
   github:
     owner: berrybytes
     name: awsctl
-  release_notes_file: RELEASE_NOTES.md
   extra_files:
     - glob: ./LICENSE
     - glob: ./README.md
