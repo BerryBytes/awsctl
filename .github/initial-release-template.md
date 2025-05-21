@@ -6,9 +6,7 @@
 
 `awsctl` is a Go-based command-line tool designed to simplify AWS resource management, including SSH connections to EC2 instances, RDS databases, EKS clusters, and ECR repositories. This initial release ({{ .Version }}) introduces core functionality to streamline AWS workflows for developers and DevOps engineers.
 
-### New Features
-
-### Bug Fixes
+### Features
 
 ### Installation
 
@@ -25,7 +23,8 @@ curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh |
 
 ```
 
-# Verify installation
+### Verify installation
+
 `awsctl --help`
 
 ### Getting Started
@@ -38,6 +37,6 @@ This is our first release, and we’d love your input! Report issues or suggest 
 
 ### Technical Changelog
 
-For a complete list of changes, including internal updates, see the [Changelog](https://github.com/berrybytes/awsctl/blob/develop/CHANGELOG.md).
+For a complete list of changes, see the [Changelog](https://github.com/berrybytes/awsctl/blob/develop/CHANGELOG.md).
 
 Thank you for using `awsctl`!
