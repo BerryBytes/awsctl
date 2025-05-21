@@ -45,45 +45,30 @@ generate_changelog_content() {
   local EXCLUDE_PATTERNS="^docs\\(internal\\)|^test|^chore(?!.*golangci)|^ci|^build|^style|^refactor|^wip|^merge"
   local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
 
+  # Determine the git log range
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    if [ -z "$PREVIOUS_TAG" ]; then
-      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
-      git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s|%h|%H|%an|%ae" HEAD | grep -vE "$INTERNAL_PATTERNS" |
-        while IFS='|' read -r msg short_hash full_hash author email; do
-          formatted=$(format_commit_message "$msg")
-          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
-        done
-    else
-      echo "# $PROJECT_NAME - $RELEASE_TAG"
-      echo "## Changes since $PREVIOUS_TAG"
-      git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s|%h|%H|%an|%ae" "$PREVIOUS_TAG..HEAD" | grep -vE "$INTERNAL_PATTERNS" |
-        while IFS='|' read -r msg short_hash full_hash author email; do
-          formatted=$(format_commit_message "$msg")
-          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
-        done
-    fi
+    # Not an exact tag (maybe a branch)
+    local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}HEAD"
   else
-    if [ -z "$PREVIOUS_TAG" ]; then
-      echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
-      git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s|%h|%H|%an|%ae" "$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" |
-        while IFS='|' read -r msg short_hash full_hash author email; do
-          formatted=$(format_commit_message "$msg")
-          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
-        done
-    else
-      echo "# $PROJECT_NAME - $RELEASE_TAG"
-      echo "## Changes since $PREVIOUS_TAG"
-      git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-        --pretty=format:"%s|%h|%H|%an|%ae" "$PREVIOUS_TAG..$RELEASE_TAG" | grep -vE "$INTERNAL_PATTERNS" |
-        while IFS='|' read -r msg short_hash full_hash author email; do
-          formatted=$(format_commit_message "$msg")
-          [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
-        done
-    fi
+    # Exact tag
+    local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$RELEASE_TAG"
   fi
+
+  # Generate header
+  if [ -z "$PREVIOUS_TAG" ]; then
+    echo "# $PROJECT_NAME - Initial Release $RELEASE_TAG"
+  else
+    echo "# $PROJECT_NAME - $RELEASE_TAG"
+    echo "## Changes since $PREVIOUS_TAG"
+  fi
+
+  # Process commits
+  git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
+    --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS" |
+    while IFS='|' read -r msg short_hash full_hash author email; do
+      formatted=$(format_commit_message "$msg")
+      [ -n "$formatted" ] && echo "- [$short_hash](https://github.com/$GITHUB_REPOSITORY/commit/$full_hash) $formatted ($author <$email>)"
+    done
 
   echo ""
   echo "Generated on $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
