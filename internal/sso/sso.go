@@ -176,23 +176,18 @@ func (c *RealSSOClient) SetupSSO() error {
 }
 
 func (c *RealSSOClient) setupNewConfiguration() error {
+	// Configure AWS SSO interactively
+	err := c.AWSClient.SSOClient.ConfigureSSO()
+	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return promptUtils.ErrInterrupted
+		}
+		return fmt.Errorf("failed to configure AWS SSO: %v", err)
+	}
+
 	profiles, err := c.AWSClient.SSOClient.GetSSOProfiles()
-	if err != nil || len(profiles) == 0 {
-		fmt.Println("No AWS SSO profiles found. Configuring SSO...")
-
-		// Configure AWS SSO interactively
-		err := c.AWSClient.SSOClient.ConfigureSSO()
-		if err != nil {
-			if errors.Is(err, promptUtils.ErrInterrupted) {
-				return promptUtils.ErrInterrupted
-			}
-			return fmt.Errorf("failed to configure AWS SSO: %v", err)
-		}
-
-		profiles, err = c.AWSClient.SSOClient.GetSSOProfiles()
-		if err != nil {
-			return fmt.Errorf("failed to refresh AWS SSO profiles: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("failed to refresh AWS SSO profiles: %v", err)
 	}
 
 	profile, err := c.AWSClient.SelectionClient.SelectProfile(profiles)
