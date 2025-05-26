@@ -52,6 +52,8 @@ jobs:
           else
             PREV_TAG=""
           fi
+          echo "Current tag: $CURRENT_TAG"
+          echo "Previous tag: $PREV_TAG"
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
           echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
@@ -115,6 +117,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create and push release tag
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+
+          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
+          git push origin ${{ steps.new_version.outputs.new_tag }} --force
+
+          sleep 3
+
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
         env:
@@ -139,15 +151,15 @@ jobs:
           git commit -m "Update CHANGELOG.md for ${{ steps.new_version.outputs.new_tag }}"
           echo "skip_pr=false" >> $GITHUB_OUTPUT
 
-      - name: Create and push release tag
-        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
-        run: |
-          RELEASE_COMMIT=$(git rev-parse HEAD)
+      # - name: Create and push release tag
+      #   if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+      #   run: |
+      #     RELEASE_COMMIT=$(git rev-parse HEAD)
 
-          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
-          git push origin ${{ steps.new_version.outputs.new_tag }} --force
+      #     git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
+      #     git push origin ${{ steps.new_version.outputs.new_tag }} --force
 
-          sleep 3
+      #     sleep 3
 
       - name: Push release branch
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
