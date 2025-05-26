@@ -7,7 +7,6 @@
 # - Formats files using Prettier (if available).
 # - Updates GitHub release notes when run in GitHub Actions.
 set -euo pipefail
-set -x
 
 # Configuration
 PROJECT_NAME="awsctl"
@@ -43,30 +42,6 @@ format_commit_message() {
 
 # Generate changelog content
 generate_changelog_content() {
-  # Verify tags first
-  if ! git rev-parse "$RELEASE_TAG" >/dev/null; then
-    echo "::error::Release tag '$RELEASE_TAG' does not exist!"
-    exit 1
-  fi
-
-  if [ -n "$PREVIOUS_TAG" ] && ! git rev-parse "$PREVIOUS_TAG" >/dev/null; then
-    echo "::error::Previous tag '$PREVIOUS_TAG' does not exist!"
-    exit 1
-  fi
-
-  # Determine range AFTER verifying tags
-  if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}HEAD"
-  else
-    LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$RELEASE_TAG"
-  fi
-
-  # Now validate range
-  if ! git log --oneline "$LOG_RANGE" >/dev/null; then
-    echo "::error::Invalid commit range: '$LOG_RANGE'"
-    echo "::error::Command: git log --oneline '$LOG_RANGE'"
-    exit 1
-  fi
   local EXCLUDE_PATTERNS="^docs\\(internal\\)|^test|^chore(?!.*golangci)|^ci|^build|^style|^refactor|^wip|^merge"
   local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
 
