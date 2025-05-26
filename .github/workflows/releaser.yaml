@@ -117,15 +117,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push release tag
-        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
+      - name: Create temporary local tag for changelog
+        if: steps.check_commits.outputs.skip != 'true'
         run: |
-          RELEASE_COMMIT=$(git rev-parse HEAD)
-
-          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
-          git push origin ${{ steps.new_version.outputs.new_tag }} --force
-
-          sleep 3
+          git tag ${{ steps.new_version.outputs.new_tag }}
 
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
@@ -160,6 +155,12 @@ jobs:
       #     git push origin ${{ steps.new_version.outputs.new_tag }} --force
 
       #     sleep 3
+
+      - name: Create and push final tag
+        if: steps.commit_changelog.outputs.skip_pr != 'true'
+        run: |
+          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin ${{ steps.new_version.outputs.new_tag }} --force
 
       - name: Push release branch
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
