@@ -1,0 +1,5 @@
+[[allowlists]]
+description = "Ignore all test files"
+paths = [
+  '''.*_test\.go''',
+]

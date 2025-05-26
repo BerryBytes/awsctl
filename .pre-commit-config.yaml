@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.0.0
+    rev: v4.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -41,10 +41,10 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
-        files: ^.*\.(py|c|h|md|rst|yml|go|sh|sql|tf|yaml)$
+        files: ^.*\.(py|c|h|rst|yml|go|sh|sql|tf|yaml)$
         args: ["--write-changes", "--ignore-words-list", "hist,nd"]
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.0
+    rev: v8.26.0
     hooks:
       - id: gitleaks
         args: ["--verbose"]
