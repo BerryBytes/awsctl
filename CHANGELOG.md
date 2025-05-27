@@ -1,3 +1,18 @@
+# awsctl - v0.2.0
+
+## Changes since v0.1.0
+
+- [94688b6](https://github.com/BerryBytes/awsctl/commit/94688b66d2e88fbe4d27a1d38897cc8c616c3988) Test doc to test release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [3195930](https://github.com/BerryBytes/awsctl/commit/319593054f9cd961886b844d3fc4663cc16925b0) Test fix to test release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [8a00775](https://github.com/BerryBytes/awsctl/commit/8a00775fa9ff6c2cbb11be581dc8ab015a6b6d75) Test feature to test release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [7b891d8](https://github.com/BerryBytes/awsctl/commit/7b891d81ea61131d52ff36f7708772e765613e9e) Refactored changelog generation and release workflow (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [1c4e0fa](https://github.com/BerryBytes/awsctl/commit/1c4e0faa924ed0a895de0a69f650720e2455f37e) Added logging in release note generation (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [415644c](https://github.com/BerryBytes/awsctl/commit/415644ca776726b65f74e35b35f3b7fff50f63f9) Testing releaser for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [1359acf](https://github.com/BerryBytes/awsctl/commit/1359acfea63d77a487a78fbc3e0db38bd02409ba) Testing releaser for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [6bad2fb](https://github.com/BerryBytes/awsctl/commit/6bad2fb73c4f698e5c60f93a0bdefc4629b74afc) Test workflow for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+
+Generated on 2025-05-27T07:12:14Z
+
 # awsctl - Initial Release v0.1.0
 
 - [ed57765](https://github.com/BerryBytes/awsctl/commit/ed57765282645a1940f74b8ba7d37764d5cd496e) Sso setup for new configuration won't show configured profile (sanjog-lama <sanjog.gomden@berrybytes.com>)
