@@ -112,31 +112,30 @@ generate_release_notes() {
   local documentation=""
 
   echo "Processing git commits..."
-  git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
-    --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS" |
-    while IFS='|' read -r msg short_hash full_hash author email; do
-      echo "Processing commit: $short_hash - $msg"
+  while IFS='|' read -r msg short_hash full_hash author email; do
+    echo "Processing commit: $short_hash - $msg"
 
-      if [[ ! "$msg" =~ ^(feat|fix|docs): ]]; then
-        continue
-      fi
+    if [[ ! "$msg" =~ ^(feat|fix|docs): ]]; then
+      continue
+    fi
 
-      formatted=$(format_commit_message "$msg")
-      if [ -z "$formatted" ]; then
-        continue
-      fi
+    formatted=$(format_commit_message "$msg")
+    if [ -z "$formatted" ]; then
+      continue
+    fi
 
-      if [[ "$msg" =~ ^feat ]]; then
-        echo "Adding feature: $formatted"
-        features+="- $formatted\n"
-      elif [[ "$msg" =~ ^fix ]]; then
-        echo "Adding fix: $formatted"
-        fixes+="- $formatted\n"
-      elif [[ "$msg" =~ ^docs ]]; then
-        echo "Adding documentation update: $formatted"
-        documentation+="- $formatted\n"
-      fi
-    done
+    if [[ "$msg" =~ ^feat ]]; then
+      echo "Adding feature: $formatted"
+      features+="- $formatted\n"
+    elif [[ "$msg" =~ ^fix ]]; then
+      echo "Adding fix: $formatted"
+      fixes+="- $formatted\n"
+    elif [[ "$msg" =~ ^docs ]]; then
+      echo "Adding documentation update: $formatted"
+      documentation+="- $formatted\n"
+    fi
+  done < <(git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
+    --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS")
 
   echo "Finished processing commits."
   echo "Features count: $(echo -e "$features" | grep -c '^-')"
@@ -164,7 +163,7 @@ generate_release_notes() {
     sed -i "/### Documentation Update/a $documentation" "$TEMP_RELEASE_NOTES"
   else
     echo "No documentation updates found for this release"
-    sed -i "/### Documentation Update/a - No documentation update in this release" "$TEMP_RELEASE_NOTES"
+    sed -i "/### Documentation Update/a - No documentation updates in this release" "$TEMP_RELEASE_NOTES"
   fi
 
   mv "$TEMP_RELEASE_NOTES" "$RELEASE_NOTES_FILE"
