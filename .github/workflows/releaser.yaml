@@ -117,11 +117,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create temporary local tag for changelog
-        if: steps.check_commits.outputs.skip != 'true'
-        run: |
-          git tag ${{ steps.new_version.outputs.new_tag }}
-
       - name: Generate Changelog
         if: steps.check_commits.outputs.skip != 'true'
         env:
@@ -129,8 +124,13 @@ jobs:
           PREVIOUS_TAG: ${{ steps.tags.outputs.current_tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git tag -f "temp-${{ steps.new_version.outputs.new_tag }}"
+
           chmod +x .github/scripts/generate-changelog.sh
           .github/scripts/generate-changelog.sh
+
+          git tag -d "temp-${{ steps.new_version.outputs.new_tag }}"
+
           git diff --quiet CHANGELOG.md || echo "Changelog updated"
 
       - name: Commit changelog updates
@@ -156,18 +156,20 @@ jobs:
 
       #     sleep 3
 
-      - name: Create and push final tag
-        if: steps.commit_changelog.outputs.skip_pr != 'true'
+      - name: Create and push release tag
+        if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
-          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+          git tag -f ${{ steps.new_version.outputs.new_tag }} -m "Release ${{ steps.new_version.outputs.new_tag }}" $RELEASE_COMMIT
           git push origin ${{ steps.new_version.outputs.new_tag }} --force
+          sleep 3
 
       - name: Push release branch
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
         run: |
           git push origin ${{ steps.create_branch.outputs.branch_name }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+         GITHUB_TOKEN: ${{ secrets.MY_CLI_SECRET }}
 
       - name: Create Pull Request
         if: steps.check_commits.outputs.skip != 'true' && steps.commit_changelog.outputs.skip_pr != 'true'
