@@ -47,10 +47,8 @@ generate_changelog_content() {
 
   # Determine the git log range
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
-    # Not an exact tag (maybe a branch)
     local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}HEAD"
   else
-    # Exact tag
     local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$RELEASE_TAG"
   fi
 
@@ -62,7 +60,6 @@ generate_changelog_content() {
     echo "## Changes since $PREVIOUS_TAG"
   fi
 
-  # Process commits
   git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
     --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS" |
     while IFS='|' read -r msg short_hash full_hash author email; do
@@ -103,15 +100,10 @@ generate_release_notes() {
     local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$RELEASE_TAG"
   fi
 
-  echo "Using git log range: $LOG_RANGE"
-  echo "Excluding patterns: $EXCLUDE_PATTERNS"
-  echo "Internal patterns: $INTERNAL_PATTERNS"
-
   local features=""
   local fixes=""
   local documentation=""
 
-  echo "Processing git commits..."
   while IFS='|' read -r msg short_hash full_hash author email; do
     echo "Processing commit: $short_hash - $msg"
 
@@ -125,44 +117,30 @@ generate_release_notes() {
     fi
 
     if [[ "$msg" =~ ^feat ]]; then
-      echo "Adding feature: $formatted"
       features+="- $formatted\n"
     elif [[ "$msg" =~ ^fix ]]; then
-      echo "Adding fix: $formatted"
       fixes+="- $formatted\n"
     elif [[ "$msg" =~ ^docs ]]; then
-      echo "Adding documentation update: $formatted"
       documentation+="- $formatted\n"
     fi
   done < <(git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
     --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS")
 
-  echo "Finished processing commits."
-  echo "Features count: $(echo -e "$features" | grep -c '^-')"
-  echo "Fixes count: $(echo -e "$fixes" | grep -c '^-')"
-  echo "Documentation updates count: $(echo -e "$documentation" | grep -c '^-')"
-
   if [ -n "$features" ]; then
-    echo "Adding features to release notes"
     sed -i "/### New Features/a $features" "$TEMP_RELEASE_NOTES"
   else
-    echo "No features found for this release"
     sed -i "/### New Features/a - No new features in this release" "$TEMP_RELEASE_NOTES"
   fi
 
   if [ -n "$fixes" ]; then
-    echo "Adding fixes to release notes"
     sed -i "/### Bug Fixes/a $fixes" "$TEMP_RELEASE_NOTES"
   else
-    echo "No fixes found for this release"
     sed -i "/### Bug Fixes/a - No bug fixes in this release" "$TEMP_RELEASE_NOTES"
   fi
 
   if [ -n "$documentation" ]; then
-    echo "Adding documentation updates to release notes"
     sed -i "/### Documentation Update/a $documentation" "$TEMP_RELEASE_NOTES"
   else
-    echo "No documentation updates found for this release"
     sed -i "/### Documentation Update/a - No documentation updates in this release" "$TEMP_RELEASE_NOTES"
   fi
 
