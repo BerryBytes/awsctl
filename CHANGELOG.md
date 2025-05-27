@@ -1,3 +1,13 @@
+# awsctl - v0.2.0
+
+## Changes since v0.1.0
+
+- [415644c](https://github.com/BerryBytes/awsctl/commit/415644ca776726b65f74e35b35f3b7fff50f63f9) Testing releaser for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [1359acf](https://github.com/BerryBytes/awsctl/commit/1359acfea63d77a487a78fbc3e0db38bd02409ba) Testing releaser for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [6bad2fb](https://github.com/BerryBytes/awsctl/commit/6bad2fb73c4f698e5c60f93a0bdefc4629b74afc) Test workflow for second release (sanjog-lama <sanjog.gomden@berrybytes.com>)
+
+Generated on 2025-05-27T04:19:10Z
+
 # awsctl - Initial Release v0.1.0
 
 - [ed57765](https://github.com/BerryBytes/awsctl/commit/ed57765282645a1940f74b8ba7d37764d5cd496e) Sso setup for new configuration won't show configured profile (sanjog-lama <sanjog.gomden@berrybytes.com>)
