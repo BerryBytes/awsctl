@@ -94,60 +94,81 @@ generate_release_notes() {
   sed -i "s/{{ .Version }}/$RELEASE_TAG/g" "$TEMP_RELEASE_NOTES"
   sed -i "s/{{ .Date }}/$RELEASE_DATE/g" "$TEMP_RELEASE_NOTES"
 
-  # Extract features and fixes
+  local EXCLUDE_PATTERNS="^docs\\(internal\\)|^test|^chore(?!.*golangci)|^ci|^build|^style|^refactor|^wip|^merge"
+  local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
+
+  if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
+    local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}HEAD"
+  else
+    local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$RELEASE_TAG"
+  fi
+
+  echo "Using git log range: $LOG_RANGE"
+  echo "Excluding patterns: $EXCLUDE_PATTERNS"
+  echo "Internal patterns: $INTERNAL_PATTERNS"
+
   local features=""
   local fixes=""
   local documentation=""
-  if [ -z "$PREVIOUS_TAG" ]; then
-    # Initial release: Extract commits from all history up to HEAD
+
+  echo "Processing git commits..."
+  git log --no-merges --invert-grep --grep="$EXCLUDE_PATTERNS" \
+    --pretty=format:"%s|%h|%H|%an|%ae" "$LOG_RANGE" | grep -vE "$INTERNAL_PATTERNS" |
     while IFS='|' read -r msg short_hash full_hash author email; do
-      formatted=$(format_commit_message "$msg")
-      if [[ "$msg" =~ ^feat ]]; then
-        [ -n "$formatted" ] && features+="- $formatted\n"
+      echo "Processing commit: $short_hash - $msg"
+
+      if [[ ! "$msg" =~ ^(feat|fix|docs): ]]; then
+        continue
       fi
-    done < <(git log --no-merges --grep='^feat' \
-      --pretty=format:"%s|%h|%H|%an|%ae" HEAD)
-  else
-    # Future release: Extract commits between PREVIOUS_TAG and RELEASE_TAG
-    while IFS='|' read -r msg short_hash full_hash author email; do
+
       formatted=$(format_commit_message "$msg")
+      if [ -z "$formatted" ]; then
+        continue
+      fi
+
       if [[ "$msg" =~ ^feat ]]; then
-        [ -n "$formatted" ] && features+="- $formatted\n"
+        echo "Adding feature: $formatted"
+        features+="- $formatted\n"
       elif [[ "$msg" =~ ^fix ]]; then
-        [ -n "$formatted" ] && fixes+="- $formatted\n"
+        echo "Adding fix: $formatted"
+        fixes+="- $formatted\n"
       elif [[ "$msg" =~ ^docs ]]; then
-        [ -n "$formatted" ] && documentation+="- $formatted\n"
+        echo "Adding documentation update: $formatted"
+        documentation+="- $formatted\n"
       fi
-    done < <(git log --no-merges --grep='^feat\|^fix' \
-      --pretty=format:"%s|%h|%H|%an|%ae" "$PREVIOUS_TAG..$RELEASE_TAG")
+    done
+
+  echo "Finished processing commits."
+  echo "Features count: $(echo -e "$features" | grep -c '^-')"
+  echo "Fixes count: $(echo -e "$fixes" | grep -c '^-')"
+  echo "Documentation updates count: $(echo -e "$documentation" | grep -c '^-')"
+
+  if [ -n "$features" ]; then
+    echo "Adding features to release notes"
+    sed -i "/### New Features/a $features" "$TEMP_RELEASE_NOTES"
+  else
+    echo "No features found for this release"
+    sed -i "/### New Features/a - No new features in this release" "$TEMP_RELEASE_NOTES"
   fi
 
-  # Insert features and fixes into template
-  if [ -n "$features" ]; then
-    if [ -z "$PREVIOUS_TAG" ]; then
-      sed -i "/### Features/a $features" "$TEMP_RELEASE_NOTES"
-    else
-      sed -i "/### New Features/a $features" "$TEMP_RELEASE_NOTES"
-    fi
-  else
-    if [ -z "$PREVIOUS_TAG" ]; then
-      sed -i "/### Features/a - No new features in this release" "$TEMP_RELEASE_NOTES"
-    else
-      sed -i "/### New Features/a - No new features in this release" "$TEMP_RELEASE_NOTES"
-    fi
-  fi
   if [ -n "$fixes" ]; then
+    echo "Adding fixes to release notes"
     sed -i "/### Bug Fixes/a $fixes" "$TEMP_RELEASE_NOTES"
   else
+    echo "No fixes found for this release"
     sed -i "/### Bug Fixes/a - No bug fixes in this release" "$TEMP_RELEASE_NOTES"
   fi
+
   if [ -n "$documentation" ]; then
+    echo "Adding documentation updates to release notes"
     sed -i "/### Documentation Update/a $documentation" "$TEMP_RELEASE_NOTES"
   else
+    echo "No documentation updates found for this release"
     sed -i "/### Documentation Update/a - No documentation update in this release" "$TEMP_RELEASE_NOTES"
   fi
 
   mv "$TEMP_RELEASE_NOTES" "$RELEASE_NOTES_FILE"
+  echo "Release notes generated at $RELEASE_NOTES_FILE"
 }
 
 # Main execution
