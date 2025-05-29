@@ -83,23 +83,6 @@ func FindConfigFile(cfg *Config) (string, error) {
 	return "", ErrNoConfigFile
 }
 
-func (c *Config) Save() error {
-	configFilePath := filepath.Join(c.AWSConfigDir, "config.yaml")
-	if err := os.MkdirAll(c.AWSConfigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	data, err := yaml.Marshal(c.RawCustomConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config to YAML: %w", err)
-	}
-
-	if err := os.WriteFile(configFilePath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-	return nil
-}
-
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
