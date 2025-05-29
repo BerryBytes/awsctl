@@ -7,6 +7,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestNewEPrompter(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -176,7 +177,7 @@ func TestPromptForProfile_EnvVarSet(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	prompter := &EPrompter{AWSConfigClient: mockConfigClient}
 
 	profile, err := prompter.PromptForProfile()
@@ -189,7 +190,7 @@ func TestPromptForProfile_SingleProfile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return([]string{"default"}, nil)
@@ -211,7 +212,7 @@ func TestPromptForProfile_MultipleProfiles(t *testing.T) {
 		PromptForSelection("Select an AWS profile:", []string{"profile1", "profile2"}).
 		Return("profile2", nil)
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return([]string{"profile1", "profile2"}, nil)
@@ -231,7 +232,7 @@ func TestPromptForProfile_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return(nil, errors.New("config error"))
@@ -369,7 +370,7 @@ func TestGetAWSConfig_FromEnv(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	prompter := &EPrompter{AWSConfigClient: mockConfigClient}
 
 	profile, region, err := prompter.GetAWSConfig()
@@ -395,7 +396,7 @@ func TestGetAWSConfig_PromptForRegion(t *testing.T) {
 		PromptForInput("Enter AWS region (e.g., us-east-1):", "").
 		Return("us-east-1", nil)
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	prompter := &EPrompter{
 		Prompt:          mockPrompt,
 		AWSConfigClient: mockConfigClient,
@@ -422,7 +423,7 @@ func TestGetAWSConfig_PromptForBoth(t *testing.T) {
 			Return("eu-west-1", nil),
 	)
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return([]string{"profile1", "profile2"}, nil)
@@ -484,7 +485,7 @@ func TestPromptForProfile_NoValidProfiles(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return([]string{}, nil)
@@ -600,7 +601,7 @@ func TestGetAWSConfig_NoProfiles(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return(nil, errors.New("config error"))
@@ -617,7 +618,7 @@ func TestGetAWSConfig_EmptyProfiles(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 	mockConfigClient.EXPECT().
 		ValidProfiles().
 		Return([]string{}, nil)

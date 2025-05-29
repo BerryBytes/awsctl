@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -16,10 +15,10 @@ type AwsECRAdapter struct {
 	Client     ECRAPI
 	Cfg        aws.Config
 	FileSystem common.FileSystemInterface
-	Executor   sso.CommandExecutor
+	Executor   common.CommandExecutor
 }
 
-func NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor sso.CommandExecutor) *AwsECRAdapter {
+func NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor common.CommandExecutor) *AwsECRAdapter {
 	return &AwsECRAdapter{
 		Client:     ecr.NewFromConfig(cfg),
 		Cfg:        cfg,

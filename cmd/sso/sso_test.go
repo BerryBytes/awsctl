@@ -6,6 +6,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/cmd/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
@@ -24,10 +25,10 @@ func TestSSOCmd_PersistentPreRun_Success(t *testing.T) {
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockGeneral.EXPECT().CheckAWSCLI().Return(nil)
 
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockSSO := mock_sso.NewMockSSOClient(ctrl)
 
 	cmd := sso.NewSSOCommands(sso.SSODependencies{
-		Client:         mockSSO,
+		SetupClient:    mockSSO,
 		GeneralManager: mockGeneral,
 	})
 
@@ -42,10 +43,10 @@ func TestSSOCmd_PersistentPreRun_Error(t *testing.T) {
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockGeneral.EXPECT().CheckAWSCLI().Return(errors.New("missing aws cli"))
 
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockSSO := mock_sso.NewMockSSOClient(ctrl)
 
 	cmd := sso.NewSSOCommands(sso.SSODependencies{
-		Client:         mockSSO,
+		SetupClient:    mockSSO,
 		GeneralManager: mockGeneral,
 	})
 
@@ -60,10 +61,10 @@ func TestSSOCmd_HasSubcommands(t *testing.T) {
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockGeneral.EXPECT().CheckAWSCLI().Return(nil).AnyTimes()
 
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockSSO := mock_sso.NewMockSSOClient(ctrl)
 
 	cmd := sso.NewSSOCommands(sso.SSODependencies{
-		Client:         mockSSO,
+		SetupClient:    mockSSO,
 		GeneralManager: mockGeneral,
 	})
 

@@ -20,7 +20,7 @@ import (
 )
 
 type RootDependencies struct {
-	SSOClient      sso.SSOClient
+	SSOSetupClient sso.SSOClient
 	BastionService bastion.BastionServiceInterface
 	GeneralManager generalUtils.GeneralUtilsInterface
 	FileSystem     common.FileSystemInterface
@@ -40,7 +40,7 @@ func NewRootCmd(deps RootDependencies) *cobra.Command {
 	}
 
 	rootCmd.AddCommand(cmdSSO.NewSSOCommands(cmdSSO.SSODependencies{
-		Client:         deps.SSOClient,
+		SetupClient:    deps.SSOSetupClient,
 		GeneralManager: deps.GeneralManager,
 	}))
 

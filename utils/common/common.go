@@ -13,15 +13,6 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-type FileSystemInterface interface {
-	Stat(name string) (os.FileInfo, error)
-	ReadFile(name string) ([]byte, error)
-	UserHomeDir() (string, error)
-	Remove(name string) error
-	MkdirAll(path string, perm os.FileMode) error
-	WriteFile(name string, data []byte, perm os.FileMode) error
-}
-
 type RealFileSystem struct{}
 
 func (fs *RealFileSystem) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }

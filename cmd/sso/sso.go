@@ -8,7 +8,7 @@ import (
 )
 
 type SSODependencies struct {
-	Client         sso.SSOClient
+	SetupClient    sso.SSOClient
 	GeneralManager generalUtils.GeneralUtilsInterface
 }
 
@@ -27,8 +27,8 @@ func NewSSOCommands(deps SSODependencies) *cobra.Command {
 		},
 	}
 
-	ssoCmd.AddCommand(InitCmd(deps.Client))
-	ssoCmd.AddCommand(SetupCmd(deps.Client))
+	ssoCmd.AddCommand(InitCmd(deps.SetupClient))
+	ssoCmd.AddCommand(SetupCmd(deps.SetupClient))
 
 	return ssoCmd
 }

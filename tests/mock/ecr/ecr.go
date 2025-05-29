@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	ecr "github.com/BerryBytes/awsctl/internal/ecr"
-	sso "github.com/BerryBytes/awsctl/internal/sso"
 	common "github.com/BerryBytes/awsctl/utils/common"
 	aws "github.com/aws/aws-sdk-go-v2/aws"
 	config "github.com/aws/aws-sdk-go-v2/config"
@@ -201,7 +200,7 @@ func (m *MockECRClientFactory) EXPECT() *MockECRClientFactoryMockRecorder {
 }
 
 // NewECRClient mocks base method.
-func (m *MockECRClientFactory) NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor sso.CommandExecutor) ecr.ECRAdapterInterface {
+func (m *MockECRClientFactory) NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor common.CommandExecutor) ecr.ECRAdapterInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewECRClient", cfg, fs, executor)
 	ret0, _ := ret[0].(ecr.ECRAdapterInterface)

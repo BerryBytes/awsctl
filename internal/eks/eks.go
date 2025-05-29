@@ -41,7 +41,7 @@ func NewEKSService(
 	opts ...func(*EKSService),
 ) *EKSService {
 	prompter := promptUtils.NewPrompt()
-	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
+	configClient := &sso.RealSSOClient{Executor: &common.RealCommandExecutor{}}
 
 	service := &EKSService{
 		EPrompter:        NewEPrompter(prompter, configClient),

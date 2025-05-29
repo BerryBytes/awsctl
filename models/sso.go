@@ -19,9 +19,21 @@ type SSOProfile struct {
 	Accounts    []SSOAccount `json:"accountList" yaml:"accountList"`
 }
 
-// Config represents the root configuration containing all profiles.
 type Config struct {
-	Aws struct {
-		Profiles []SSOProfile `json:"profiles" yaml:"profiles"`
-	} `json:"aws" yaml:"aws"`
+	SSOSessions []SSOSession `yaml:"ssoSessions" json:"ssoSessions"`
+}
+
+// SSOSession represents an AWS SSO session configuration.
+type SSOSession struct {
+	Name     string `yaml:"name" json:"name"`
+	StartURL string `yaml:"startUrl" json:"startUrl"`
+	Region   string `yaml:"region" json:"region"`
+	Scopes   string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+}
+
+type RoleCredentials struct {
+	AccessKeyID     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+	SessionToken    string `json:"sessionToken"`
+	Expiration      int64  `json:"expiration"`
 }

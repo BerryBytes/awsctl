@@ -13,7 +13,7 @@ import (
 
 type RPrompter struct {
 	Prompt          promptUtils.Prompter
-	AWSConfigClient sso.AWSConfigClient
+	AWSConfigClient sso.SSOClient
 }
 
 type RDSAction int
@@ -26,7 +26,7 @@ const (
 
 func NewRPrompter(
 	prompt promptUtils.Prompter,
-	configClient sso.AWSConfigClient,
+	configClient sso.SSOClient,
 ) *RPrompter {
 	return &RPrompter{
 		Prompt:          prompt,

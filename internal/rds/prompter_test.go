@@ -8,6 +8,7 @@ import (
 	"github.com/BerryBytes/awsctl/internal/rds"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func TestNewRPrompter(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := rds.NewRPrompter(mockPrompter, mockConfigClient)
 
@@ -32,7 +33,7 @@ func TestPromptForRDSInstance_WithInstances(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	instances := []models.RDSInstance{
 		{
@@ -69,7 +70,7 @@ func TestPromptForProfile_FromEnv(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	err := os.Setenv("AWS_PROFILE", "test-profile")
 	if err != nil {
@@ -94,7 +95,7 @@ func TestPromptForProfile_FromConfig(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -119,7 +120,7 @@ func TestPromptForProfile_Error(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -140,7 +141,7 @@ func TestSelectRDSAction(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	testCases := []struct {
 		name           string
@@ -206,7 +207,7 @@ func TestPromptForManualEndpoint_Invalid(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter RDS endpoint (hostname:port):",
@@ -225,7 +226,7 @@ func TestGetAWSConfig_FromEnv(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Setenv("AWS_PROFILE", "test-profile"); err != nil {
 		t.Fatalf("failed to set AWS_PROFILE: %v", err)
@@ -256,7 +257,7 @@ func TestPromptForDBUser(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter database username:",
@@ -275,7 +276,7 @@ func TestPromptForRegion_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter AWS region (e.g. us-east-1):",
@@ -294,7 +295,7 @@ func TestPromptForRegion_EmptyInput(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter AWS region (e.g. us-east-1):",
@@ -314,7 +315,7 @@ func TestPromptForRegion_Interrupted(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter AWS region (e.g. us-east-1):",
@@ -334,7 +335,7 @@ func TestPromptForRegion_Error(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	testErr := errors.New("input error")
 	mockPrompter.EXPECT().PromptForInput(
@@ -356,7 +357,7 @@ func TestPromptForRDSInstance_Interrupted(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	instances := []models.RDSInstance{
 		{
@@ -383,7 +384,7 @@ func TestPromptForRDSInstance_InvalidSelection(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	instances := []models.RDSInstance{
 		{
@@ -410,7 +411,7 @@ func TestPromptForManualEndpoint_ErrorInUsername(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter RDS endpoint (hostname:port):",
@@ -434,7 +435,7 @@ func TestPromptForManualEndpoint_ErrorInRegion(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	mockPrompter.EXPECT().PromptForInput(
 		"Enter RDS endpoint (hostname:port):",
@@ -463,7 +464,7 @@ func TestGetAWSConfig_FromPrompts(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -497,7 +498,7 @@ func TestGetAWSConfig_NoProfiles(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -520,7 +521,7 @@ func TestGetAWSConfig_ProfileSelectionError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -548,7 +549,7 @@ func TestPromptForRDSInstance_NoInstances(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	validEndpoint := "valid.hostname:1234"
 	mockPrompter.EXPECT().PromptForInput(
@@ -578,7 +579,7 @@ func TestPromptForRDSInstance_SelectionError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	instances := []models.RDSInstance{
 		{
@@ -607,7 +608,7 @@ func TestPromptForProfile_SingleProfile(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -628,7 +629,7 @@ func TestPromptForProfile_NoValidProfiles(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	if err := os.Unsetenv("AWS_PROFILE"); err != nil {
 		t.Logf("Warning: failed to unset AWS_PROFILE: %v", err)
@@ -648,7 +649,7 @@ func TestSelectRDSAction_Error(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	testErr := errors.New("selection error")
 	mockPrompter.EXPECT().PromptForSelection(
@@ -669,7 +670,7 @@ func TestPromptForManualEndpoint_EndpointError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	testErr := errors.New("endpoint error")
 	mockPrompter.EXPECT().PromptForInput(
@@ -690,7 +691,7 @@ func TestPromptForAuthMethod(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	testCases := []struct {
 		name           string

@@ -7,6 +7,7 @@ import (
 	mock_ecr "github.com/BerryBytes/awsctl/tests/mock/ecr"
 	mock_eks "github.com/BerryBytes/awsctl/tests/mock/eks"
 	mock_rds "github.com/BerryBytes/awsctl/tests/mock/rds"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -18,13 +19,13 @@ func TestNewRootCmd(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupMocks   func(*mock_awsctl.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface, *mock_eks.MockEKSServiceInterface, *mock_ecr.MockECRServiceInterface)
+		setupMocks   func(*mock_sso.MockSSOClient, *mock_awsctl.MockBastionServiceInterface, *mock_awsctl.MockGeneralUtilsInterface, *mock_awsctl.MockFileSystemInterface, *mock_rds.MockRDSServiceInterface, *mock_eks.MockEKSServiceInterface, *mock_ecr.MockECRServiceInterface)
 		validateFunc func(*testing.T, *cobra.Command)
 	}{
 		{
 			name: "successful initialization with all dependencies",
 			setupMocks: func(
-				ssoClient *mock_awsctl.MockSSOClient,
+				ssoClient *mock_sso.MockSSOClient,
 				bastionSvc *mock_awsctl.MockBastionServiceInterface,
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
@@ -49,7 +50,7 @@ func TestNewRootCmd(t *testing.T) {
 		{
 			name: "nil dependencies should still work",
 			setupMocks: func(
-				ssoClient *mock_awsctl.MockSSOClient,
+				ssoClient *mock_sso.MockSSOClient,
 				bastionSvc *mock_awsctl.MockBastionServiceInterface,
 				genManager *mock_awsctl.MockGeneralUtilsInterface,
 				fs *mock_awsctl.MockFileSystemInterface,
@@ -67,7 +68,7 @@ func TestNewRootCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+			mockSSO := mock_sso.NewMockSSOClient(ctrl)
 			mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 			mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 			mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
@@ -78,7 +79,7 @@ func TestNewRootCmd(t *testing.T) {
 			tt.setupMocks(mockSSO, mockBastion, mockGeneral, mockFS, mockRDS, mockEKS, mockECR)
 
 			deps := RootDependencies{
-				SSOClient:      mockSSO,
+				SSOSetupClient: mockSSO,
 				BastionService: mockBastion,
 				GeneralManager: mockGeneral,
 				FileSystem:     mockFS,
@@ -97,7 +98,7 @@ func TestRootCmdExecution(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockSSO := mock_sso.NewMockSSOClient(ctrl)
 	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
@@ -105,7 +106,7 @@ func TestRootCmdExecution(t *testing.T) {
 	mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
 
 	deps := RootDependencies{
-		SSOClient:      mockSSO,
+		SSOSetupClient: mockSSO,
 		BastionService: mockBastion,
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,
@@ -135,7 +136,7 @@ func TestSubcommandInitialization(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSSO := mock_awsctl.NewMockSSOClient(ctrl)
+	mockSSO := mock_sso.NewMockSSOClient(ctrl)
 	mockBastion := mock_awsctl.NewMockBastionServiceInterface(ctrl)
 	mockGeneral := mock_awsctl.NewMockGeneralUtilsInterface(ctrl)
 	mockFS := mock_awsctl.NewMockFileSystemInterface(ctrl)
@@ -143,7 +144,7 @@ func TestSubcommandInitialization(t *testing.T) {
 	mockEKS := mock_eks.NewMockEKSServiceInterface(ctrl)
 
 	deps := RootDependencies{
-		SSOClient:      mockSSO,
+		SSOSetupClient: mockSSO,
 		BastionService: mockBastion,
 		GeneralManager: mockGeneral,
 		FileSystem:     mockFS,

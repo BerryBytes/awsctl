@@ -13,7 +13,7 @@ import (
 
 type EPrompter struct {
 	Prompt          promptUtils.Prompter
-	AWSConfigClient sso.AWSConfigClient
+	AWSConfigClient sso.SSOClient
 }
 
 type EKSAction int
@@ -25,7 +25,7 @@ const (
 
 func NewEPrompter(
 	prompt promptUtils.Prompter,
-	configClient sso.AWSConfigClient,
+	configClient sso.SSOClient,
 ) *EPrompter {
 	return &EPrompter{
 		Prompt:          prompt,

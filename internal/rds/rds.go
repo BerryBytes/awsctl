@@ -46,7 +46,7 @@ func (r *RealConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*
 
 type RealRDSClientFactory struct{}
 
-func (r *RealRDSClientFactory) NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) RDSAdapterInterface {
+func (r *RealRDSClientFactory) NewRDSClient(cfg aws.Config, executor common.CommandExecutor) RDSAdapterInterface {
 	return NewRDSClient(cfg, executor)
 }
 
@@ -55,7 +55,7 @@ func NewRDSService(
 	opts ...func(*RDSService),
 ) *RDSService {
 	prompter := promptUtils.NewPrompt()
-	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
+	configClient := &sso.RealSSOClient{Executor: &common.RealCommandExecutor{}}
 
 	service := &RDSService{
 		RPrompter:           NewRPrompter(prompter, configClient),
@@ -284,7 +284,7 @@ func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string,
 			fmt.Printf("AWS config failed: %v\n", err)
 			return s.handleManualConnection()
 		}
-		s.RDSClient = s.RDSClientFactory.NewRDSClient(cfg, &sso.RealCommandExecutor{})
+		s.RDSClient = s.RDSClientFactory.NewRDSClient(cfg, &common.RealCommandExecutor{})
 	}
 
 	resources, err := s.RDSClient.ListRDSResources(context.TODO())

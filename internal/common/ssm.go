@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
+	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
@@ -15,14 +15,14 @@ import (
 type RealSSMStarter struct {
 	Client          SSMClientInterface
 	Region          string
-	CommandExecutor sso.CommandExecutor
+	CommandExecutor common.CommandExecutor
 }
 
 func NewRealSSMStarter(client SSMClientInterface, region string) *RealSSMStarter {
 	return &RealSSMStarter{
 		Client:          client,
 		Region:          region,
-		CommandExecutor: &sso.RealCommandExecutor{},
+		CommandExecutor: &common.RealCommandExecutor{},
 	}
 }
 
