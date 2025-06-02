@@ -29,3 +29,8 @@ type Prompter interface {
 	SelectFromList(label string, items []string) (string, error)
 	PromptYesNo(label string, defaultValue bool) (bool, error)
 }
+
+type PromptRunner interface {
+	RunPrompt(label, defaultValue string, validate func(string) error) (string, error)
+	RunSelect(label string, items []string) (string, error)
+}

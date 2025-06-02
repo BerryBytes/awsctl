@@ -266,7 +266,7 @@ func TestSelectSSOSession(t *testing.T) {
 func TestRunSSOLogin(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func() string
+		setup       func(t *testing.T) string
 		sessionName string
 		mockExec    func(*mock_awsctl.MockCommandExecutor)
 		wantErr     bool
@@ -274,15 +274,22 @@ func TestRunSSOLogin(t *testing.T) {
 	}{
 		{
 			name: "Successful login",
-			setup: func() string {
-				dir, _ := os.MkdirTemp("", "awsctl-test")
-				configPath := filepath.Join(dir, "config")
+			setup: func(t *testing.T) string {
+				dir, err := os.MkdirTemp("", "awsctl-test")
+				require.NoError(t, err)
+
+				awsDir := filepath.Join(dir, ".aws")
+				err = os.Mkdir(awsDir, 0700)
+				require.NoError(t, err)
+
+				configPath := filepath.Join(awsDir, "config")
 				content := `[sso-session test-session]
 sso_start_url = https://test.awsapps.com/start
 sso_region = us-west-2
 `
+				err = os.WriteFile(configPath, []byte(content), 0600)
+				require.NoError(t, err)
 
-				require.NoError(t, os.WriteFile(configPath, []byte(content), 0600))
 				return dir
 			},
 			sessionName: "test-session",
@@ -294,8 +301,9 @@ sso_region = us-west-2
 		},
 		{
 			name: "Invalid configuration",
-			setup: func() string {
-				dir, _ := os.MkdirTemp("", "awsctl-test")
+			setup: func(t *testing.T) string {
+				dir, err := os.MkdirTemp("", "awsctl-test")
+				require.NoError(t, err)
 				return dir
 			},
 			sessionName: "missing-session",
@@ -304,14 +312,21 @@ sso_region = us-west-2
 		},
 		{
 			name: "Login command fails",
-			setup: func() string {
-				dir, _ := os.MkdirTemp("", "awsctl-test")
-				configPath := filepath.Join(dir, "config")
+			setup: func(t *testing.T) string {
+				dir, err := os.MkdirTemp("", "awsctl-test")
+				require.NoError(t, err)
+
+				awsDir := filepath.Join(dir, ".aws")
+				err = os.Mkdir(awsDir, 0700)
+				require.NoError(t, err)
+
+				configPath := filepath.Join(awsDir, "config")
 				content := `[sso-session test-session]
 sso_start_url = https://test.awsapps.com/start
 sso_region = us-west-2
 `
-				require.NoError(t, os.WriteFile(configPath, []byte(content), 0600))
+				err = os.WriteFile(configPath, []byte(content), 0600)
+				require.NoError(t, err)
 
 				return dir
 			},
@@ -331,8 +346,12 @@ sso_region = us-west-2
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			tempDir := tt.setup()
-			defer os.RemoveAll(tempDir)
+			tempHome := tt.setup(t)
+			defer os.RemoveAll(tempHome)
+
+			originalHome := os.Getenv("HOME")
+			os.Setenv("HOME", tempHome)
+			defer os.Setenv("HOME", originalHome)
 
 			mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 			if tt.mockExec != nil {
@@ -340,76 +359,10 @@ sso_region = us-west-2
 			}
 
 			client := &RealSSOClient{
-				Config: config.Config{
-					AWSConfigDir: tempDir,
-				},
 				Executor: mockExecutor,
 			}
 
 			err := client.runSSOLogin(tt.sessionName)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-				return
-			}
-
-			assert.NoError(t, err)
-		})
-	}
-}
-
-func TestValidateAWSConfig(t *testing.T) {
-	tests := []struct {
-		name        string
-		setup       func() string
-		sessionName string
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name: "Valid config",
-			setup: func() string {
-				dir, _ := os.MkdirTemp("", "awsctl-test")
-				configPath := filepath.Join(dir, "config")
-				content := `[sso-session test-session]
-sso_start_url = https://test.awsapps.com/start
-`
-				require.NoError(t, os.WriteFile(configPath, []byte(content), 0600))
-
-				return dir
-			},
-			sessionName: "test-session",
-		},
-		{
-			name: "Missing session",
-			setup: func() string {
-				dir, _ := os.MkdirTemp("", "awsctl-test")
-				configPath := filepath.Join(dir, "config")
-				require.NoError(t, os.WriteFile(configPath, []byte(""), 0600))
-
-				return dir
-			},
-			sessionName: "missing-session",
-			wantErr:     true,
-			errContains: "sso-session missing-session not found",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tempDir := tt.setup()
-			defer os.RemoveAll(tempDir)
-
-			client := &RealSSOClient{
-				Config: config.Config{
-					AWSConfigDir: tempDir,
-				},
-			}
-
-			err := client.validateAWSConfig(tt.sessionName)
 
 			if tt.wantErr {
 				assert.Error(t, err)

@@ -322,3 +322,56 @@ func (mr *MockPrompterMockRecorder) SelectFromList(label, items interface{}) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectFromList", reflect.TypeOf((*MockPrompter)(nil).SelectFromList), label, items)
 }
+
+// MockPromptRunner is a mock of PromptRunner interface.
+type MockPromptRunner struct {
+	ctrl     *gomock.Controller
+	recorder *MockPromptRunnerMockRecorder
+}
+
+// MockPromptRunnerMockRecorder is the mock recorder for MockPromptRunner.
+type MockPromptRunnerMockRecorder struct {
+	mock *MockPromptRunner
+}
+
+// NewMockPromptRunner creates a new mock instance.
+func NewMockPromptRunner(ctrl *gomock.Controller) *MockPromptRunner {
+	mock := &MockPromptRunner{ctrl: ctrl}
+	mock.recorder = &MockPromptRunnerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPromptRunner) EXPECT() *MockPromptRunnerMockRecorder {
+	return m.recorder
+}
+
+// RunPrompt mocks base method.
+func (m *MockPromptRunner) RunPrompt(label, defaultValue string, validate func(string) error) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunPrompt", label, defaultValue, validate)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunPrompt indicates an expected call of RunPrompt.
+func (mr *MockPromptRunnerMockRecorder) RunPrompt(label, defaultValue, validate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunPrompt", reflect.TypeOf((*MockPromptRunner)(nil).RunPrompt), label, defaultValue, validate)
+}
+
+// RunSelect mocks base method.
+func (m *MockPromptRunner) RunSelect(label string, items []string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunSelect", label, items)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunSelect indicates an expected call of RunSelect.
+func (mr *MockPromptRunnerMockRecorder) RunSelect(label, items interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunSelect", reflect.TypeOf((*MockPromptRunner)(nil).RunSelect), label, items)
+}

@@ -5,17 +5,46 @@ import (
 	"fmt"
 	"strings"
 
-	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
+	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/manifoldco/promptui"
 )
 
-type PromptUI struct{}
+type RealPromptRunner struct{}
+
+func (r *RealPromptRunner) RunPrompt(label, defaultValue string, validate func(string) error) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    label,
+		Default:  defaultValue,
+		Validate: validate,
+	}
+	return prompt.Run()
+}
+
+func (r *RealPromptRunner) RunSelect(label string, items []string) (string, error) {
+	selectPrompt := promptui.Select{
+		Label: label,
+		Items: items,
+	}
+	_, result, err := selectPrompt.Run()
+	return result, err
+}
+
+var validateStartURLFunc = func(input string) error {
+	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+		return fmt.Errorf("invalid URL format")
+	}
+	return nil
+}
+
+type PromptUI struct {
+	runner PromptRunner
+}
 
 func handlePromptError(err error) error {
 	if err != nil {
-		if errors.Is(err, promptui.ErrInterrupt) {
+		if errors.Is(err, promptui.ErrInterrupt) || errors.Is(err, promptui.ErrEOF) {
 			fmt.Println("\nReceived termination signal. Exiting.")
-			return promptUtils.ErrInterrupted
+			return promptutils.ErrInterrupted
 		}
 		return fmt.Errorf("prompt failed: %w", err)
 	}
@@ -23,59 +52,42 @@ func handlePromptError(err error) error {
 }
 
 func (p *PromptUI) PromptWithDefault(label, defaultValue string) (string, error) {
-	prompt := promptui.Prompt{
-		Label:   label,
-		Default: defaultValue,
-		Validate: func(input string) error {
-			if strings.TrimSpace(input) == "" {
-				return fmt.Errorf("input cannot be empty")
-			}
-			return nil
-		},
+	validate := func(input string) error {
+		if strings.TrimSpace(input) == "" && defaultValue == "" {
+			return fmt.Errorf("input cannot be empty")
+		}
+		return nil
 	}
-	result, err := prompt.Run()
+	result, err := p.runner.RunPrompt(label, defaultValue, validate)
 	err = handlePromptError(err)
 	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
-		}
 		return "", err
+	}
+	if strings.TrimSpace(result) == "" {
+		return defaultValue, nil
 	}
 	return result, nil
 }
 
 func (p *PromptUI) PromptRequired(label string) (string, error) {
-	prompt := promptui.Prompt{
-		Label: label,
-		Validate: func(input string) error {
-			if strings.TrimSpace(input) == "" {
-				return fmt.Errorf("input is required")
-			}
-			return validateStartURL(input)
-		},
+	validate := func(input string) error {
+		if strings.TrimSpace(input) == "" {
+			return fmt.Errorf("input is required")
+		}
+		return validateStartURLFunc(input)
 	}
-	result, err := prompt.Run()
+	result, err := p.runner.RunPrompt(label, "", validate)
 	err = handlePromptError(err)
 	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
-		}
 		return "", err
 	}
 	return result, nil
 }
 
 func (p *PromptUI) SelectFromList(label string, items []string) (string, error) {
-	selectPrompt := promptui.Select{
-		Label: label,
-		Items: items,
-	}
-	_, result, err := selectPrompt.Run()
+	result, err := p.runner.RunSelect(label, items)
 	err = handlePromptError(err)
 	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
-		}
 		return "", err
 	}
 	return result, nil
@@ -86,23 +98,16 @@ func (p *PromptUI) PromptYesNo(label string, defaultValue bool) (bool, error) {
 	if defaultValue {
 		defaultStr = "y"
 	}
-	prompt := promptui.Prompt{
-		Label:   label,
-		Default: defaultStr,
-		Validate: func(input string) error {
-			input = strings.ToLower(strings.TrimSpace(input))
-			if input != "" && input != "y" && input != "n" {
-				return fmt.Errorf("input must be 'y' or 'n'")
-			}
-			return nil
-		},
+	validate := func(input string) error {
+		input = strings.ToLower(strings.TrimSpace(input))
+		if input != "" && input != "y" && input != "n" {
+			return fmt.Errorf("input must be 'y' or 'n'")
+		}
+		return nil
 	}
-	result, err := prompt.Run()
+	result, err := p.runner.RunPrompt(label, defaultStr, validate)
 	err = handlePromptError(err)
 	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return false, promptUtils.ErrInterrupted
-		}
 		return false, err
 	}
 	result = strings.ToLower(strings.TrimSpace(result))
@@ -113,5 +118,5 @@ func (p *PromptUI) PromptYesNo(label string, defaultValue bool) (bool, error) {
 }
 
 func NewPrompter() Prompter {
-	return &PromptUI{}
+	return &PromptUI{runner: &RealPromptRunner{}}
 }
