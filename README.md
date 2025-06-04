@@ -70,13 +70,13 @@ AWS CLI leverages the powerful [Cobra](https://github.com/spf13/cobra) framework
 1. To install the latest version.
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash
 ```
 
 2. To install specific version (e.g: `v0.0.1`)
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash -s -- v0.0.1
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash -s -- v0.0.1
 ```
 
 ### Manual
@@ -110,37 +110,18 @@ Start with `awsctl --help` OR `awsctl -h` to get started.
 - Below is sample `config.yaml` file in:
 
 ```
-aws:
-  profiles:
-    - profileName: "sample-profile"
-      region: "xx-xxxx-x"
-      accountId: "xxxxxxxxx"
-      ssoStartUrl: "xxxxxxxxxxxxxxxxxxxxxx"
-      accountList:
-        - accountId: "xxxxxxxxx"
-          accountName: "xxxxxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-            - "xxxx"
-            - "xxxx"
-        - accountId: "xxxxxxxxxx"
-          accountName: "xxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-            - "xxxx"
-    - profileName: "sample2-profile"
-      region: "xx-xxxxx-x"
-      accountId: "xxxxxxxxx"
-      ssoStartUrl: "xxxxxxxxxxxxxxxxxxxxxx"
-      accountList:
-        - accountId: "xxxxxxxxx"
-          accountName: "xxxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-           - "xxxx"
+ssoSessions:
+  - name: "sso-session-1"
+    startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    region: "XX-XXXX-X"
+  - name: "sso-session-2"
+    startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    region: "XX-XXXX-X"
+    scopes: "sso:account:access"
+
 
 ```
-
+**Note**: `scopes` can be empty. Default value will be `sso:account:access`
 ### Commands
 
 The following table summarizes the available `awsctl` commands:
