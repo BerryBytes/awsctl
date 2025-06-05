@@ -148,6 +148,9 @@ func (p *EPrompter) PromptForManualCluster() (clusterName, endpoint, caData, reg
 		},
 	)
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input cluster name: %w", err)
 	}
 
@@ -193,7 +196,11 @@ func (p *EPrompter) PromptForManualCluster() (clusterName, endpoint, caData, reg
 - IPv6: https://eks-cluster.us-east-1.api.aws`)
 		},
 	)
+
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input endpoint: %w", err)
 	}
 
@@ -215,11 +222,17 @@ func (p *EPrompter) PromptForManualCluster() (clusterName, endpoint, caData, reg
 		},
 	)
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input CA data: %w", err)
 	}
 
 	region, err = p.PromptForRegion()
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input region: %w", err)
 	}
 

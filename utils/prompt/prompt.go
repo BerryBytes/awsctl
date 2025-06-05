@@ -69,6 +69,9 @@ func (p *RealPrompter) PromptForInputWithValidation(prompt, defaultValue string,
 	for {
 		input, err := p.PromptForInput(prompt, defaultValue)
 		if err != nil {
+			if errors.Is(err, ErrInterrupted) {
+				return "", ErrInterrupted
+			}
 			return "", err
 		}
 
