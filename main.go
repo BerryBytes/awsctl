@@ -73,6 +73,7 @@ func main() {
 			s.CPrompter = prompter
 		},
 	)
+	eksSvc.EKSClient = eks.NewEKSClient(awsConfig, fileSystem)
 	awsConfigClient := &sso.RealSSOClient{
 		Executor: &common.RealCommandExecutor{},
 	}

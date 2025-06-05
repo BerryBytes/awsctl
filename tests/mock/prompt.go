@@ -48,6 +48,21 @@ func (mr *MockPrompterMockRecorder) PromptForInput(label, defaultValue interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForInput", reflect.TypeOf((*MockPrompter)(nil).PromptForInput), label, defaultValue)
 }
 
+// PromptForInputWithValidation mocks base method.
+func (m *MockPrompter) PromptForInputWithValidation(prompt, defaultValue string, validate func(string) error) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PromptForInputWithValidation", prompt, defaultValue, validate)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PromptForInputWithValidation indicates an expected call of PromptForInputWithValidation.
+func (mr *MockPrompterMockRecorder) PromptForInputWithValidation(prompt, defaultValue, validate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForInputWithValidation", reflect.TypeOf((*MockPrompter)(nil).PromptForInputWithValidation), prompt, defaultValue, validate)
+}
+
 // PromptForSelection mocks base method.
 func (m *MockPrompter) PromptForSelection(label string, items []string) (string, error) {
 	m.ctrl.T.Helper()

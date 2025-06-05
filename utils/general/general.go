@@ -6,7 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"syscall"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
 type GeneralUtilsInterface interface {
@@ -56,4 +60,39 @@ Expiration   : %s
 
 func NewGeneralUtilsManager() GeneralUtilsInterface {
 	return &DefaultGeneralUtilsManager{}
+}
+
+func isValidAWSRegion(region string) bool {
+	ctx := context.Background()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return false
+	}
+
+	ec2Client := ec2.NewFromConfig(cfg)
+
+	output, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
+	if err != nil {
+		return false
+	}
+
+	for _, r := range output.Regions {
+		if r.RegionName != nil && *r.RegionName == region {
+			return true
+		}
+	}
+	return false
+}
+
+func isValidRegionFormat(region string) bool {
+	// Matches patterns like us-east-1, ap-southeast-2
+	return regexp.MustCompile(`^[a-z]{2}-[a-z]+-\d+$`).MatchString(region)
+}
+
+func IsRegionValid(region string) bool {
+	if isValidAWSRegion(region) {
+		return true
+	}
+	return isValidRegionFormat(region)
 }

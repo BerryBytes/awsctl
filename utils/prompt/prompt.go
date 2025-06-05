@@ -10,6 +10,7 @@ import (
 type Prompter interface {
 	PromptForSelection(label string, items []string) (string, error)
 	PromptForInput(label, defaultValue string) (string, error)
+	PromptForInputWithValidation(prompt, defaultValue string, validate func(string) error) (string, error)
 }
 
 type RealPrompter struct{}
@@ -62,6 +63,22 @@ func (p *RealPrompter) PromptForInput(label, defaultValue string) (string, error
 	}
 
 	return result, nil
+}
+
+func (p *RealPrompter) PromptForInputWithValidation(prompt, defaultValue string, validate func(string) error) (string, error) {
+	for {
+		input, err := p.PromptForInput(prompt, defaultValue)
+		if err != nil {
+			return "", err
+		}
+
+		if err := validate(input); err != nil {
+			fmt.Printf("Invalid input: %v\n", err)
+			continue
+		}
+
+		return input, nil
+	}
 }
 
 func NewPrompt() Prompter {
