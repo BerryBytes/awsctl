@@ -536,7 +536,11 @@ sso_registration_scopes = sso:account:access
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tempAwsDir := tt.setup()
-			defer os.RemoveAll(tempAwsDir)
+			defer func() {
+				if err := os.RemoveAll(tempAwsDir); err != nil {
+					t.Logf("warning: failed to remove temp AWS dir: %v", err)
+				}
+			}()
 			defer func() {
 				if err := os.RemoveAll(tempAwsDir); err != nil {
 					t.Logf("failed to remove temp dir: %v", err)
@@ -545,7 +549,11 @@ sso_registration_scopes = sso:account:access
 
 			originalHome := os.Getenv("HOME")
 			tempHome, _ := os.MkdirTemp("", "awsctl-test-home")
-			defer os.RemoveAll(tempHome)
+			defer func() {
+				if err := os.RemoveAll(tempHome); err != nil {
+					t.Logf("warning: failed to remove temp AWS dir: %v", err)
+				}
+			}()
 
 			require.NoError(t, os.Symlink(tempAwsDir, filepath.Join(tempHome, ".aws")))
 			os.Setenv("HOME", tempHome)

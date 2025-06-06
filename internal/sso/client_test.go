@@ -330,7 +330,9 @@ func TestGetSSOAccountName(t *testing.T) {
 
 				oldHome := os.Getenv("HOME")
 				t.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				t.Cleanup(func() {
+					_ = os.Setenv("HOME", oldHome)
+				})
 
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
@@ -496,8 +498,12 @@ func TestGetCachedSsoAccessToken_ErrorCases(t *testing.T) {
 			Return([]byte("https://example.com"), nil)
 
 		oldHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
-		t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Fatalf("failed to set HOME to tempDir: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = os.Setenv("HOME", oldHome)
+		})
 
 		client := &RealSSOClient{
 			Prompter: mockPrompter,
@@ -607,7 +613,9 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 				if err := os.Unsetenv("HOME"); err != nil {
 					t.Logf("failed to unset HOME: %v", err)
 				}
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				t.Cleanup(func() {
+					_ = os.Setenv("HOME", oldHome)
+				})
 			},
 			profile:       "test-profile",
 			expectedError: "failed to get user home directory",
@@ -622,8 +630,12 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 
 				tempDir := t.TempDir()
 				oldHome := os.Getenv("HOME")
-				os.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				if err := os.Setenv("HOME", tempDir); err != nil {
+					t.Fatalf("failed to set HOME to tempDir: %v", err)
+				}
+				t.Cleanup(func() {
+					_ = os.Setenv("HOME", oldHome)
+				})
 			},
 			profile:       "test-profile",
 			expectedError: "no matching SSO cache file found",
@@ -650,8 +662,12 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 				require.NoError(t, os.WriteFile(cacheFile, data, 0644))
 
 				oldHome := os.Getenv("HOME")
-				os.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				if err := os.Setenv("HOME", tempDir); err != nil {
+					t.Fatalf("failed to set HOME to tempDir: %v", err)
+				}
+				t.Cleanup(func() {
+					_ = os.Setenv("HOME", oldHome)
+				})
 			},
 			profile:       "test-profile",
 			expectedError: "no matching SSO cache file found",
