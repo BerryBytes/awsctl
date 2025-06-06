@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -68,8 +70,24 @@ func isValidRegionFormat(region string) bool {
 	return regexp.MustCompile(`^[a-z]{2}-[a-z]+-\d+$`).MatchString(region)
 }
 
+var (
+	validRegionsCache map[string]bool
+	regionsCacheMutex sync.RWMutex
+)
+
 func IsRegionValid(region string) bool {
-	ctx := context.Background()
+	// Check cache first
+	regionsCacheMutex.RLock()
+	if validRegionsCache != nil {
+		if cached, exists := validRegionsCache[region]; exists {
+			regionsCacheMutex.RUnlock()
+			return cached
+		}
+	}
+	regionsCacheMutex.RUnlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err == nil {
@@ -78,11 +96,19 @@ func IsRegionValid(region string) bool {
 			AllRegions: aws.Bool(true),
 		})
 		if err == nil {
+			regionsCacheMutex.Lock()
+			if validRegionsCache == nil {
+				validRegionsCache = make(map[string]bool)
+			}
 			for _, r := range output.Regions {
 				if r.RegionName != nil && *r.RegionName == region {
+					validRegionsCache[region] = true
+					regionsCacheMutex.Unlock()
 					return true
 				}
 			}
+			validRegionsCache[region] = false
+			regionsCacheMutex.Unlock()
 			return false
 		}
 	}

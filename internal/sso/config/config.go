@@ -52,10 +52,8 @@ func loadConfigFile(cfg *Config) (*models.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-
 	var parsedConfig models.Config
 	if err := yaml.Unmarshal(fileData, &parsedConfig); err != nil {
-		fmt.Println("YAML parsing failed, trying JSON...")
 		if err := json.Unmarshal(fileData, &parsedConfig); err != nil {
 			return nil, fmt.Errorf("failed to parse config file: %w", err)
 		}

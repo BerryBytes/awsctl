@@ -53,14 +53,8 @@ func (c *RealSSOClient) SetupSSO() error {
 		return fmt.Errorf("failed to prompt profile details: %w", err)
 	}
 
-	if profileName != "default" {
-		if err := c.configureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, region); err != nil {
-			return fmt.Errorf("failed to configure AWS profile: %w", err)
-		}
-	} else {
-		if err := c.configureAWSProfile("default", ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, region); err != nil {
-			return fmt.Errorf("failed to configure AWS default profile: %w", err)
-		}
+	if err := c.configureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, region); err != nil {
+		return fmt.Errorf("failed to configure AWS profile: %w", err)
 	}
 
 	defaultConfigured := profileName == "default"

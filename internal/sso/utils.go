@@ -46,7 +46,12 @@ func (c *RealSSOClient) listSSOAccounts(region, startURL string) ([]string, erro
 		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
 
-	output, err := c.Executor.RunCommand("aws", "sso", "list-accounts", "--region", region, "--access-token", accessToken)
+	output, err := c.Executor.RunCommand(
+		"aws", "sso", "list-accounts",
+		"--region", region,
+		"--access-token", accessToken,
+		"--output", "json",
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list accounts: %v: %s", err, string(output))
 	}

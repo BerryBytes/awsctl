@@ -85,11 +85,12 @@ func (c *RealSSOClient) loadOrCreateSession() (string, *models.SSOSession, error
 func (c *RealSSOClient) selectSSOSession() (*models.SSOSession, error) {
 	options := make([]string, 0, len(c.Config.RawCustomConfig.SSOSessions)+1)
 	sessionMap := make(map[string]*models.SSOSession)
-	for _, session := range c.Config.RawCustomConfig.SSOSessions {
+	for i := range c.Config.RawCustomConfig.SSOSessions {
+		session := &c.Config.RawCustomConfig.SSOSessions[i]
 		startURL := strings.TrimRight(session.StartURL, "#/")
 		display := fmt.Sprintf("%s (%s)", session.Name, startURL)
 		options = append(options, display)
-		sessionMap[display] = &session
+		sessionMap[display] = session
 	}
 	options = append(options, "Create new session")
 

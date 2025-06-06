@@ -112,7 +112,11 @@ func (c *RealSSOClient) getSsoAccessTokenFromCache(profile string) (*models.SSOC
 		if err != nil {
 			return nil, time.Time{}, fmt.Errorf("SSO login failed: %v", err)
 		}
-		return c.getSsoAccessTokenFromCache(profile)
+		selectedCache, expiryTime, err = c.getSsoAccessTokenFromCache(profile)
+		if err != nil {
+			return nil, time.Time{}, fmt.Errorf("failed to get token after re-login: %v", err)
+		}
+		return selectedCache, expiryTime, nil
 	}
 
 	return selectedCache, expiryTime, nil

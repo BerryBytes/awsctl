@@ -96,8 +96,14 @@ func (c *RealSSOClient) configureAWSProfile(profileName, sessionName, ssoRegion,
 	configContent.WriteString(fmt.Sprintf("sso_start_url = %s\n", ssoStartURL))
 	configContent.WriteString("output = json\n")
 
-	if err := writeConfigFile(configFile, configContent.String()); err != nil {
-		return fmt.Errorf("failed to write %s: %w", configFile, err)
+	tempFile := configFile + ".tmp"
+	if err := writeConfigFile(tempFile, configContent.String()); err != nil {
+		return fmt.Errorf("failed to write temporary config: %w", err)
+	}
+
+	if err := os.Rename(tempFile, configFile); err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to update config file: %w", err)
 	}
 
 	fmt.Println("Configured AWS default profile")
@@ -107,11 +113,37 @@ func (c *RealSSOClient) configureAWSProfile(profileName, sessionName, ssoRegion,
 		return fmt.Errorf("failed to verify %s: %w", configFile, err)
 	}
 	configText := string(data)
-	if !strings.Contains(configText, "[default]") ||
-		!strings.Contains(configText, fmt.Sprintf("sso_session = %s", sessionName)) ||
-		!strings.Contains(configText, fmt.Sprintf("sso_account_id = %s", accountID)) ||
-		!strings.Contains(configText, fmt.Sprintf("sso_role_name = %s", roleName)) {
-		return fmt.Errorf("failed to configure default profile in %s: missing required fields", configFile)
+	lines = strings.Split(configText, "\n")
+	inDefaultSection := false
+	requiredFields := map[string]string{
+		"sso_session":    sessionName,
+		"sso_account_id": accountID,
+		"sso_role_name":  roleName,
+	}
+	foundFields := make(map[string]bool)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "[default]" {
+			inDefaultSection = true
+			continue
+		}
+		if inDefaultSection && strings.HasPrefix(line, "[") {
+			break
+		}
+		if inDefaultSection {
+			for key, value := range requiredFields {
+				if line == fmt.Sprintf("%s = %s", key, value) {
+					foundFields[key] = true
+				}
+			}
+		}
+	}
+
+	for key := range requiredFields {
+		if !foundFields[key] {
+			return fmt.Errorf("failed to configure default profile: missing %s", key)
+		}
 	}
 
 	return nil
