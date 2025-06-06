@@ -109,8 +109,14 @@ func TestConfigureAWSProfile(t *testing.T) {
 			setup: func() {
 				tempDir := t.TempDir()
 				oldHome := os.Getenv("HOME")
-				os.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				if err := os.Setenv("HOME", tempDir); err != nil {
+					t.Fatalf("failed to set HOME env: %v", err)
+				}
+				t.Cleanup(func() {
+					if err := os.Setenv("HOME", oldHome); err != nil {
+						t.Logf("failed to reset HOME env: %v", err)
+					}
+				})
 			},
 			expectError:    false,
 			expectedOutput: "Configured AWS default profile",
@@ -157,8 +163,14 @@ func TestConfigureAWSProfile(t *testing.T) {
 				require.NoError(t, os.WriteFile(awsDir, []byte("not a directory"), 0600))
 
 				oldHome := os.Getenv("HOME")
-				os.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				if err := os.Setenv("HOME", tempDir); err != nil {
+					t.Fatalf("failed to set HOME env: %v", err)
+				}
+				t.Cleanup(func() {
+					if err := os.Setenv("HOME", oldHome); err != nil {
+						t.Logf("failed to reset HOME env: %v", err)
+					}
+				})
 			},
 			expectError:   true,
 			errorContains: "failed to create directory",
