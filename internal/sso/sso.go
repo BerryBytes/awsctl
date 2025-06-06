@@ -116,6 +116,52 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 		if err != nil {
 			return fmt.Errorf("failed to select profile: %w", err)
 		}
+
+		if awsProfile != "default" {
+			setDefault, err := c.Prompter.PromptYesNo("Set this as the default profile? [Y/n]", true)
+			if err != nil {
+				if errors.Is(err, promptUtils.ErrInterrupted) {
+					return nil
+				}
+				return fmt.Errorf("failed to prompt for default profile: %w", err)
+			}
+			if setDefault {
+				sessionName, err := c.ConfigureGet("sso_session", awsProfile)
+				if err != nil {
+					return fmt.Errorf("failed to get sso_session: %w", err)
+				}
+
+				ssoStartURL, err := c.ConfigureGet("sso_start_url", awsProfile)
+				if err != nil {
+					return fmt.Errorf("failed to get sso_start_url: %w", err)
+				}
+
+				ssoRegion, err := c.ConfigureGet("sso_region", awsProfile)
+				if err != nil {
+					return fmt.Errorf("failed to get sso_region: %w", err)
+				}
+
+				accountID, err := c.ConfigureGet("sso_account_id", awsProfile)
+				if err != nil {
+					return fmt.Errorf("failed to get account ID: %w", err)
+				}
+
+				roleName, err := c.ConfigureGet("sso_role_name", awsProfile)
+				if err != nil {
+					return fmt.Errorf("failed to get role name: %w", err)
+				}
+
+				region, err := c.ConfigureGet("region", awsProfile)
+				if err != nil {
+					region = ssoRegion
+				}
+
+				if err := c.configureAWSProfile("default", sessionName, ssoRegion, ssoStartURL, accountID, roleName, region); err != nil {
+					return fmt.Errorf("failed to configure AWS default profile: %w", err)
+				}
+				fmt.Println("Successfully set this profile as default!")
+			}
+		}
 	}
 
 	if !slices.Contains(profiles, awsProfile) {
