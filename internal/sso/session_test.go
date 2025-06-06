@@ -347,7 +347,11 @@ sso_region = us-west-2
 			defer ctrl.Finish()
 
 			tempHome := tt.setup(t)
-			defer os.RemoveAll(tempHome)
+			defer func() {
+				if err := os.RemoveAll(tempHome); err != nil {
+					t.Logf("failed to remove temp home: %v", err)
+				}
+			}()
 
 			originalHome := os.Getenv("HOME")
 			os.Setenv("HOME", tempHome)
@@ -445,8 +449,11 @@ func TestGetAccessToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := tt.setup()
-			defer os.RemoveAll(tempDir)
-
+			defer func() {
+				if err := os.RemoveAll(tempDir); err != nil {
+					t.Logf("failed to remove temp dir: %v", err)
+				}
+			}()
 			originalHome := os.Getenv("HOME")
 			os.Setenv("HOME", tempDir)
 			defer os.Setenv("HOME", originalHome)
@@ -530,6 +537,11 @@ sso_registration_scopes = sso:account:access
 		t.Run(tt.name, func(t *testing.T) {
 			tempAwsDir := tt.setup()
 			defer os.RemoveAll(tempAwsDir)
+			defer func() {
+				if err := os.RemoveAll(tempAwsDir); err != nil {
+					t.Logf("failed to remove temp dir: %v", err)
+				}
+			}()
 
 			originalHome := os.Getenv("HOME")
 			tempHome, _ := os.MkdirTemp("", "awsctl-test-home")

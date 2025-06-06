@@ -106,8 +106,12 @@ func TestGetCachedSsoAccessToken(t *testing.T) {
 		}
 
 		oldHome := os.Getenv("HOME")
-		t.Cleanup(func() { os.Setenv("HOME", oldHome) })
-		os.Setenv("HOME", tempDir)
+		t.Cleanup(func() {
+			_ = os.Setenv("HOME", oldHome)
+		})
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Fatalf("failed to set HOME to tempDir: %v", err)
+		}
 
 		token, _, err := client.GetCachedSsoAccessToken("test-profile")
 		assert.NoError(t, err)
@@ -284,7 +288,9 @@ func TestGetSSOAccountName(t *testing.T) {
 
 				oldHome := os.Getenv("HOME")
 				t.Setenv("HOME", tempDir)
-				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
+				t.Cleanup(func() {
+					_ = os.Setenv("HOME", oldHome)
+				})
 
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
@@ -598,7 +604,9 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 					Return([]byte("https://example.com"), nil)
 
 				oldHome := os.Getenv("HOME")
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Logf("failed to unset HOME: %v", err)
+				}
 				t.Cleanup(func() { os.Setenv("HOME", oldHome) })
 			},
 			profile:       "test-profile",
