@@ -354,8 +354,14 @@ sso_region = us-west-2
 			}()
 
 			originalHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
-			defer os.Setenv("HOME", originalHome)
+			if err := os.Setenv("HOME", tempHome); err != nil {
+				t.Fatalf("failed to set HOME to tempDir: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Logf("warning: failed to reset HOME environment variable: %v", err)
+				}
+			}()
 
 			mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 			if tt.mockExec != nil {
@@ -455,8 +461,14 @@ func TestGetAccessToken(t *testing.T) {
 				}
 			}()
 			originalHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempDir)
-			defer os.Setenv("HOME", originalHome)
+			if err := os.Setenv("HOME", tempDir); err != nil {
+				t.Fatalf("failed to set HOME env: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Logf("warning: failed to reset HOME environment variable: %v", err)
+				}
+			}()
 
 			client := &RealSSOClient{}
 
@@ -556,8 +568,14 @@ sso_registration_scopes = sso:account:access
 			}()
 
 			require.NoError(t, os.Symlink(tempAwsDir, filepath.Join(tempHome, ".aws")))
-			os.Setenv("HOME", tempHome)
-			defer os.Setenv("HOME", originalHome)
+			if err := os.Setenv("HOME", tempHome); err != nil {
+				t.Fatalf("failed to set HOME to tempDir: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Logf("warning: failed to reset HOME environment variable: %v", err)
+				}
+			}()
 
 			client := &RealSSOClient{}
 
