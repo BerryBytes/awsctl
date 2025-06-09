@@ -13,9 +13,7 @@ func writeConfigFile(path, content string) error {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer func() {
-		if err := os.Remove(tmpFile.Name()); err != nil {
-			fmt.Printf("failed to remove temp file: %v\n", err)
-		}
+		_ = os.Remove(tmpFile.Name())
 	}()
 
 	if _, err := tmpFile.WriteString(content); err != nil {

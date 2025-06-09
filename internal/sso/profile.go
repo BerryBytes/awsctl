@@ -102,9 +102,7 @@ func (c *RealSSOClient) configureAWSProfile(profileName, sessionName, ssoRegion,
 	}
 
 	if err := os.Rename(tempFile, configFile); err != nil {
-		if err := os.Remove(tempFile); err != nil {
-			fmt.Printf("failed to remove temp file: %v\n", err)
-		}
+		_ = os.Remove(tempFile)
 		return fmt.Errorf("failed to update config file: %w", err)
 	}
 
