@@ -128,8 +128,8 @@ The following table summarizes the available `awsctl` commands:
 
 | Command            | Description                                                                                       |
 |--------------------|---------------------------------------------------------------------------------------------------|
-| `awsctl sso setup` | Configures AWS SSO profiles, creating or updating a config file at `~/.config/awsctl/config.yaml`. |
-| `awsctl sso init`  | Initializes SSO authentication using a configured profile via `awsctl sso setup`.                 |
+| `awsctl sso setup` | Creates or updates an AWS SSO profile. Uses config file in `~/.config/awsctl/` if available, or prompts for required details. Optionally sets it as the default and authenticates. |
+| `awsctl sso init`  | Starts SSO authentication by allowing you to select from existing AWS SSO profiles (created via `awsctl sso setup`). Useful for switching between multiple configured SSO profiles.                 |
 | `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.   |
 | `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                        |
 | `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                             |
