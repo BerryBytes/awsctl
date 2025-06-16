@@ -135,6 +135,9 @@ The following table summarizes the available `awsctl` commands:
 | `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                             |
 | `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                       |
 
+#### For detailed CLI command usage, see [Command Usage Documentation](docs/usage/commands.md).
+
+
 ### Contributing
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more details.
