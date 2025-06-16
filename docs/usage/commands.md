@@ -67,7 +67,7 @@ Manages connections to bastion hosts via SSH, SSM, or tunnels.
 - **Public DNS/IP Access**:
   - The instance **must have a public IPv4 address or public DNS**, unless used via a bastion or SSM tunnel.
 
-- **VPC Endpoint**:
+- **VPC Endpoint (Required if the instance is in a private subnet without internet access)**:
   - Create an **Interface VPC Endpoint** for `com.amazonaws.<region>.ec2-instance-connect`
   - Required if the instance is in a private subnet without internet access, allowing EC2 Instance Connect API calls to AWS securely.
 
