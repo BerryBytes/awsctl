@@ -9,6 +9,7 @@
 - [Usage](#usage)
 - [Commands](#commands)
 - [Contributing](#contributing)
+-  [Code Review Automation](#code-review-automation)
 - [Releasing](#releasing)
 - [Credits](#credits)
 - [License](#license)
@@ -141,6 +142,20 @@ The following table summarizes the available `awsctl` commands:
 ### Contributing
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more details.
+
+### Code Review Automation
+
+This project uses [Coderabbit AI](https://www.coderabbit.ai/) to assist with pull request reviews.
+
+**Role**: Automatically reviews pull requests for code quality, potential bugs, best practices, and documentation gaps.
+
+**How it works**:
+- Summarizes PR changes.
+- Provides line-by-line suggestions.
+- Offers codebase-wide analysis.
+
+**Note**: Suggestions by Coderabbit are recommendations. Final review decisions are made by maintainers.
+
 
 ### Releasing
 
