@@ -28,6 +28,7 @@ type Prompter interface {
 	PromptRequired(label string) (string, error)
 	SelectFromList(label string, items []string) (string, error)
 	PromptYesNo(label string, defaultValue bool) (bool, error)
+	PromptForRegion(defaultRegion string) (string, error)
 }
 
 type PromptRunner interface {

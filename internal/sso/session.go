@@ -60,10 +60,12 @@ func (c *RealSSOClient) loadOrCreateSession() (string, *models.SSOSession, error
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to prompt for SSO start URL: %w", err)
 		}
-		region, err := c.Prompter.PromptWithDefault("SSO region", "ap-south-1")
+
+		region, err := c.Prompter.PromptForRegion("ap-south-1")
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to prompt for SSO region: %w", err)
 		}
+
 		scopes, err := c.Prompter.PromptWithDefault("SSO registration scopes (comma separated)", "sso:account:access")
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to prompt for SSO scopes: %w", err)

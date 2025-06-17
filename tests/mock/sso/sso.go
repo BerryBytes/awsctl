@@ -263,6 +263,21 @@ func (m *MockPrompter) EXPECT() *MockPrompterMockRecorder {
 	return m.recorder
 }
 
+// PromptForRegion mocks base method.
+func (m *MockPrompter) PromptForRegion(defaultRegion string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PromptForRegion", defaultRegion)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PromptForRegion indicates an expected call of PromptForRegion.
+func (mr *MockPrompterMockRecorder) PromptForRegion(defaultRegion interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PromptForRegion", reflect.TypeOf((*MockPrompter)(nil).PromptForRegion), defaultRegion)
+}
+
 // PromptRequired mocks base method.
 func (m *MockPrompter) PromptRequired(label string) (string, error) {
 	m.ctrl.T.Helper()

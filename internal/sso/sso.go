@@ -102,14 +102,7 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 				}
 				return fmt.Errorf("failed to set up SSO: %w", err)
 			}
-			profiles, err = c.ValidProfiles()
-			if err != nil {
-				return fmt.Errorf("failed to verify profiles after setup: %w", err)
-			}
-		}
-
-		if len(profiles) == 0 {
-			return fmt.Errorf("no valid profiles found after setup")
+			return nil
 		}
 
 		awsProfile, err = c.Prompter.SelectFromList("Select AWS profile", profiles)

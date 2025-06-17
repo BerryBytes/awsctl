@@ -2,9 +2,11 @@ package sso
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
+	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/golang/mock/gomock"
@@ -380,6 +382,155 @@ func TestPromptUI_PromptRequired(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantResult, result)
+		})
+	}
+}
+
+func TestPromptUI_PromptForRegion(t *testing.T) {
+	tests := []struct {
+		name          string
+		defaultRegion string
+		input         string
+		inputErr      error
+		wantResult    string
+		wantErr       bool
+		errContains   string
+	}{
+		{
+			name:          "Valid region input",
+			defaultRegion: "us-east-1",
+			input:         "ap-south-1",
+			wantResult:    "ap-south-1",
+			wantErr:       false,
+		},
+		{
+			name:          "Empty input uses default",
+			defaultRegion: "eu-west-1",
+			input:         "",
+			wantResult:    "eu-west-1",
+			wantErr:       false,
+		},
+		{
+			name:          "Invalid region fails",
+			defaultRegion: "us-east-1",
+			input:         "invalid-region",
+			inputErr:      errors.New("invalid AWS region format or unrecognized region: invalid-region"),
+			wantErr:       true,
+			errContains:   "invalid AWS region format or unrecognized region: invalid-region",
+		},
+		{
+			name:          "Interrupted prompt",
+			defaultRegion: "us-east-1",
+			inputErr:      promptUtils.ErrInterrupted,
+			wantErr:       true,
+			errContains:   "operation interrupted",
+		},
+		{
+			name:          "EOF prompt",
+			defaultRegion: "us-east-1",
+			inputErr:      promptUtils.ErrInterrupted,
+			wantErr:       true,
+			errContains:   "operation interrupted",
+		},
+		{
+			name:          "Generic prompt error",
+			defaultRegion: "us-east-1",
+			inputErr:      errors.New("prompt error"),
+			wantErr:       true,
+			errContains:   "prompt error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockPrompter := mock_awsctl.NewMockPrompter(ctrl)
+
+			if tt.input == "" && !tt.wantErr {
+				mockPrompter.EXPECT().
+					PromptForInputWithValidation(
+						fmt.Sprintf("SSO region (Default: %s):", tt.defaultRegion),
+						tt.defaultRegion,
+						gomock.Any(),
+					).
+					Return(tt.defaultRegion, nil)
+			} else {
+				mockPrompter.EXPECT().
+					PromptForInputWithValidation(
+						fmt.Sprintf("SSO region (Default: %s):", tt.defaultRegion),
+						tt.defaultRegion,
+						gomock.Any(),
+					).
+					Return(tt.input, tt.inputErr)
+			}
+
+			p := &PromptUI{Prompt: mockPrompter}
+			result, err := p.PromptForRegion(tt.defaultRegion)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantResult, result)
+		})
+	}
+}
+
+func TestValidateStartURLFunc(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:    "Valid HTTPS URL",
+			input:   "https://example.awsapps.com/start",
+			wantErr: false,
+		},
+		{
+			name:    "Valid HTTP URL",
+			input:   "http://example.com",
+			wantErr: false,
+		},
+		{
+			name:        "Invalid URL (no http/https)",
+			input:       "ftp://example.com",
+			wantErr:     true,
+			errContains: "invalid URL format",
+		},
+		{
+			name:        "Invalid URL (plain text)",
+			input:       "example.com",
+			wantErr:     true,
+			errContains: "invalid URL format",
+		},
+		{
+			name:        "Empty input",
+			input:       "",
+			wantErr:     true,
+			errContains: "invalid URL format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateStartURLFunc(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

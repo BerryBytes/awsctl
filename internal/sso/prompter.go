@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	promptutils "github.com/BerryBytes/awsctl/utils/prompt"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
+	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/manifoldco/promptui"
 )
 
@@ -37,6 +38,7 @@ var validateStartURLFunc = func(input string) error {
 }
 
 type PromptUI struct {
+	Prompt promptUtils.Prompter
 	runner PromptRunner
 }
 
@@ -44,7 +46,7 @@ func handlePromptError(err error) error {
 	if err != nil {
 		if errors.Is(err, promptui.ErrInterrupt) || errors.Is(err, promptui.ErrEOF) {
 			fmt.Println("\nReceived termination signal. Exiting.")
-			return promptutils.ErrInterrupted
+			return promptUtils.ErrInterrupted
 		}
 		return fmt.Errorf("prompt failed: %w", err)
 	}
@@ -67,6 +69,19 @@ func (p *PromptUI) PromptWithDefault(label, defaultValue string) (string, error)
 		return defaultValue, nil
 	}
 	return result, nil
+}
+
+func (b *PromptUI) PromptForRegion(defaultRegion string) (string, error) {
+	return b.Prompt.PromptForInputWithValidation(
+		fmt.Sprintf("SSO region (Default: %s):", defaultRegion),
+		defaultRegion,
+		func(input string) error {
+			if !generalutils.IsRegionValid(input) {
+				return fmt.Errorf("invalid AWS region format or unrecognized region: %s", input)
+			}
+			return nil
+		},
+	)
 }
 
 func (p *PromptUI) PromptRequired(label string) (string, error) {
@@ -118,5 +133,5 @@ func (p *PromptUI) PromptYesNo(label string, defaultValue bool) (bool, error) {
 }
 
 func NewPrompter() Prompter {
-	return &PromptUI{runner: &RealPromptRunner{}}
+	return &PromptUI{runner: &RealPromptRunner{}, Prompt: promptUtils.NewPrompt()}
 }

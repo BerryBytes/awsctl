@@ -43,7 +43,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 			mockPrompts: []mockPrompt{
 				{"PromptWithDefault", "SSO session name", "default-sso", "test-session", nil},
 				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://test.awsapps.com/start", nil},
-				{"PromptWithDefault", "SSO region", "ap-south-1", "us-west-2", nil},
+				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "us-west-2", nil},
 				{"PromptWithDefault", "SSO registration scopes (comma separated)", "sso:account:access", "sso:account:access", nil},
 			},
 			wantSession: &models.SSOSession{
@@ -68,7 +68,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 			mockPrompts: []mockPrompt{
 				{"PromptWithDefault", "SSO session name", "default-sso", "existing-session", nil},
 				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://existing.awsapps.com/start", nil},
-				{"PromptWithDefault", "SSO region", "ap-south-1", "us-east-1", nil},
+				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "us-east-1", nil},
 				{"PromptWithDefault", "SSO registration scopes (comma separated)", "sso:account:access", "sso:account:access", nil},
 			},
 			wantSession: &models.SSOSession{
@@ -77,6 +77,19 @@ func TestLoadOrCreateSession(t *testing.T) {
 				Region:   "us-east-1",
 				Scopes:   "sso:account:access",
 			},
+		},
+		{
+			name: "Region prompt error",
+			initialConfig: &models.Config{
+				SSOSessions: []models.SSOSession{},
+			},
+			mockPrompts: []mockPrompt{
+				{"PromptWithDefault", "SSO session name", "default-sso", "test-session", nil},
+				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://test.awsapps.com/start", nil},
+				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "", errors.New("invalid region")},
+			},
+			wantErr:     true,
+			errContains: "failed to prompt for SSO region",
 		},
 	}
 
@@ -96,6 +109,10 @@ func TestLoadOrCreateSession(t *testing.T) {
 				case "PromptRequired":
 					mockPrompter.EXPECT().
 						PromptRequired(mp.label).
+						Return(mp.response, mp.err)
+				case "PromptForRegion":
+					mockPrompter.EXPECT().
+						PromptForRegion(mp.defaultValue).
 						Return(mp.response, mp.err)
 				case "SelectFromList":
 					mockPrompter.EXPECT().
