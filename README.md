@@ -84,19 +84,36 @@ curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.s
 
 1. Clone this repository
 
-```
+```bash
 git clone git@github.com:BerryBytes/awsctl.git
 ```
 
 2. Make the `install-awsctl.sh` executable:
 
-```
+```bash
 chmod +x install-awsctl.sh
 ```
 
 3. Run the startup script:
 
+- #### First Time Installation
+If this is your first time installing, use the `source` command:
+
+```bash
+source ./install-awsctl.sh
 ```
+
+This ensures environment changes (like `PATH` updates) take effect immediately.
+
+### Why use `source`?
+- Executes in current shell session
+- Updates environment variables immediately
+- No terminal restart required
+
+### For Updates
+Run normally:
+
+```bash
 ./install-awsctl.sh
 ```
 
@@ -110,7 +127,7 @@ Start with `awsctl --help` OR `awsctl -h` to get started.
 
 - Below is sample `config.yaml` file in:
 
-```
+```yaml
 ssoSessions:
   - name: "sso-session-1"
     startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
