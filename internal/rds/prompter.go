@@ -62,7 +62,22 @@ func (p *RPrompter) PromptForRDSInstance(instances []models.RDSInstance) (string
 
 	items := make([]string, len(instances))
 	for i, inst := range instances {
-		items[i] = fmt.Sprintf("%s (%s) - %s", inst.DBInstanceIdentifier, inst.Engine, inst.Endpoint)
+		displayEndpoint := inst.Endpoint
+		maxEndpointLength := 40
+
+		if len(displayEndpoint) > maxEndpointLength {
+			domainParts := strings.Split(displayEndpoint, ".")
+			if len(domainParts) > 2 {
+				displayEndpoint = domainParts[0] + "..." + strings.Join(domainParts[len(domainParts)-2:], ".")
+			} else {
+				displayEndpoint = displayEndpoint[:maxEndpointLength-3] + "..."
+			}
+		}
+
+		items[i] = fmt.Sprintf("%s (%s) - %s",
+			inst.DBInstanceIdentifier,
+			inst.Engine,
+			displayEndpoint)
 	}
 
 	selected, err := p.Prompt.PromptForSelection("Select an RDS instance:", items)
@@ -74,7 +89,9 @@ func (p *RPrompter) PromptForRDSInstance(instances []models.RDSInstance) (string
 	}
 
 	for _, inst := range instances {
-		if selected == fmt.Sprintf("%s (%s) - %s", inst.DBInstanceIdentifier, inst.Engine, inst.Endpoint) {
+		expectedFormat := fmt.Sprintf("%s (%s) - %s", inst.DBInstanceIdentifier, inst.Engine, inst.Endpoint)
+		if selected == expectedFormat ||
+			strings.HasPrefix(selected, fmt.Sprintf("%s (%s) -", inst.DBInstanceIdentifier, inst.Engine)) {
 			return inst.DBInstanceIdentifier, nil
 		}
 	}

@@ -49,14 +49,23 @@ func TestPromptForRDSInstance_WithInstances(t *testing.T) {
 	}
 
 	expectedItems := []string{
-		"db-1 (postgres) - db-1.abc123.us-east-1.rds.amazonaws.com:5432",
-		"db-2 (mysql) - db-2.abc123.us-east-1.rds.amazonaws.com:3306",
+		"db-1 (postgres) - db-1...rds.amazonaws.com:5432",
+		"db-2 (mysql) - db-2...rds.amazonaws.com:3306",
 	}
 
 	mockPrompter.EXPECT().PromptForSelection(
 		"Select an RDS instance:",
-		expectedItems,
-	).Return(expectedItems[0], nil)
+		gomock.Any(),
+	).DoAndReturn(func(label string, items []string) (string, error) {
+		assert.Equal(t, "Select an RDS instance:", label)
+		assert.Equal(t, len(expectedItems), len(items))
+		for i := range expectedItems {
+			assert.Contains(t, items[i], instances[i].DBInstanceIdentifier)
+			assert.Contains(t, items[i], instances[i].Engine)
+			assert.Contains(t, items[i], "...")
+		}
+		return expectedItems[0], nil
+	})
 
 	prompter := rds.NewRPrompter(mockPrompter, mockConfigClient)
 	selected, err := prompter.PromptForRDSInstance(instances)
