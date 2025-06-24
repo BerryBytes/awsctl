@@ -24,7 +24,7 @@ type ECRService struct {
 	ConfigLoader     ConfigLoader
 	ECRClientFactory ECRClientFactory
 	FileSystem       common.FileSystemInterface
-	Executor         sso.CommandExecutor
+	Executor         common.CommandExecutor
 }
 
 func NewECRService(
@@ -34,7 +34,7 @@ func NewECRService(
 ) *ECRService {
 	prompter := connection.NewConnectionPrompter()
 	prompt := promptUtils.NewPrompt()
-	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
+	configClient := &sso.RealSSOClient{Executor: &common.RealCommandExecutor{}}
 
 	service := &ECRService{
 		EPrompter:        NewEPrompter(prompt, configClient),
@@ -45,7 +45,7 @@ func NewECRService(
 		ConfigLoader:     &RealConfigLoader{},
 		ECRClientFactory: &RealECRClientFactory{},
 		FileSystem:       &common.RealFileSystem{},
-		Executor:         &sso.RealCommandExecutor{},
+		Executor:         &common.RealCommandExecutor{},
 	}
 
 	for _, opt := range opts {
@@ -63,7 +63,7 @@ func (r *RealConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*
 
 type RealECRClientFactory struct{}
 
-func (r *RealECRClientFactory) NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor sso.CommandExecutor) ECRAdapterInterface {
+func (r *RealECRClientFactory) NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor common.CommandExecutor) ECRAdapterInterface {
 	return NewECRClient(cfg, fs, executor)
 }
 

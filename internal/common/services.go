@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/spf13/afero"
 )
@@ -18,7 +17,7 @@ type Services struct {
 	Executor        common.SSHExecutorInterface
 	OsDetector      common.OSDetector
 	SsmStarter      SSMStarterInterface
-	CommandExecutor sso.CommandExecutor
+	CommandExecutor common.CommandExecutor
 }
 
 func NewServices(
@@ -29,7 +28,7 @@ func NewServices(
 		Executor:        &common.RealSSHExecutor{},
 		OsDetector:      common.RuntimeOSDetector{},
 		SsmStarter:      NewRealSSMStarter(provider.SsmClient, provider.AwsConfig.Region),
-		CommandExecutor: &sso.RealCommandExecutor{},
+		CommandExecutor: &common.RealCommandExecutor{},
 	}
 }
 

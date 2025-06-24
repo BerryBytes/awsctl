@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	connection "github.com/BerryBytes/awsctl/internal/common"
 	"github.com/BerryBytes/awsctl/internal/sso"
@@ -27,7 +29,14 @@ type EKSService struct {
 type RealConfigLoader struct{}
 
 func (r *RealConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
-	return config.LoadDefaultConfig(ctx, opts...)
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		return aws.Config{}, err
+	}
+	return aws.Config{
+		Region:      cfg.Region,
+		Credentials: cfg.Credentials,
+	}, nil
 }
 
 type RealEKSClientFactory struct{}
@@ -41,7 +50,7 @@ func NewEKSService(
 	opts ...func(*EKSService),
 ) *EKSService {
 	prompter := promptUtils.NewPrompt()
-	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
+	configClient := &sso.RealSSOClient{Executor: &common.RealCommandExecutor{}}
 
 	service := &EKSService{
 		EPrompter:        NewEPrompter(prompter, configClient),
@@ -133,17 +142,33 @@ func (s *EKSService) GetEKSClusterDetails() (*models.EKSCluster, string, error) 
 		return s.HandleManualCluster()
 	}
 
-	if s.EKSClient == nil {
-		cfg, err := s.ConfigLoader.LoadDefaultConfig(context.TODO(),
-			config.WithRegion(region),
-			config.WithSharedConfigProfile(profile),
-		)
-		if err != nil {
-			fmt.Printf("AWS config failed: %v\n", err)
-			return s.HandleManualCluster()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Load aws.Config with region and profile
+	awsCfg, err := s.ConfigLoader.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithSharedConfigProfile(profile),
+	)
+	if err != nil {
+		fmt.Printf("AWS config failed: %v\n", err)
+		if strings.Contains(err.Error(), "SSO") || strings.Contains(err.Error(), "token") {
+			fmt.Println("Please run 'awsctl sso init' to authenticate")
 		}
-		s.EKSClient = s.EKSClientFactory.NewEKSClient(cfg, s.FileSystem)
+		return s.HandleManualCluster()
 	}
+
+	// Check credentials
+	_, err = awsCfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		fmt.Printf("Failed to retrieve credentials for profile %s: %v\n", profile, err)
+		if strings.Contains(err.Error(), "SSO") || strings.Contains(err.Error(), "token") {
+			fmt.Println("Please run 'awsctl sso init' to authenticate")
+		}
+		return s.HandleManualCluster()
+	}
+
+	s.EKSClient = s.EKSClientFactory.NewEKSClient(awsCfg, s.FileSystem)
 
 	clusters, err := s.EKSClient.ListEKSClusters(context.TODO())
 	if err != nil || len(clusters) == 0 {

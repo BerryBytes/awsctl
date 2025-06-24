@@ -9,6 +9,7 @@
 - [Usage](#usage)
 - [Commands](#commands)
 - [Contributing](#contributing)
+-  [Code Review Automation](#code-review-automation)
 - [Releasing](#releasing)
 - [Credits](#credits)
 - [License](#license)
@@ -70,32 +71,49 @@ AWS CLI leverages the powerful [Cobra](https://github.com/spf13/cobra) framework
 1. To install the latest version.
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash
 ```
 
 2. To install specific version (e.g: `v0.0.1`)
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash -s -- v0.0.1
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash -s -- v0.0.1
 ```
 
 ### Manual
 
 1. Clone this repository
 
-```
+```bash
 git clone git@github.com:BerryBytes/awsctl.git
 ```
 
 2. Make the `install-awsctl.sh` executable:
 
-```
+```bash
 chmod +x install-awsctl.sh
 ```
 
 3. Run the startup script:
 
+- #### First Time Installation
+If this is your first time installing, use the `source` command:
+
+```bash
+source ./install-awsctl.sh
 ```
+
+This ensures environment changes (like `PATH` updates) take effect immediately.
+
+### Why use `source`?
+- Executes in current shell session
+- Updates environment variables immediately
+- No terminal restart required
+
+### For Updates
+Run normally:
+
+```bash
 ./install-awsctl.sh
 ```
 
@@ -109,54 +127,52 @@ Start with `awsctl --help` OR `awsctl -h` to get started.
 
 - Below is sample `config.yaml` file in:
 
-```
-aws:
-  profiles:
-    - profileName: "sample-profile"
-      region: "xx-xxxx-x"
-      accountId: "xxxxxxxxx"
-      ssoStartUrl: "xxxxxxxxxxxxxxxxxxxxxx"
-      accountList:
-        - accountId: "xxxxxxxxx"
-          accountName: "xxxxxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-            - "xxxx"
-            - "xxxx"
-        - accountId: "xxxxxxxxxx"
-          accountName: "xxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-            - "xxxx"
-    - profileName: "sample2-profile"
-      region: "xx-xxxxx-x"
-      accountId: "xxxxxxxxx"
-      ssoStartUrl: "xxxxxxxxxxxxxxxxxxxxxx"
-      accountList:
-        - accountId: "xxxxxxxxx"
-          accountName: "xxxxxx"
-          emailAddress: "xxxxx@xxx.xxx"
-          roles:
-           - "xxxx"
+```yaml
+ssoSessions:
+  - name: "sso-session-1"
+    startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    region: "XX-XXXX-X"
+  - name: "sso-session-2"
+    startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    region: "XX-XXXX-X"
+    scopes: "sso:account:access"
+
 
 ```
-
+**Note**: `scopes` can be empty. Default value will be `sso:account:access`
 ### Commands
 
 The following table summarizes the available `awsctl` commands:
 
 | Command            | Description                                                                                       |
 |--------------------|---------------------------------------------------------------------------------------------------|
-| `awsctl sso setup` | Configures AWS SSO profiles, creating or updating a config file at `~/.config/awsctl/config.yaml`. |
-| `awsctl sso init`  | Initializes SSO authentication using a configured profile via `awsctl sso setup`.                 |
+| `awsctl sso setup` | Creates or updates an AWS SSO profile. Uses config file in `~/.config/awsctl/` if available, or prompts for required details. Optionally sets it as the default and authenticates. |
+| `awsctl sso init`  | Starts SSO authentication by allowing you to select from existing AWS SSO profiles (created via `awsctl sso setup`). Useful for switching between multiple configured SSO profiles.                 |
 | `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.   |
 | `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                        |
 | `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                             |
 | `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                       |
 
+#### For detailed CLI command usage, see [Command Usage Documentation](docs/usage/commands.md).
+
+
 ### Contributing
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more details.
+
+### Code Review Automation
+
+This project uses [Coderabbit AI](https://www.coderabbit.ai/) to assist with pull request reviews.
+
+**Role**: Automatically reviews pull requests for code quality, potential bugs, best practices, and documentation gaps.
+
+**How it works**:
+- Summarizes PR changes.
+- Provides line-by-line suggestions.
+- Offers codebase-wide analysis.
+
+**Note**: Suggestions by Coderabbit are recommendations. Final review decisions are made by maintainers.
+
 
 ### Releasing
 

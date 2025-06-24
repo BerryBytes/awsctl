@@ -1,19 +1,24 @@
 package eks
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
 type EPrompter struct {
 	Prompt          promptUtils.Prompter
-	AWSConfigClient sso.AWSConfigClient
+	AWSConfigClient sso.SSOClient
 }
 
 type EKSAction int
@@ -25,7 +30,7 @@ const (
 
 func NewEPrompter(
 	prompt promptUtils.Prompter,
-	configClient sso.AWSConfigClient,
+	configClient sso.SSOClient,
 ) *EPrompter {
 	return &EPrompter{
 		Prompt:          prompt,
@@ -34,19 +39,16 @@ func NewEPrompter(
 }
 
 func (p *EPrompter) PromptForRegion() (string, error) {
-	region, err := p.Prompt.PromptForInput("Enter AWS region (e.g., us-east-1):", "")
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
-		}
-		return "", fmt.Errorf("failed to get AWS region: %w", err)
-	}
-
-	if region == "" {
-		return "", errors.New("AWS region cannot be empty")
-	}
-
-	return region, nil
+	return p.Prompt.PromptForInputWithValidation(
+		"Enter AWS region:",
+		"",
+		func(input string) error {
+			if !generalutils.IsRegionValid(input) {
+				return fmt.Errorf("invalid AWS region format or unrecognized region: %s", input)
+			}
+			return nil
+		},
+	)
 }
 
 func (p *EPrompter) PromptForEKSCluster(clusters []models.EKSCluster) (string, error) {
@@ -129,27 +131,108 @@ func (p *EPrompter) SelectEKSAction() (EKSAction, error) {
 }
 
 func (p *EPrompter) PromptForManualCluster() (clusterName, endpoint, caData, region string, err error) {
-	clusterName, err = p.Prompt.PromptForInput("Enter EKS cluster name:", "")
+	clusterName, err = p.Prompt.PromptForInputWithValidation(
+		"Enter EKS cluster name:",
+		"",
+		func(input string) error {
+			if input == "" {
+				return fmt.Errorf("cluster name cannot be empty")
+			}
+			if len(input) > 40 {
+				return fmt.Errorf("cluster name must be 40 characters or less (recommended for usability)")
+			}
+			if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9\-_]*[a-zA-Z0-9]$`).MatchString(input) {
+				return fmt.Errorf("invalid format. Must:\n- Start with a letter\n- Contain only [a-z, A-Z, 0-9, -, _]\n- Not end with '-' or '_'")
+			}
+			return nil
+		},
+	)
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input cluster name: %w", err)
 	}
 
-	endpoint, err = p.Prompt.PromptForInput("Enter EKS cluster endpoint (e.g., https://<endpoint>):", "")
+	endpoint, err = p.Prompt.PromptForInputWithValidation(
+		"Enter EKS cluster endpoint (e.g., https://<endpoint>):",
+		"",
+		func(input string) error {
+			if !strings.HasPrefix(input, "https://") {
+				return fmt.Errorf("endpoint must start with https://")
+			}
+
+			parsedURL, err := url.ParseRequestURI(input)
+			if err != nil {
+				return fmt.Errorf("invalid URL format: %v", err)
+			}
+
+			host := parsedURL.Hostname()
+			if host == "" {
+				return fmt.Errorf("missing hostname in endpoint")
+			}
+
+			patterns := []*regexp.Regexp{
+				// IPv4 patterns
+				regexp.MustCompile(`^[A-Z0-9]+\.gr7\.[a-z0-9-]+\.eks\.amazonaws\.com$`),
+				regexp.MustCompile(`^eks-cluster\.[a-z0-9-]+\.eks\.amazonaws\.com$`),
+				regexp.MustCompile(`^eks-cluster\.[a-z0-9-]+\.amazonwebservices\.com\.cn$`),
+				regexp.MustCompile(`^eks-cluster\.[a-z0-9-]+\.amazonwebservices\.gov$`),
+
+				// IPv6 patterns
+				regexp.MustCompile(`^eks-cluster\.[a-z0-9-]+\.api\.aws$`),
+				regexp.MustCompile(`^eks-cluster\.[a-z0-9-]+\.api\.amazonwebservices\.com\.cn$`),
+			}
+
+			for _, pattern := range patterns {
+				if pattern.MatchString(host) {
+					return nil
+				}
+			}
+
+			return fmt.Errorf(`invalid EKS endpoint format. Valid examples:
+- IPv4: https://ABCD123.gr7.us-west-2.eks.amazonaws.com
+- IPv4: https://eks-cluster.cn-north-1.amazonwebservices.com.cn
+- IPv6: https://eks-cluster.us-east-1.api.aws`)
+		},
+	)
+
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input endpoint: %w", err)
 	}
 
-	if !strings.HasPrefix(endpoint, "https://") {
-		return "", "", "", "", fmt.Errorf("invalid endpoint format; must start with https://")
-	}
-
-	caData, err = p.Prompt.PromptForInput("Enter Certificate Authority data (base64):", "")
+	caData, err = p.Prompt.PromptForInputWithValidation(
+		"Enter Certificate Authority data (base64):",
+		"",
+		func(input string) error {
+			if input == "" {
+				return fmt.Errorf("CA data cannot be empty")
+			}
+			decoded, err := base64.StdEncoding.DecodeString(input)
+			if err != nil {
+				return fmt.Errorf("invalid base64 data: %v", err)
+			}
+			if !bytes.Contains(decoded, []byte("-----BEGIN CERTIFICATE-----")) {
+				return fmt.Errorf("CA data should be a PEM certificate in base64 format")
+			}
+			return nil
+		},
+	)
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input CA data: %w", err)
 	}
 
 	region, err = p.PromptForRegion()
 	if err != nil {
+		if errors.Is(err, promptUtils.ErrInterrupted) {
+			return "", "", "", "", promptUtils.ErrInterrupted
+		}
 		return "", "", "", "", fmt.Errorf("failed to input region: %w", err)
 	}
 

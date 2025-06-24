@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
+	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/smithy-go"
@@ -20,10 +20,10 @@ type RDSClientInterface = RDSAPI
 type AwsRDSAdapter struct {
 	Client   RDSAPI
 	Cfg      aws.Config
-	Executor sso.CommandExecutor
+	Executor common.CommandExecutor
 }
 
-func NewRDSClient(cfg aws.Config, cmdExecutor sso.CommandExecutor) *AwsRDSAdapter {
+func NewRDSClient(cfg aws.Config, cmdExecutor common.CommandExecutor) *AwsRDSAdapter {
 	return &AwsRDSAdapter{
 		Client:   rds.NewFromConfig(cfg),
 		Cfg:      cfg,

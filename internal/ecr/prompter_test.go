@@ -7,6 +7,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/internal/ecr"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
+	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ func TestNewEPrompter(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -50,7 +51,7 @@ func TestSelectECRAction_Success(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-			mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+			mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 			prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -91,7 +92,7 @@ func TestSelectECRAction_ErrorCases(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-			mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+			mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 			prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -120,7 +121,7 @@ func TestPromptForProfile_FromEnv(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -138,7 +139,7 @@ func TestPromptForProfile_FromConfig_SingleProfile(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -162,7 +163,7 @@ func TestPromptForProfile_FromConfig_MultipleProfiles(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-	mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+	mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 	prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 
@@ -220,7 +221,7 @@ func TestPromptForProfile_ErrorCases(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockPrompt := mock_awsctl.NewMockPrompter(ctrl)
-			mockConfigClient := mock_awsctl.NewMockAWSConfigClient(ctrl)
+			mockConfigClient := mock_sso.NewMockSSOClient(ctrl)
 
 			prompter := ecr.NewEPrompter(mockPrompt, mockConfigClient)
 

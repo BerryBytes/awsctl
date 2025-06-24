@@ -15,6 +15,32 @@ Here’s how you can get started:
 
 ---
 
+## Commit Message Format
+
+We follow the **Conventional Commits** specification for commit messages. This helps maintain clarity and consistency in the commit history and supports automated release tooling.
+
+### Format
+- Use the **imperative mood** in the summary (e.g., "add logging", not "added logging" or "adds logging").
+- Example: `fix: handle invalid AWS profile error`
+
+> **Tip:** You can add a scope to clarify the area affected, e.g., `feat(rds): add multi-AZ support`
+
+### Allowed Types
+
+| Type        | Description                                                              |
+|-------------|--------------------------------------------------------------------------|
+| **feat**    | A new feature (correlates with **MINOR** in SemVer)                      |
+| **fix**     | A bug fix (correlates with **PATCH** in SemVer)                          |
+| **docs**    | Documentation-only changes                                               |
+| **style**   | Code style changes (formatting, white-space, etc., no code logic impact) |
+| **refactor**| Code changes that neither fix a bug nor add a feature                    |
+| **perf**    | Code changes that improve performance                                    |
+| **test**    | Adding or correcting tests                                               |
+| **build**   | Changes to the build system or dependencies (e.g., Go modules, Docker)   |
+| **ci**      | Changes to CI configuration files and scripts (e.g., GitHub Actions)     |
+| **chore**   | Routine tasks or maintenance (e.g., dependency updates, lint fixes)      |
+| **revert**  | Reverts a previous commit
+
 ## **Pull Request Submission Process**
 
 ### **Pre-Submission Checklist**

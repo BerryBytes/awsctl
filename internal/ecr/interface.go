@@ -3,7 +3,6 @@ package ecr
 import (
 	"context"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -27,7 +26,7 @@ type ECRServiceInterface interface {
 }
 
 type ECRClientFactory interface {
-	NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor sso.CommandExecutor) ECRAdapterInterface
+	NewECRClient(cfg aws.Config, fs common.FileSystemInterface, executor common.CommandExecutor) ECRAdapterInterface
 }
 
 type ProfileProvider interface {

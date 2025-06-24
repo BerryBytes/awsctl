@@ -22,10 +22,10 @@ import (
 )
 
 func main() {
-	awsClient := sso.DefaultAWSClient()
-	ssoClient, err := sso.NewSSOClient(awsClient)
+
+	ssoSetupClient, err := sso.NewSSOClient(sso.NewPrompter(), &common.RealCommandExecutor{})
 	if err != nil {
-		fmt.Printf("Error initializing SSO client: %v\n", err)
+		fmt.Printf("Error initializing SSO setup client: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -73,8 +73,9 @@ func main() {
 			s.CPrompter = prompter
 		},
 	)
-	awsConfigClient := &sso.RealAWSConfigClient{
-		Executor: &sso.RealCommandExecutor{},
+	eksSvc.EKSClient = eks.NewEKSClient(awsConfig, fileSystem)
+	awsConfigClient := &sso.RealSSOClient{
+		Executor: &common.RealCommandExecutor{},
 	}
 
 	ecrSvc := ecr.NewECRService(
@@ -87,7 +88,7 @@ func main() {
 		},
 	)
 	rootCmd := root.NewRootCmd(root.RootDependencies{
-		SSOClient:      ssoClient,
+		SSOSetupClient: ssoSetupClient,
 		BastionService: bastionSvc,
 		GeneralManager: generalManager,
 		FileSystem:     fileSystem,

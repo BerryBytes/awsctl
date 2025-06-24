@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	rds "github.com/BerryBytes/awsctl/internal/rds"
-	sso "github.com/BerryBytes/awsctl/internal/sso"
 	models "github.com/BerryBytes/awsctl/models"
+	"github.com/BerryBytes/awsctl/utils/common"
 	aws "github.com/aws/aws-sdk-go-v2/aws"
 	config "github.com/aws/aws-sdk-go-v2/config"
 	rds0 "github.com/aws/aws-sdk-go-v2/service/rds"
@@ -423,7 +423,7 @@ func (m *MockRDSClientFactory) EXPECT() *MockRDSClientFactoryMockRecorder {
 }
 
 // NewRDSClient mocks base method.
-func (m *MockRDSClientFactory) NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) rds.RDSAdapterInterface {
+func (m *MockRDSClientFactory) NewRDSClient(cfg aws.Config, executor common.CommandExecutor) rds.RDSAdapterInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewRDSClient", cfg, executor)
 	ret0, _ := ret[0].(rds.RDSAdapterInterface)

@@ -22,7 +22,6 @@ func SetupCmd(ssoClient sso.SSOClient) *cobra.Command {
 				}
 				return fmt.Errorf("SSO initialization failed: %w", err)
 			}
-			cmd.Println("AWS SSO setup completed successfully.")
 			return nil
 		},
 	}

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	connection "github.com/BerryBytes/awsctl/internal/common"
 	"github.com/BerryBytes/awsctl/internal/sso"
@@ -46,7 +47,7 @@ func (r *RealConfigLoader) LoadDefaultConfig(ctx context.Context, opts ...func(*
 
 type RealRDSClientFactory struct{}
 
-func (r *RealRDSClientFactory) NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) RDSAdapterInterface {
+func (r *RealRDSClientFactory) NewRDSClient(cfg aws.Config, executor common.CommandExecutor) RDSAdapterInterface {
 	return NewRDSClient(cfg, executor)
 }
 
@@ -55,7 +56,7 @@ func NewRDSService(
 	opts ...func(*RDSService),
 ) *RDSService {
 	prompter := promptUtils.NewPrompt()
-	configClient := &sso.RealAWSConfigClient{Executor: &sso.RealCommandExecutor{}}
+	configClient := &sso.RealSSOClient{Executor: &common.RealCommandExecutor{}}
 
 	service := &RDSService{
 		RPrompter:           NewRPrompter(prompter, configClient),
@@ -105,7 +106,7 @@ func (s *RDSService) Run() error {
 }
 
 func (s *RDSService) HandleDirectConnection() error {
-	endpoint, dbUser, region, err := s.getRDSConnectionDetails()
+	endpoint, dbUser, region, err := s.GetRDSConnectionDetails()
 	if err != nil {
 		return err
 	}
@@ -129,7 +130,7 @@ func (s *RDSService) HandleTunnelConnection() error {
 	if err != nil {
 		return fmt.Errorf("failed to get authentication method: %w", err)
 	}
-	rdsEndpoint, dbUser, region, err := s.getRDSConnectionDetails()
+	rdsEndpoint, dbUser, region, err := s.GetRDSConnectionDetails()
 	if err != nil {
 		return fmt.Errorf("failed to get RDS connection details: %w", err)
 	}
@@ -241,7 +242,7 @@ ssl-ca=%s
 	}
 }
 
-func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string, err error) {
+func (s *RDSService) GetRDSConnectionDetails() (endpoint, dbUser, region string, err error) {
 	if !s.isAWSConfigured() {
 		fmt.Println("AWS configuration not found - falling back to manual connection")
 		return s.handleManualConnection()
@@ -275,17 +276,34 @@ func (s *RDSService) getRDSConnectionDetails() (endpoint, dbUser, region string,
 		return s.handleManualConnection()
 	}
 
-	if s.RDSClient == nil {
-		cfg, err := s.ConfigLoader.LoadDefaultConfig(context.TODO(),
-			config.WithRegion(region),
-			config.WithSharedConfigProfile(profile),
-		)
-		if err != nil {
-			fmt.Printf("AWS config failed: %v\n", err)
-			return s.handleManualConnection()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	awsCfg, err := s.ConfigLoader.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithSharedConfigProfile(profile),
+	)
+	if err != nil {
+		fmt.Printf("AWS config failed: %v\n", err)
+		if strings.Contains(err.Error(), "SSO") || strings.Contains(err.Error(), "token") {
+			fmt.Println("Please run 'awsctl sso init' to authenticate")
 		}
-		s.RDSClient = s.RDSClientFactory.NewRDSClient(cfg, &sso.RealCommandExecutor{})
+		return s.handleManualConnection()
 	}
+
+	s.RDSClient = s.RDSClientFactory.NewRDSClient(awsCfg, &common.RealCommandExecutor{})
+
+	// if s.RDSClient == nil {
+	// 	cfg, err := s.ConfigLoader.LoadDefaultConfig(context.TODO(),
+	// 		config.WithRegion(region),
+	// 		config.WithSharedConfigProfile(profile),
+	// 	)
+	// 	if err != nil {
+	// 		fmt.Printf("AWS config failed: %v\n", err)
+	// 		return s.handleManualConnection()
+	// 	}
+	// 	s.RDSClient = s.RDSClientFactory.NewRDSClient(cfg, &common.RealCommandExecutor{})
+	// }
 
 	resources, err := s.RDSClient.ListRDSResources(context.TODO())
 	if err != nil || len(resources) == 0 {
@@ -432,5 +450,5 @@ func (s *RDSService) SetSOCKSPort(port int) {
 }
 
 func (s *RDSService) GetConnectionDetails() (string, string, string, error) {
-	return s.getRDSConnectionDetails()
+	return s.GetRDSConnectionDetails()
 }

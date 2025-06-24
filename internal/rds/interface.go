@@ -3,8 +3,8 @@ package rds
 import (
 	"context"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
+	"github.com/BerryBytes/awsctl/utils/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -42,5 +42,5 @@ type ConfigLoader interface {
 }
 
 type RDSClientFactory interface {
-	NewRDSClient(cfg aws.Config, executor sso.CommandExecutor) RDSAdapterInterface
+	NewRDSClient(cfg aws.Config, executor common.CommandExecutor) RDSAdapterInterface
 }

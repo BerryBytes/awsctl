@@ -9,6 +9,7 @@ import (
 
 	"github.com/BerryBytes/awsctl/models"
 	"github.com/BerryBytes/awsctl/utils/common"
+	generalutils "github.com/BerryBytes/awsctl/utils/general"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/manifoldco/promptui"
 )
@@ -374,20 +375,14 @@ func (b *ConnectionPrompterStruct) ChooseConnectionMethod() (string, error) {
 }
 
 func (b *ConnectionPrompterStruct) PromptForRegion(defaultRegion string) (string, error) {
-	promptMessage := "Enter AWS region:"
-	if defaultRegion != "" {
-		promptMessage = fmt.Sprintf("Enter AWS region (Default: %s):", defaultRegion)
-	}
-
-	region, err := b.Prompter.PromptForInput(promptMessage, defaultRegion)
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return "", promptUtils.ErrInterrupted
-		}
-		return "", fmt.Errorf("failed to get region: %w", err)
-	}
-	if region == "" {
-		return "", errors.New("region cannot be empty")
-	}
-	return region, nil
+	return b.Prompter.PromptForInputWithValidation(
+		fmt.Sprintf("Enter AWS region (Default: %s):", defaultRegion),
+		defaultRegion,
+		func(input string) error {
+			if !generalutils.IsRegionValid(input) {
+				return fmt.Errorf("invalid AWS region format or unrecognized region: %s", input)
+			}
+			return nil
+		},
+	)
 }

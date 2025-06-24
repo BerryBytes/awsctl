@@ -10,17 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/spf13/afero"
 )
-
-type SSHExecutorInterface interface {
-	Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) error
-}
-
-type OSDetector interface {
-	GetOS() string
-}
 
 type RuntimeOSDetector struct{}
 
@@ -29,10 +20,10 @@ func (r RuntimeOSDetector) GetOS() string {
 }
 
 type RealSSHExecutor struct {
-	commandExecutor sso.CommandExecutor
+	commandExecutor CommandExecutor
 }
 
-func NewRealSSHExecutor(commandExecutor sso.CommandExecutor) *RealSSHExecutor {
+func NewRealSSHExecutor(commandExecutor CommandExecutor) *RealSSHExecutor {
 	return &RealSSHExecutor{commandExecutor: commandExecutor}
 }
 
