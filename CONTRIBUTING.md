@@ -20,14 +20,14 @@ Learn how to report bugs, propose features, or provide feedback:
 
 ## **Interested in Becoming a Maintainer?**
 
-If you’re passionate about zocli and want to become a maintainer, check out the guidelines:
+If you’re passionate about awsctl and want to become a maintainer, check out the guidelines:
 [**Maintainers Guidelines**](docs/content/contributing/maintainers-guidelines.md)
 
 ---
 
 ### **Together, We Build Better**
 
-Your contributions help make zocli better for everyone. We appreciate your support and look forward to your contributions!
+Your contributions help make awsctl better for everyone. We appreciate your support and look forward to your contributions!
 
 ---
 
