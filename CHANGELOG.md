@@ -1,3 +1,41 @@
+# awsctl - v0.3.0
+
+## Changes since v0.2.0
+
+- [f45af40](https://github.com/BerryBytes/awsctl/commit/f45af409453e635ac4c144f73a26f38f71a49fc8) Changed reviewer to sarose sir instead of mousam (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [f94bc10](https://github.com/BerryBytes/awsctl/commit/f94bc10524a887e754b25116205ac7ffdff07dc6) Added version flag compatibility on the root command (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [1546539](https://github.com/BerryBytes/awsctl/commit/1546539c2f772929a98ff02e0bf58e4c904f2751) Removed zocli instance (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [0cdf2fe](https://github.com/BerryBytes/awsctl/commit/0cdf2fe73325efed69cc57baae2e530f14017125) Fixed the rds instance listing prompt issue of re-rendering (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [ca7caae](https://github.com/BerryBytes/awsctl/commit/ca7caaeb38dacca5c4ed896708554f7c79dc7ace) Added commit msg format in submitting PR docs (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [772ef34](https://github.com/BerryBytes/awsctl/commit/772ef349b09688367a56f00fc5fa183864d12b7b) Changed readme for first time installation of awsctl (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [ffd2350](https://github.com/BerryBytes/awsctl/commit/ffd2350dc2935955dd5b0c69a20d1e6e14f96d1e) Fixed region validation on setup cmd and double prompt on init cmd (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [a3c5ada](https://github.com/BerryBytes/awsctl/commit/a3c5ada58d7f2f274097603e19d7d2fe229cfa79) Added coderabbit integration info on readme (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [b19db49](https://github.com/BerryBytes/awsctl/commit/b19db4995c9cb73890e084c305db4e16eb9ce9dc) Changed commands.md for vpc endpoint for private instance (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [1d02fd5](https://github.com/BerryBytes/awsctl/commit/1d02fd5476fd13f3472a6740536452bb9541e11a) Included requirement for ec2 instance connect in commands.md (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [d7f5895](https://github.com/BerryBytes/awsctl/commit/d7f589522e1b0960507a1b4cb9461ff82f7db3b8) Added commands.md for details command usage and linked on readme (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [2a29cd6](https://github.com/BerryBytes/awsctl/commit/2a29cd66e780749fad6c382436b6c82a2754381e) Changed the command description on readme (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [4445f7b](https://github.com/BerryBytes/awsctl/commit/4445f7bd0a039880b0ff2d77a0318755a31a5a16) Remove the unwanted test files from previous sso flow (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [a7953f6](https://github.com/BerryBytes/awsctl/commit/a7953f681e905cb512a238ede487b0f9a2c76be4) Fixed access issue on rds while selecting profile for multiple profile (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [81f5e12](https://github.com/BerryBytes/awsctl/commit/81f5e12930949152f7a3703c1cebdb6d037036cf) Access issue on eks command while selecting profile (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [5b3212c](https://github.com/BerryBytes/awsctl/commit/5b3212c416f9b679f31ad46f8754ab27683e08f9) Silence the temp file removal (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [b7484d2](https://github.com/BerryBytes/awsctl/commit/b7484d2b558559b9b99af0b0ed75356ef0ea5c62) Fix golanci-lint issue (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [dccf4da](https://github.com/BerryBytes/awsctl/commit/dccf4da5aeef9af26935b04d5004012e08b40cb0) Fix golangci-lint issue (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [3a26940](https://github.com/BerryBytes/awsctl/commit/3a26940c1240d74da8bd40c1150b9e000aa3161e) Fixed golangci-lint issue (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [0ee5915](https://github.com/BerryBytes/awsctl/commit/0ee5915bc720b4d4544f6f67bcc392969ccf9e60) Fixed golangci-lint issue of github action (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [6f69fbd](https://github.com/BerryBytes/awsctl/commit/6f69fbde92cdc38048ca0d56f6c8502aeb2233f9) Added option to set default profile on sso init command (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [078340c](https://github.com/BerryBytes/awsctl/commit/078340c928b03c0a1e345647bde5d3ffb1866c51) Refactor code suggested by coderabbit (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [e97d547](https://github.com/BerryBytes/awsctl/commit/e97d547e7c406e9d6c7bd97cf1ea791abd292b7b) Fixed strict checking of region when user is authenticated (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [4c54d09](https://github.com/BerryBytes/awsctl/commit/4c54d094800ef3d078a5dca2f37be69dfefa9ac6) Added region validation for eks command (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [54624d6](https://github.com/BerryBytes/awsctl/commit/54624d6b04431cf051e8ef66a3a2a0767aea8da0) Handled user terminated error on manual cluster input (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [b834f91](https://github.com/BerryBytes/awsctl/commit/b834f91f2f9de35b893b538b3a2c01af9f9d97bf) Added input validation for manual update of eks cluster (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [d2e4a66](https://github.com/BerryBytes/awsctl/commit/d2e4a667b64fd2a4aa7d5d8e3f202ed3c96f6c35) Changed the config file to new structure and installation command to develop branch (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [0377e87](https://github.com/BerryBytes/awsctl/commit/0377e87c89d475bb755b31a731b71e1a8f338ca5) Added test case for prompter and changed the related file (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [a70ce84](https://github.com/BerryBytes/awsctl/commit/a70ce84ef43de9b436bd9b29ba739b7d061d5116) Added test cases for session.go file (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [9b26697](https://github.com/BerryBytes/awsctl/commit/9b266975271a67c39567d19d31d741a06a984263) Removed unused function from config (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [d0cdbe1](https://github.com/BerryBytes/awsctl/commit/d0cdbe10fde5cb273a3dff6d92368fee37fd8943) Changed the workflow of sso setup and init command and related files (sanjog-lama <sanjog.gomden@berrybytes.com>)
+
+Generated on 2025-06-25T07:36:37Z
+
 # awsctl - v0.2.0
 
 ## Changes since v0.1.0
