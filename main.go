@@ -21,6 +21,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
+var Version = "0.2.0"
+
 func main() {
 
 	ssoSetupClient, err := sso.NewSSOClient(sso.NewPrompter(), &common.RealCommandExecutor{})
@@ -95,6 +97,7 @@ func main() {
 		RDSService:     rdsSvc,
 		EKSService:     eksSvc,
 		ECRService:     ecrSvc,
+		Version:        Version,
 	})
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
