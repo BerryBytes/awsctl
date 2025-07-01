@@ -221,7 +221,7 @@ func (s *Services) IsAWSConfigured() bool {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	creds, err := s.Provider.AwsConfig.Credentials.Retrieve(ctx)

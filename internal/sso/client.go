@@ -177,7 +177,7 @@ func (c *RealSSOClient) SSOLogin(awsProfile string, refresh, noBrowser bool) err
 	}
 	args = append(args, "--profile", awsProfile)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	err := c.Executor.RunInteractiveCommand(ctx, "aws", args...)
