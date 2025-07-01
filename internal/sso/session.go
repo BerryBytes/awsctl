@@ -235,7 +235,7 @@ func (c *RealSSOClient) runSSOLogin(sessionName string) error {
 
 	fmt.Println("\nInitiating AWS SSO login... (this may open a browser window)")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	if err := c.Executor.RunInteractiveCommand(ctx, "aws", "sso", "login", "--sso-session", sessionName); err != nil {
