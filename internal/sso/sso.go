@@ -45,42 +45,30 @@ func (c *RealSSOClient) SetupSSO() error {
 		return fmt.Errorf("failed to select role: %w", err)
 	}
 
-	profileName, region, err := c.promptProfileDetails(ssoSession.Region)
-	if err != nil {
-		if errors.Is(err, promptUtils.ErrInterrupted) {
-			return nil
-		}
-		return fmt.Errorf("failed to prompt profile details: %w", err)
-	}
+	profileName := ssoSession.Name + "-profile"
 
-	if err := c.configureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, region); err != nil {
+	if err := c.configureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
 		return fmt.Errorf("failed to configure AWS profile: %w", err)
 	}
 
 	defaultConfigured := profileName == "default"
+
 	if !defaultConfigured {
-		setDefault, err := c.Prompter.PromptYesNo("Set this as the default profile? [Y/n]", true)
-		if err != nil {
-			if errors.Is(err, promptUtils.ErrInterrupted) {
-				return nil
-			}
-			return fmt.Errorf("failed to prompt for default profile: %w", err)
+		if err := c.configureAWSProfile("default", ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
+			return fmt.Errorf("failed to configure AWS default profile: %w", err)
 		}
-		if setDefault {
-			if err := c.configureAWSProfile("default", ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, region); err != nil {
-				return fmt.Errorf("failed to configure AWS default profile: %w", err)
-			}
-			defaultConfigured = true
-		}
+		defaultConfigured = true
 	}
 
 	printSummary(profileName, ssoSession.Name, ssoSession.StartURL, ssoSession.Region, accountID, role, "", "", "")
 	fmt.Printf("\nSuccessfully configured AWS profile '%s'!\n", profileName)
+
 	if defaultConfigured {
 		fmt.Println("You can now use AWS CLI commands without specifying --profile")
 	} else {
 		fmt.Printf("You can now use this profile with AWS CLI commands using: --profile %s\n", profileName)
 	}
+
 	return nil
 }
 
