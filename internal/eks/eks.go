@@ -2,7 +2,6 @@ package eks
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -68,25 +67,7 @@ func NewEKSService(
 }
 
 func (s *EKSService) Run() error {
-	for {
-		action, err := s.EPrompter.SelectEKSAction()
-		if err != nil {
-			if errors.Is(err, promptUtils.ErrInterrupted) {
-				return promptUtils.ErrInterrupted
-			}
-			return fmt.Errorf("action selection aborted: %v", err)
-		}
-
-		switch action {
-		case UpdateKubeConfig:
-			if err := s.HandleKubeconfigUpdate(); err != nil {
-				return fmt.Errorf("kubeconfig update failed: %w", err)
-			}
-			return nil
-		case ExitEKS:
-			return nil
-		}
-	}
+	return s.HandleKubeconfigUpdate()
 }
 
 func (s *EKSService) HandleKubeconfigUpdate() error {
@@ -113,14 +94,9 @@ func (s *EKSService) GetEKSClusterDetails() (*models.EKSCluster, string, error) 
 		return s.HandleManualCluster()
 	}
 
-	confirm, err := s.CPrompter.PromptForConfirmation("Look for EKS clusters in AWS?")
-	if err != nil || !confirm {
-		fmt.Println("Proceeding with manual input")
-		return s.HandleManualCluster()
-	}
-
 	defaultRegion := ""
 	if s.ConnProvider != nil {
+		var err error
 		defaultRegion, err = s.ConnProvider.GetDefaultRegion()
 		if err != nil {
 			fmt.Printf("Failed to load default region: %v\n", err)

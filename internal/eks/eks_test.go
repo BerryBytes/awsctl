@@ -11,7 +11,6 @@ import (
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_eks "github.com/BerryBytes/awsctl/tests/mock/eks"
 	"github.com/BerryBytes/awsctl/utils/common"
-	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -32,24 +31,7 @@ func TestNewEKSService(t *testing.T) {
 	assert.NotNil(t, service.FileSystem)
 }
 
-func TestEKSService_Run_ExitAction(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		SelectEKSAction().
-		Return(eks.ExitEKS, nil)
-
-	service := &eks.EKSService{
-		EPrompter: mockEPrompter,
-	}
-
-	err := service.Run()
-	assert.NoError(t, err)
-}
-
-func TestEKSService_Run_UpdateKubeConfig(t *testing.T) {
+func TestEKSService_Run_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -62,9 +44,6 @@ func TestEKSService_Run_UpdateKubeConfig(t *testing.T) {
 	testRegion := "us-west-2"
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		SelectEKSAction().
-		Return(eks.UpdateKubeConfig, nil)
 	mockEPrompter.EXPECT().
 		PromptForProfile().
 		Return(testProfile, nil)
@@ -87,9 +66,6 @@ func TestEKSService_Run_UpdateKubeConfig(t *testing.T) {
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
 	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
 		PromptForRegion("").
 		Return(testRegion, nil)
 
@@ -122,31 +98,35 @@ func TestEKSService_Run_UpdateKubeConfig(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestEKSService_Run_Interrupted(t *testing.T) {
+func TestEKSService_Run_AWSNotConfigured(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		SelectEKSAction().
-		Return(eks.ExitEKS, promptUtils.ErrInterrupted)
+	old := os.Stdout
+	defer func() { os.Stdout = old }()
+	os.Stdout = os.NewFile(0, os.DevNull)
 
-	service := &eks.EKSService{
-		EPrompter: mockEPrompter,
+	clusterName := "test-cluster"
+	endpoint := "https://test.endpoint"
+	region := "us-west-2"
+	caData := "ca-data"
+
+	expectedCluster := &models.EKSCluster{
+		ClusterName:              clusterName,
+		Endpoint:                 endpoint,
+		Region:                   region,
+		CertificateAuthorityData: caData,
 	}
-
-	err := service.Run()
-	assert.Equal(t, promptUtils.ErrInterrupted, err)
-}
-
-func TestEKSService_getEKSClusterDetails_ManualFallback(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
 		PromptForManualCluster().
-		Return("test-cluster", "https://test.endpoint", "ca-data", "us-west-2", nil)
+		Return(clusterName, endpoint, caData, region, nil)
+
+	mockEKSClient := mock_eks.NewMockEKSAdapterInterface(ctrl)
+	mockEKSClient.EXPECT().
+		UpdateKubeconfig(expectedCluster, "").
+		Return(nil)
 
 	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
 	mockConnServices.EXPECT().
@@ -156,170 +136,40 @@ func TestEKSService_getEKSClusterDetails_ManualFallback(t *testing.T) {
 	service := &eks.EKSService{
 		EPrompter:    mockEPrompter,
 		ConnServices: mockConnServices,
+		EKSClient:    mockEKSClient,
+		FileSystem:   &common.RealFileSystem{},
 	}
 
-	cluster, profile, err := service.GetEKSClusterDetails()
+	err := service.Run()
 	assert.NoError(t, err)
-	assert.Equal(t, "test-cluster", cluster.ClusterName)
-	assert.Equal(t, "", profile)
 }
 
-func TestEKSService_handleManualCluster_Success(t *testing.T) {
+func TestEKSService_Run_ManualClusterError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
 		PromptForManualCluster().
-		Return("test-cluster", "https://test.endpoint", "ca-data", "us-west-2", nil)
-
-	service := &eks.EKSService{
-		EPrompter: mockEPrompter,
-	}
-
-	cluster, profile, err := service.HandleManualCluster()
-	assert.NoError(t, err)
-	assert.Equal(t, "test-cluster", cluster.ClusterName)
-	assert.Equal(t, "https://test.endpoint", cluster.Endpoint)
-	assert.Equal(t, "us-west-2", cluster.Region)
-	assert.Equal(t, "", profile)
-}
-
-func TestEKSService_handleManualCluster_Error(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return("", "", "", "", errors.New("input error"))
-
-	service := &eks.EKSService{
-		EPrompter: mockEPrompter,
-	}
-
-	_, _, err := service.HandleManualCluster()
-	assert.Error(t, err)
-}
-
-func TestEKSService_HandleKubeconfigUpdate_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	testCluster := models.EKSCluster{
-		ClusterName: "test-cluster",
-		Endpoint:    "https://test.endpoint",
-		Region:      "us-west-2",
-	}
-	testProfile := "default"
-	testRegion := "us-west-2"
-
-	mockEKSClient := mock_eks.NewMockEKSAdapterInterface(ctrl)
-	mockEKSClient.EXPECT().
-		ListEKSClusters(gomock.Any()).
-		Return([]models.EKSCluster{testCluster}, nil)
-	mockEKSClient.EXPECT().
-		UpdateKubeconfig(&testCluster, testProfile).
-		Return(nil)
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-	mockFactory.EXPECT().
-		NewEKSClient(gomock.Any(), gomock.Any()).
-		Return(mockEKSClient)
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-	mockConfigLoader.EXPECT().
-		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{
-			Region: testRegion,
-			Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-				return aws.Credentials{AccessKeyID: "test"}, nil
-			}),
-		}, nil)
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return(testProfile, nil)
-	mockEPrompter.EXPECT().
-		PromptForEKSCluster([]models.EKSCluster{testCluster}).
-		Return(testCluster.ClusterName, nil)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return(testRegion, nil)
+		Return("", "", "", "", errors.New("kubeconfig update failed"))
 
 	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
 	mockConnServices.EXPECT().
 		IsAWSConfigured().
-		Return(true)
+		Return(false)
 
 	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
+		EPrompter:    mockEPrompter,
+		ConnServices: mockConnServices,
+		FileSystem:   &common.RealFileSystem{},
 	}
 
-	err := service.HandleKubeconfigUpdate()
-	assert.NoError(t, err)
-}
-
-func TestEKSService_HandleKubeconfigUpdate_Error(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return("us-west-2", nil)
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return("", errors.New("profile error"))
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return("", "", "", "", errors.New("manual input error"))
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	err := service.HandleKubeconfigUpdate()
+	err := service.Run()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "manual input error")
+	assert.Contains(t, err.Error(), "kubeconfig update failed")
 }
 
-func TestEKSService_getEKSClusterDetails_AWSConfigured(t *testing.T) {
+func TestEKSService_GetEKSClusterDetails_AWSConfigured(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -351,9 +201,6 @@ func TestEKSService_getEKSClusterDetails_AWSConfigured(t *testing.T) {
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
 	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
 		PromptForRegion("").
 		Return(testRegion, nil)
 
@@ -378,7 +225,6 @@ func TestEKSService_getEKSClusterDetails_AWSConfigured(t *testing.T) {
 		ConnServices:     mockConnServices,
 		ConfigLoader:     mockConfigLoader,
 		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
 		FileSystem:       &common.RealFileSystem{},
 	}
 
@@ -387,13 +233,74 @@ func TestEKSService_getEKSClusterDetails_AWSConfigured(t *testing.T) {
 	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
 	assert.Equal(t, testProfile, profile)
 }
-func TestEKSService_getEKSClusterDetails_CredentialsRetrieveError(t *testing.T) {
+
+func TestEKSService_GetEKSClusterDetails_ManualFallback(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
+	cluster := models.EKSCluster{ClusterName: "test-cluster"}
+	testRegion := "us-west-2"
+
+	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
+	mockEPrompter.EXPECT().
+		PromptForManualCluster().
+		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
+
+	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
+	mockConnServices.EXPECT().
+		IsAWSConfigured().
+		Return(false)
+
+	service := &eks.EKSService{
+		EPrompter:    mockEPrompter,
+		ConnServices: mockConnServices,
+		FileSystem:   &common.RealFileSystem{},
+	}
+
+	resultCluster, profile, err := service.GetEKSClusterDetails()
+	assert.NoError(t, err)
+	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
+	assert.Equal(t, "", profile)
+}
+
+func TestEKSService_GetEKSClusterDetails_RegionPromptError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	cluster := models.EKSCluster{ClusterName: "test-cluster"}
+	testRegion := "us-west-2"
+
+	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
+	mockEPrompter.EXPECT().
+		PromptForManualCluster().
+		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
+
+	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
+	mockConnServices.EXPECT().
+		IsAWSConfigured().
+		Return(true)
+
+	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
+	mockCPrompter.EXPECT().
+		PromptForRegion("").
+		Return("", errors.New("region error"))
+
+	service := &eks.EKSService{
+		EPrompter:    mockEPrompter,
+		CPrompter:    mockCPrompter,
+		ConnServices: mockConnServices,
+		FileSystem:   &common.RealFileSystem{},
+	}
+
+	resultCluster, profile, err := service.GetEKSClusterDetails()
+	assert.NoError(t, err)
+	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
+	assert.Equal(t, "", profile)
+}
+
+func TestEKSService_GetEKSClusterDetails_ConfigLoadError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	cluster := models.EKSCluster{ClusterName: "test-cluster"}
 	testRegion := "us-west-2"
@@ -414,101 +321,73 @@ func TestEKSService_getEKSClusterDetails_CredentialsRetrieveError(t *testing.T) 
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
 	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
 		PromptForRegion("").
 		Return(testRegion, nil)
 
 	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
 	mockConfigLoader.EXPECT().
 		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{
-			Region: testRegion,
-			Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-				return aws.Credentials{}, errors.New("credentials error")
-			}),
-		}, nil)
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
+		Return(aws.Config{}, errors.New("config error"))
 
 	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
+		EPrompter:    mockEPrompter,
+		CPrompter:    mockCPrompter,
+		ConnServices: mockConnServices,
+		ConfigLoader: mockConfigLoader,
+		FileSystem:   &common.RealFileSystem{},
 	}
 
-	clusterResult, profile, err := service.GetEKSClusterDetails()
+	resultCluster, profile, err := service.GetEKSClusterDetails()
 	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
+	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
 	assert.Equal(t, "", profile)
 }
 
-func TestRealConfigLoader(t *testing.T) {
-	loader := &eks.RealConfigLoader{}
-	cfg, err := loader.LoadDefaultConfig(context.TODO())
-	assert.NoError(t, err)
-	assert.NotNil(t, cfg)
-}
-
-func TestRealEKSClientFactory(t *testing.T) {
-	factory := &eks.RealEKSClientFactory{}
-	cfg := aws.Config{Region: "us-west-2"}
-	client := factory.NewEKSClient(cfg, &common.RealFileSystem{})
-	assert.NotNil(t, client)
-}
-
-func TestEKSService_Run_ActionSelectionError(t *testing.T) {
+func TestEKSService_HandleManualCluster_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	cluster := models.EKSCluster{
+		ClusterName: "test-cluster",
+		Endpoint:    "https://test.endpoint",
+		Region:      "us-west-2",
+	}
+
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
-		SelectEKSAction().
-		Return(eks.EKSAction(99), errors.New("selection error"))
+		PromptForManualCluster().
+		Return(cluster.ClusterName, cluster.Endpoint, "ca-data", cluster.Region, nil)
 
 	service := &eks.EKSService{
 		EPrompter: mockEPrompter,
 	}
 
-	err := service.Run()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "action selection aborted")
+	resultCluster, profile, err := service.HandleManualCluster()
+	assert.NoError(t, err)
+	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
+	assert.Equal(t, cluster.Endpoint, resultCluster.Endpoint)
+	assert.Equal(t, cluster.Region, resultCluster.Region)
+	assert.Equal(t, "", profile)
 }
 
-func TestEKSService_Run_UpdateKubeConfigError(t *testing.T) {
+func TestEKSService_HandleManualCluster_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
-		SelectEKSAction().
-		Return(eks.UpdateKubeConfig, nil)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(false)
-
-	mockEPrompter.EXPECT().
 		PromptForManualCluster().
-		Return("", "", "", "", errors.New("manual input error"))
+		Return("", "", "", "", errors.New("input error"))
 
 	service := &eks.EKSService{
-		EPrompter:    mockEPrompter,
-		ConnServices: mockConnServices,
+		EPrompter: mockEPrompter,
 	}
 
-	err := service.Run()
+	_, _, err := service.HandleManualCluster()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "kubeconfig update failed")
 }
 
-func TestEKSService_isAWSConfigured(t *testing.T) {
+func TestEKSService_IsAWSConfigured(t *testing.T) {
 	t.Run("nil ConnServices", func(t *testing.T) {
 		service := &eks.EKSService{}
 		assert.False(t, service.IsAWSConfigured())
@@ -542,50 +421,21 @@ func TestEKSService_isAWSConfigured(t *testing.T) {
 	})
 }
 
-func TestEKSService_getEKSClusterDetails_PromptForConfirmationFailure(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", "us-west-2", nil)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		AnyTimes().
-		DoAndReturn(func(_ string) (bool, error) {
-			return false, errors.New("confirmation error")
-		})
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mock_eks.NewMockConfigLoader(ctrl),
-		EKSClientFactory: mock_eks.NewMockEKSClientFactory(ctrl),
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	clusterResult, profile, err := service.GetEKSClusterDetails()
+func TestRealConfigLoader(t *testing.T) {
+	loader := &eks.RealConfigLoader{}
+	cfg, err := loader.LoadDefaultConfig(context.TODO())
 	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
+	assert.NotNil(t, cfg)
 }
 
-func TestEKSService_getEKSClusterDetails_PromptForRegionError(t *testing.T) {
+func TestRealEKSClientFactory(t *testing.T) {
+	factory := &eks.RealEKSClientFactory{}
+	cfg := aws.Config{Region: "us-west-2"}
+	client := factory.NewEKSClient(cfg, &common.RealFileSystem{})
+	assert.NotNil(t, client)
+}
+
+func TestEKSService_GetEKSClusterDetails_ProfileError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -593,12 +443,16 @@ func TestEKSService_getEKSClusterDetails_PromptForRegionError(t *testing.T) {
 	defer func() { os.Stdout = old }()
 	os.Stdout = os.NewFile(0, os.DevNull)
 
+	testRegion := "us-west-2"
 	cluster := models.EKSCluster{ClusterName: "test-cluster"}
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
+		PromptForProfile().
+		Return("", errors.New("profile error"))
+	mockEPrompter.EXPECT().
 		PromptForManualCluster().
-		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", "us-west-2", nil)
+		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
 
 	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
 	mockConnServices.EXPECT().
@@ -606,29 +460,22 @@ func TestEKSService_getEKSClusterDetails_PromptForRegionError(t *testing.T) {
 		Return(true)
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
 	mockCPrompter.EXPECT().
 		PromptForRegion("").
-		Return("", errors.New("region error"))
+		Return(testRegion, nil)
 
 	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mock_eks.NewMockConfigLoader(ctrl),
-		EKSClientFactory: mock_eks.NewMockEKSClientFactory(ctrl),
-		FileSystem:       &common.RealFileSystem{},
+		EPrompter:    mockEPrompter,
+		CPrompter:    mockCPrompter,
+		ConnServices: mockConnServices,
+		FileSystem:   &common.RealFileSystem{},
 	}
 
-	clusterResult, profile, err := service.GetEKSClusterDetails()
+	_, _, err := service.GetEKSClusterDetails()
 	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
 }
 
-func TestEKSService_getEKSClusterDetails_ConnProviderDefaultRegionError(t *testing.T) {
+func TestEKSService_GetEKSClusterDetails_CredentialsError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -636,22 +483,17 @@ func TestEKSService_getEKSClusterDetails_ConnProviderDefaultRegionError(t *testi
 	defer func() { os.Stdout = old }()
 	os.Stdout = os.NewFile(0, os.DevNull)
 
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-	testRegion := "us-west-2"
 	testProfile := "default"
+	testRegion := "us-west-2"
+	cluster := models.EKSCluster{ClusterName: "test-cluster"}
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
 		PromptForProfile().
 		Return(testProfile, nil)
 	mockEPrompter.EXPECT().
-		PromptForEKSCluster([]models.EKSCluster{cluster}).
-		Return(cluster.ClusterName, nil)
-
-	mockEKSClient := mock_eks.NewMockEKSAdapterInterface(ctrl)
-	mockEKSClient.EXPECT().
-		ListEKSClusters(gomock.Any()).
-		Return([]models.EKSCluster{cluster}, nil)
+		PromptForManualCluster().
+		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
 
 	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
 	mockConnServices.EXPECT().
@@ -659,9 +501,6 @@ func TestEKSService_getEKSClusterDetails_ConnProviderDefaultRegionError(t *testi
 		Return(true)
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
 	mockCPrompter.EXPECT().
 		PromptForRegion("").
 		Return(testRegion, nil)
@@ -672,32 +511,23 @@ func TestEKSService_getEKSClusterDetails_ConnProviderDefaultRegionError(t *testi
 		Return(aws.Config{
 			Region: testRegion,
 			Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-				return aws.Credentials{AccessKeyID: "test"}, nil
+				return aws.Credentials{}, errors.New("SSO token expired")
 			}),
 		}, nil)
 
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-	mockFactory.EXPECT().
-		NewEKSClient(gomock.Any(), gomock.Any()).
-		Return(mockEKSClient)
-
 	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
+		EPrompter:    mockEPrompter,
+		CPrompter:    mockCPrompter,
+		ConnServices: mockConnServices,
+		ConfigLoader: mockConfigLoader,
+		FileSystem:   &common.RealFileSystem{},
 	}
 
-	resultCluster, profile, err := service.GetEKSClusterDetails()
+	_, _, err := service.GetEKSClusterDetails()
 	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, resultCluster.ClusterName)
-	assert.Equal(t, testProfile, profile)
 }
 
-func TestEKSService_getEKSClusterDetails_ConfigLoadSSOError(t *testing.T) {
+func TestEKSService_GetEKSClusterDetails_NoClustersFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -705,190 +535,9 @@ func TestEKSService_getEKSClusterDetails_ConfigLoadSSOError(t *testing.T) {
 	defer func() { os.Stdout = old }()
 	os.Stdout = os.NewFile(0, os.DevNull)
 
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-	testRegion := "us-west-2"
 	testProfile := "default"
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return(testProfile, nil)
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return(testRegion, nil)
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-	mockConfigLoader.EXPECT().
-		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{}, errors.New("SSO session expired"))
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	clusterResult, profile, err := service.GetEKSClusterDetails()
-	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
-}
-
-func TestEKSService_getEKSClusterDetails_ConfigLoadGenericError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
 	testRegion := "us-west-2"
-	testProfile := "default"
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return(testProfile, nil)
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return(testRegion, nil)
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-	mockConfigLoader.EXPECT().
-		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{}, errors.New("invalid configuration"))
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	clusterResult, profile, err := service.GetEKSClusterDetails()
-	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
-}
-
-func TestEKSService_getEKSClusterDetails_ListClustersError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
 	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-	testRegion := "us-west-2"
-	testProfile := "default"
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return(testProfile, nil)
-	mockEPrompter.EXPECT().
-		PromptForManualCluster().
-		Return(cluster.ClusterName, "https://test.endpoint", "ca-data", testRegion, nil)
-
-	mockEKSClient := mock_eks.NewMockEKSAdapterInterface(ctrl)
-	mockEKSClient.EXPECT().
-		ListEKSClusters(gomock.Any()).
-		Return(nil, errors.New("list clusters error"))
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return(testRegion, nil)
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-	mockConfigLoader.EXPECT().
-		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{
-			Region: testRegion,
-			Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-				return aws.Credentials{AccessKeyID: "test"}, nil
-			}),
-		}, nil)
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-	mockFactory.EXPECT().
-		NewEKSClient(gomock.Any(), gomock.Any()).
-		Return(mockEKSClient)
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	clusterResult, profile, err := service.GetEKSClusterDetails()
-	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
-}
-
-func TestEKSService_getEKSClusterDetails_EmptyClusterList(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-	testRegion := "us-west-2"
-	testProfile := "default"
 
 	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
 	mockEPrompter.EXPECT().
@@ -910,9 +559,6 @@ func TestEKSService_getEKSClusterDetails_EmptyClusterList(t *testing.T) {
 
 	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
 	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
 		PromptForRegion("").
 		Return(testRegion, nil)
 
@@ -937,82 +583,9 @@ func TestEKSService_getEKSClusterDetails_EmptyClusterList(t *testing.T) {
 		ConnServices:     mockConnServices,
 		ConfigLoader:     mockConfigLoader,
 		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
 		FileSystem:       &common.RealFileSystem{},
 	}
 
-	clusterResult, profile, err := service.GetEKSClusterDetails()
+	_, _, err := service.GetEKSClusterDetails()
 	assert.NoError(t, err)
-	assert.Equal(t, cluster.ClusterName, clusterResult.ClusterName)
-	assert.Equal(t, "", profile)
-}
-
-func TestEKSService_getEKSClusterDetails_ClusterNotFound(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	old := os.Stdout
-	defer func() { os.Stdout = old }()
-	os.Stdout = os.NewFile(0, os.DevNull)
-
-	cluster := models.EKSCluster{ClusterName: "test-cluster"}
-	testRegion := "us-west-2"
-	testProfile := "default"
-
-	mockEPrompter := mock_eks.NewMockEKSPromptInterface(ctrl)
-	mockEPrompter.EXPECT().
-		PromptForProfile().
-		Return(testProfile, nil)
-	mockEPrompter.EXPECT().
-		PromptForEKSCluster([]models.EKSCluster{cluster}).
-		Return("non-existent-cluster", nil)
-
-	mockEKSClient := mock_eks.NewMockEKSAdapterInterface(ctrl)
-	mockEKSClient.EXPECT().
-		ListEKSClusters(gomock.Any()).
-		Return([]models.EKSCluster{cluster}, nil)
-
-	mockConnServices := mock_awsctl.NewMockServicesInterface(ctrl)
-	mockConnServices.EXPECT().
-		IsAWSConfigured().
-		Return(true)
-
-	mockCPrompter := mock_awsctl.NewMockConnectionPrompter(ctrl)
-	mockCPrompter.EXPECT().
-		PromptForConfirmation("Look for EKS clusters in AWS?").
-		Return(true, nil)
-	mockCPrompter.EXPECT().
-		PromptForRegion("").
-		Return(testRegion, nil)
-
-	mockConfigLoader := mock_eks.NewMockConfigLoader(ctrl)
-	mockConfigLoader.EXPECT().
-		LoadDefaultConfig(gomock.Any(), gomock.Any()).
-		Return(aws.Config{
-			Region: testRegion,
-			Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-				return aws.Credentials{AccessKeyID: "test"}, nil
-			}),
-		}, nil)
-
-	mockFactory := mock_eks.NewMockEKSClientFactory(ctrl)
-	mockFactory.EXPECT().
-		NewEKSClient(gomock.Any(), gomock.Any()).
-		Return(mockEKSClient)
-
-	service := &eks.EKSService{
-		EPrompter:        mockEPrompter,
-		CPrompter:        mockCPrompter,
-		ConnServices:     mockConnServices,
-		ConfigLoader:     mockConfigLoader,
-		EKSClientFactory: mockFactory,
-		EKSClient:        nil,
-		FileSystem:       &common.RealFileSystem{},
-	}
-
-	clusterResult, profile, err := service.GetEKSClusterDetails()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "selected cluster not found")
-	assert.Nil(t, clusterResult)
-	assert.Equal(t, "", profile)
 }
