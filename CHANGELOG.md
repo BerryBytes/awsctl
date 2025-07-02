@@ -1,3 +1,15 @@
+# awsctl - v0.4.0
+
+## Changes since v0.3.0
+
+- [c9b909a](https://github.com/BerryBytes/awsctl/commit/c9b909aeabb6410473d40ec744d215e9722d8ae2) Edited the script to use dynamic version for local installation (sawnjordan <sawnjordan@gmail.com>)
+- [89cc9d0](https://github.com/BerryBytes/awsctl/commit/89cc9d0a54b7c52d05f11943e68ed68f44dd1336) Eks cmd now will prompt for region and profile only (sawnjordan <sawnjordan@gmail.com>)
+- [002e966](https://github.com/BerryBytes/awsctl/commit/002e96688a0bc6f5e936310a51f9cf6c6b876192) Increased the sso setup time limit from 30 sec to 10 min (sawnjordan <sawnjordan@gmail.com>)
+- [fe9001d](https://github.com/BerryBytes/awsctl/commit/fe9001d2660783fc81b7c92b422365463a7c1364) On sso setup, removed extra prompt and setup via start url and region (sawnjordan <sawnjordan@gmail.com>)
+- [0306d0e](https://github.com/BerryBytes/awsctl/commit/0306d0ed33239873aa626b0d624b9fa4f913e0ff) Increased the sso login timelimit to 10 minutes from 30 sec (sawnjordan <sawnjordan@gmail.com>)
+
+Generated on 2025-07-02T10:38:37Z
+
 # awsctl - v0.3.0
 
 ## Changes since v0.2.0
