@@ -47,7 +47,7 @@ jobs:
         run: |
           CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
           if [ -z "$CURRENT_TAG" ]; then
-            echo "new_tag=v0.1.0-TEST" >> $GITHUB_OUTPUT  # TEST suffix instead of beta-internal
+            echo "new_tag=v0.1.0-TEST" >> $GITHUB_OUTPUT  
             exit 0
           fi
 
@@ -61,6 +61,6 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean --skip-publish --snapshot
+          args: release --clean  --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
