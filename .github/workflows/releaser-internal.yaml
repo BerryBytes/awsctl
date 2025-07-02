@@ -1,0 +1,66 @@
+name: Beta Release Test
+
+on:
+  push:
+    branches:
+      - release/sanjog/int-release
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: release-test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: "contains(github.event.head_commit.message, '[release]') || github.event_name == 'workflow_dispatch'"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          npm install --global semver
+
+      - name: Get current tag
+        id: tags
+        run: |
+          CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+      - name: Determine new version
+        id: new_version
+        run: |
+          CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
+          if [ -z "$CURRENT_TAG" ]; then
+            echo "new_tag=v0.1.0-TEST" >> $GITHUB_OUTPUT  # TEST suffix instead of beta-internal
+            exit 0
+          fi
+
+          VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-TEST//')
+          NEW_VERSION=$(semver "$VERSION" -i patch)
+          NEW_TAG="v${NEW_VERSION}-TEST"  # TEST suffix for identification
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Run GoReleaser (Dry Run)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.9.0
+          args: release --clean --skip-publish --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
