@@ -1,15 +1,15 @@
-name: Beta Release Test
+name: Beta Release on Develop
 
 on:
   push:
     branches:
-      - release/sanjog/int-release
+      - develop
     paths-ignore:
       - "**.md"
   workflow_dispatch:
 
 concurrency:
-  group: release-test-${{ github.ref }}
+  group: release-develop
   cancel-in-progress: true
 
 permissions:
@@ -47,20 +47,21 @@ jobs:
         run: |
           CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
           if [ -z "$CURRENT_TAG" ]; then
-            echo "new_tag=v0.1.0-TEST" >> $GITHUB_OUTPUT  
+            echo "First release - creating v0.1.0-beta-internal"
+            echo "new_tag=v0.1.0-beta-internal" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-TEST//')
+          VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-beta-internal//')
           NEW_VERSION=$(semver "$VERSION" -i patch)
-          NEW_TAG="v${NEW_VERSION}-TEST"  # TEST suffix for identification
+          NEW_TAG="v${NEW_VERSION}-beta-internal"
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
-      - name: Run GoReleaser (Dry Run)
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean  --snapshot
+          args: release --clean --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
