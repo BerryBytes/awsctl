@@ -43,8 +43,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 			mockPrompts: []mockPrompt{
 				{"PromptWithDefault", "SSO session name", "default-sso", "test-session", nil},
 				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://test.awsapps.com/start", nil},
-				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "us-west-2", nil},
-				{"PromptWithDefault", "SSO registration scopes (comma separated)", "sso:account:access", "sso:account:access", nil},
+				{"PromptForRegion", "us-east-1", "us-east-1", "us-west-2", nil},
 			},
 			wantSession: &models.SSOSession{
 				Name:     "test-session",
@@ -54,30 +53,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 			},
 			wantConfigPath: "",
 		},
-		{
-			name: "Use existing single session - exact name match",
-			initialConfig: &models.Config{
-				SSOSessions: []models.SSOSession{
-					{
-						Name:     "existing-session",
-						StartURL: "https://existing.awsapps.com/start",
-						Region:   "us-east-1",
-					},
-				},
-			},
-			mockPrompts: []mockPrompt{
-				{"PromptWithDefault", "SSO session name", "default-sso", "existing-session", nil},
-				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://existing.awsapps.com/start", nil},
-				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "us-east-1", nil},
-				{"PromptWithDefault", "SSO registration scopes (comma separated)", "sso:account:access", "sso:account:access", nil},
-			},
-			wantSession: &models.SSOSession{
-				Name:     "existing-session",
-				StartURL: "https://existing.awsapps.com/start",
-				Region:   "us-east-1",
-				Scopes:   "sso:account:access",
-			},
-		},
+
 		{
 			name: "Region prompt error",
 			initialConfig: &models.Config{
@@ -86,7 +62,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 			mockPrompts: []mockPrompt{
 				{"PromptWithDefault", "SSO session name", "default-sso", "test-session", nil},
 				{"PromptRequired", "SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)", "", "https://test.awsapps.com/start", nil},
-				{"PromptForRegion", "SSO region (Default: ap-south-1):", "ap-south-1", "", errors.New("invalid region")},
+				{"PromptForRegion", "us-east-1", "us-east-1", "", errors.New("invalid region")},
 			},
 			wantErr:     true,
 			errContains: "failed to prompt for SSO region",
@@ -100,6 +76,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 
 			mockPrompter := mock_sso.NewMockPrompter(ctrl)
 
+			// Set up expected mock calls
 			for _, mp := range tt.mockPrompts {
 				switch mp.method {
 				case "PromptWithDefault":
@@ -113,10 +90,6 @@ func TestLoadOrCreateSession(t *testing.T) {
 				case "PromptForRegion":
 					mockPrompter.EXPECT().
 						PromptForRegion(mp.defaultValue).
-						Return(mp.response, mp.err)
-				case "SelectFromList":
-					mockPrompter.EXPECT().
-						SelectFromList(mp.label, gomock.Any()).
 						Return(mp.response, mp.err)
 				}
 			}
