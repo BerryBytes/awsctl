@@ -46,6 +46,7 @@ jobs:
         id: new_version
         run: |
           CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
+          echo "Current tag: ${CURRENT_TAG:-<none>}"
           if [ -z "$CURRENT_TAG" ]; then
             echo "First release - creating v0.1.0-beta-internal"
             echo "new_tag=v0.1.0-beta-internal" >> $GITHUB_OUTPUT
@@ -56,6 +57,19 @@ jobs:
           NEW_VERSION=$(semver "$VERSION" -i patch)
           NEW_TAG="v${NEW_VERSION}-beta-internal"
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "New tag: $NEW_TAG"
+
+      - name: Create release tag
+        if: steps.new_version.outputs.new_tag
+        run: |
+          echo "Creating tag: ${{ steps.new_version.outputs.new_tag }}"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "${{ steps.new_version.outputs.new_tag }}" -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin "${{ steps.new_version.outputs.new_tag }}"
+          echo "Tag pushed successfully"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
