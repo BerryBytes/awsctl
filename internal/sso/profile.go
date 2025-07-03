@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func (c *RealSSOClient) ConfigureSSOProfile(profile, region, accountID, role, ssoStartUrl, ssoSession string) error {
@@ -159,4 +160,93 @@ func (c *RealSSOClient) promptProfileDetails(ssoRegion string) (string, string, 
 		return "", "", fmt.Errorf("failed to prompt for region: %w", err)
 	}
 	return profileName, region, nil
+}
+
+func (c *RealSSOClient) setProfileAsDefault(profile string) error {
+	sessionName, err := c.ConfigureGet("sso_session", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_session: %w", err)
+	}
+
+	ssoStartURL, err := c.ConfigureGet("sso_start_url", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_start_url: %w", err)
+	}
+
+	ssoRegion, err := c.ConfigureGet("sso_region", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_region: %w", err)
+	}
+
+	accountID, err := c.ConfigureGet("sso_account_id", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get account ID: %w", err)
+	}
+
+	roleName, err := c.ConfigureGet("sso_role_name", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get role name: %w", err)
+	}
+
+	region, err := c.ConfigureGet("region", profile)
+	if err != nil {
+		region = ssoRegion
+	}
+
+	if err := c.configureAWSProfile("default", sessionName, ssoRegion, ssoStartURL, accountID, roleName, region); err != nil {
+		return fmt.Errorf("failed to configure AWS default profile: %w", err)
+	}
+	fmt.Println("Successfully set this profile as default!")
+	return nil
+}
+
+func (c *RealSSOClient) printProfileSummary(profile string) error {
+	sessionName, err := c.ConfigureGet("sso_session", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_session: %w", err)
+	}
+
+	ssoStartURL, err := c.ConfigureGet("sso_start_url", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_start_url: %w", err)
+	}
+
+	ssoRegion, err := c.ConfigureGet("sso_region", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get sso_region: %w", err)
+	}
+
+	accountID, err := c.ConfigureGet("sso_account_id", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get account ID: %w", err)
+	}
+
+	roleName, err := c.ConfigureGet("sso_role_name", profile)
+	if err != nil {
+		return fmt.Errorf("failed to get role name: %w", err)
+	}
+
+	roleARN, err := c.AwsSTSGetCallerIdentity(profile)
+	if err != nil {
+		return fmt.Errorf("failed to get role ARN: %w", err)
+	}
+
+	accountName, err := c.GetSSOAccountName(accountID, profile)
+	if err != nil {
+		accountName = "Unknown"
+		fmt.Printf("Warning: Failed to get account name: %v\n", err)
+	}
+
+	_, expiry, err := c.GetCachedSsoAccessToken(profile)
+	if err != nil {
+		return fmt.Errorf("failed to get token expiry: %w", err)
+	}
+
+	var expiration string
+	if !expiry.IsZero() {
+		expiration = expiry.Format(time.RFC3339)
+	}
+
+	printSummary(profile, sessionName, ssoStartURL, ssoRegion, accountID, roleName, accountName, roleARN, expiration)
+	return nil
 }
