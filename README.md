@@ -9,7 +9,7 @@
 - [Usage](#usage)
 - [Commands](#commands)
 - [Contributing](#contributing)
--  [Code Review Automation](#code-review-automation)
+- [Code Review Automation](#code-review-automation)
 - [Releasing](#releasing)
 - [Credits](#credits)
 - [License](#license)
@@ -97,7 +97,7 @@ chmod +x install-awsctl.sh
 3. Run the startup script:
 
 - #### First Time Installation
-If this is your first time installing, use the `source` command:
+  If this is your first time installing, use the `source` command:
 
 ```bash
 source ./install-awsctl.sh
@@ -106,11 +106,13 @@ source ./install-awsctl.sh
 This ensures environment changes (like `PATH` updates) take effect immediately.
 
 ### Why use `source`?
+
 - Executes in current shell session
 - Updates environment variables immediately
 - No terminal restart required
 
 ### For Updates
+
 Run normally:
 
 ```bash
@@ -136,25 +138,24 @@ ssoSessions:
     startUrl: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
     region: "XX-XXXX-X"
     scopes: "sso:account:access"
-
-
 ```
+
 **Note**: `scopes` can be empty. Default value will be `sso:account:access`
+
 ### Commands
 
 The following table summarizes the available `awsctl` commands:
 
-| Command            | Description                                                                                       |
-|--------------------|---------------------------------------------------------------------------------------------------|
-| `awsctl sso setup` | Creates or updates an AWS SSO profile. Uses config file in `~/.config/awsctl/` if available, or prompts for required details. Optionally sets it as the default and authenticates. |
-| `awsctl sso init`  | Starts SSO authentication by allowing you to select from existing AWS SSO profiles (created via `awsctl sso setup`). Useful for switching between multiple configured SSO profiles.                 |
-| `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.   |
-| `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                        |
-| `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                             |
-| `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                       |
+| Command            | Description                                                                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `awsctl sso setup` | Creates or updates an AWS SSO profile. If a config file is available at `~/.config/awsctl/`, it will be used; otherwise, you will be prompted to enter the SSO Start URL and Region. The selected profile is then set as the default and authenticated. |
+| `awsctl sso init`  | Starts SSO authentication by allowing you to select from existing AWS SSO profiles (created via `awsctl sso setup`). Useful for switching between multiple configured SSO profiles.                                                                     |
+| `awsctl bastion`   | Manages SSH/SSM connections, SOCKS proxy, or port forwarding to bastion hosts or EC2 instances.                                                                                                                                                         |
+| `awsctl rds`       | Connects to RDS databases directly or via SSH/SSM tunnels.                                                                                                                                                                                              |
+| `awsctl eks`       | Updates kubeconfig for accessing Amazon EKS clusters.                                                                                                                                                                                                   |
+| `awsctl ecr`       | Authenticates to Amazon ECR for container image operations.                                                                                                                                                                                             |
 
 #### For detailed CLI command usage, see [Command Usage Documentation](docs/usage/commands.md).
-
 
 ### Contributing
 
@@ -167,12 +168,12 @@ This project uses [Coderabbit AI](https://www.coderabbit.ai/) to assist with pul
 **Role**: Automatically reviews pull requests for code quality, potential bugs, best practices, and documentation gaps.
 
 **How it works**:
+
 - Summarizes PR changes.
 - Provides line-by-line suggestions.
 - Offers codebase-wide analysis.
 
 **Note**: Suggestions by Coderabbit are recommendations. Final review decisions are made by maintainers.
-
 
 ### Releasing
 
