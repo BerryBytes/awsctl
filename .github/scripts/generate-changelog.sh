@@ -150,7 +150,16 @@ generate_release_notes() {
 
 # Main execution
 main() {
-  # Generate changelog
+  # Handle --notes-only flag
+  if [[ "$*" == *"--notes-only"* ]]; then
+    generate_release_notes
+    if command -v prettier >/dev/null 2>&1; then
+      prettier --write "$RELEASE_NOTES_FILE"
+    fi
+    # echo "Release notes generated at $RELEASE_NOTES_FILE"
+    return 0
+  fi
+
   if [ -f "$CHANGELOG_FILE" ]; then
     echo "Updating existing changelog..."
     generate_changelog_content >"$TEMP_FILE"
@@ -162,17 +171,12 @@ main() {
     generate_changelog_content >"$CHANGELOG_FILE"
   fi
 
-  # Generate release notes
   generate_release_notes
 
-  # Format files if Prettier is available
   if command -v prettier >/dev/null 2>&1; then
     prettier --write "$CHANGELOG_FILE" "$RELEASE_NOTES_FILE"
-  else
-    echo "Note: Prettier is not installed. Skipping formatting."
   fi
 
-  # Update GitHub release
   if [ -n "${GITHUB_ACTIONS:-}" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
     if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
       gh release edit "$RELEASE_TAG" --notes-file "$RELEASE_NOTES_FILE"
@@ -183,5 +187,11 @@ main() {
 
   echo "Changelog ($CHANGELOG_FILE) and release notes ($RELEASE_NOTES_FILE) generated successfully"
 }
+
+# Handle --notes-only flag
+if [[ "$*" == *"--notes-only"* ]]; then
+  main --notes-only
+  exit 0
+fi
 
 main "$@"
