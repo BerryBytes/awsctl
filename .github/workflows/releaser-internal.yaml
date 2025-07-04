@@ -88,14 +88,22 @@ jobs:
           # Add beta header to existing file (instead of renaming)
           echo -e "## 🧪 BETA RELEASE\n*For testing purposes only*\n\n$(cat RELEASE_NOTES.md)" > RELEASE_NOTES.md
 
-          # Store for GoReleaser
-          echo "NOTES=$(cat RELEASE_NOTES.md)" >> $GITHUB_ENV
+          # Store for GoReleaser (multi-line safe)
+          {
+            echo "NOTES<<EOF"
+            cat RELEASE_NOTES.md
+            echo "EOF"
+          } >> $GITHUB_ENV
 
           # Keep your prettier formatting
           if command -v prettier >/dev/null 2>&1; then
             prettier --write RELEASE_NOTES.md
             # Update the env variable if formatting changed it
-            echo "NOTES=$(cat RELEASE_NOTES.md)" >> $GITHUB_ENV
+            {
+              echo "NOTES<<EOF"
+              cat RELEASE_NOTES.md
+              echo "EOF"
+            } >> $GITHUB_ENV
           fi
 
       - name: Run GoReleaser
