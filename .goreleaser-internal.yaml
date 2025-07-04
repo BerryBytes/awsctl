@@ -26,8 +26,6 @@ release:
     name: awsctl
   prerelease: true # Marks as pre-release in GitHub
   name_template: "{{.Version}}-beta-internal"
-  notes: |
-    {{ .Env.NOTES }}
   extra_files:
     - glob: ./LICENSE
     - glob: ./README.md

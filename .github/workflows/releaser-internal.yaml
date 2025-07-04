@@ -111,7 +111,7 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean -f ./.goreleaser-internal.yaml
+          args: release --clean -f ./.goreleaser-internal.yaml --release-notes RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ env.NOTES }}
