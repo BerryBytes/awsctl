@@ -8,9 +8,9 @@ on:
       - "**.md"
   workflow_dispatch:
 
-concurrency:
-  group: release-develop
-  cancel-in-progress: true
+# concurrency:
+#   group: release-develop
+#   cancel-in-progress: true
 
 permissions:
   contents: write
