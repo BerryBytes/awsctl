@@ -35,6 +35,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global semver
+          sudo apt-get -y install gh
 
       - name: Get current tag
         id: tags
@@ -71,11 +72,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate Release Notes
+        if: steps.new_version.outputs.new_tag
+        env:
+          RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.tags.outputs.current_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Make script executable
+          chmod +x .github/scripts/generate-changelog.sh
+
+          # Generate notes
+          .github/scripts/generate-changelog.sh --notes-only
+
+          # Add beta header to existing file (instead of renaming)
+          echo -e "## 🧪 BETA RELEASE\n*For testing purposes only*\n\n$(cat RELEASE_NOTES.md)" > RELEASE_NOTES.md
+
+          # Store for GoReleaser
+          echo "NOTES=$(cat RELEASE_NOTES.md)" >> $GITHUB_ENV
+
+          # Keep your prettier formatting
+          if command -v prettier >/dev/null 2>&1; then
+            prettier --write RELEASE_NOTES.md
+            # Update the env variable if formatting changed it
+            echo "NOTES=$(cat RELEASE_NOTES.md)" >> $GITHUB_ENV
+          fi
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: v2.9.0
-          args: release --clean
+          args: release --clean -f ./.goreleaser-internal.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ env.NOTES }}
