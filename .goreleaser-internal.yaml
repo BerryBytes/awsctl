@@ -24,7 +24,6 @@ release:
   github:
     owner: berrybytes
     name: awsctl
-  prerelease: true # Marks as pre-release in GitHub
   name_template: "{{.Version}}-beta-internal"
   extra_files:
     - glob: ./LICENSE
