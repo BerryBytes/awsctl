@@ -6,11 +6,61 @@
 
 Creates or updates AWS SSO profiles.
 
-- Prompts for:
-  - SSO Start URL
-  - AWS Region
-- Uses defaults from `~/.config/awsctl/config.yml` if available.
-- Automatically sets the profile as default and authenticates it after setup.
+#### Basic Usage
+
+```bash
+awsctl sso setup [flags]
+```
+
+#### Flags
+
+| Flag          | Description                                    | Required | Example                                        |
+| ------------- | ---------------------------------------------- | -------- | ---------------------------------------------- |
+| `--name`      | SSO session name                               | No       | `--name my-sso-session`                        |
+| `--start-url` | AWS SSO start URL (must begin with `https://`) | No       | `--start-url https://my-sso.awsapps.com/start` |
+| `--region`    | AWS region for the SSO session                 | No       | `--region us-east-1`                           |
+
+#### Behavior
+
+- **Interactive Mode** (default when no flags):
+
+  - Prompts for:
+    - SSO Start URL
+    - AWS Region
+    - Session name (default: "default-sso")
+  - Uses defaults from `~/.config/awsctl/config.yml` if available
+  - Validates all inputs before creating session
+
+- **Non-interactive Mode** (when all flags provided):
+
+  - Creates session immediately without prompts
+  - Validates:
+    - Start URL format (`https://`)
+    - Valid AWS region
+    - Proper session name format
+
+#### Examples
+
+1. Fully interactive:
+
+```bash
+awsctl sso setup
+```
+
+2. Fully non-interactive:
+
+```bash
+awsctl sso setup --name dev-session --start-url https://dev.awsapps.com/start --region us-east-1
+```
+
+#### Validation Rules
+
+- `--start-url`: Must begin with `https://`
+- `--region`: Must be valid AWS region code
+- `--name`:
+  - Alphanumeric with dashes/underscores
+  - Cannot start/end with special chars
+  - 3-64 characters
 
 ---
 
