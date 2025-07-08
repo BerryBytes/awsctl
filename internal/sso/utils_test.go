@@ -1,8 +1,9 @@
-package sso
+package sso_test
 
 import (
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +41,7 @@ func TestValidateAccountID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateAccountID(tt.accountID)
+			err := sso.ValidateAccountID(tt.accountID)
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.errorContains != "" {
@@ -87,7 +88,7 @@ func TestValidateStartURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateStartURL(tt.startURL)
+			err := sso.ValidateStartURL(tt.startURL)
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.errorContains != "" {
@@ -102,7 +103,7 @@ func TestValidateStartURL(t *testing.T) {
 
 func TestPrintSummary(t *testing.T) {
 	t.Run("prints complete summary", func(t *testing.T) {
-		printSummary(
+		sso.PrintSummary(
 			"my-profile",
 			"my-session",
 			"https://example.awsapps.com/start",
@@ -116,7 +117,7 @@ func TestPrintSummary(t *testing.T) {
 	})
 
 	t.Run("prints minimal summary", func(t *testing.T) {
-		printSummary(
+		sso.PrintSummary(
 			"my-profile",
 			"my-session",
 			"https://example.awsapps.com/start",

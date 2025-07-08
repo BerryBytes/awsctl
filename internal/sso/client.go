@@ -23,6 +23,11 @@ type RealSSOClient struct {
 	Prompter   Prompter
 	Executor   common.CommandExecutor
 }
+type SSOFlagOptions struct {
+	StartURL string
+	Region   string
+	Name     string
+}
 
 func NewSSOClient(prompter Prompter, executor common.CommandExecutor) (SSOClient, error) {
 	if prompter == nil {
@@ -42,7 +47,7 @@ func NewSSOClient(prompter Prompter, executor common.CommandExecutor) (SSOClient
 	}, nil
 }
 
-func (c *RealSSOClient) getSsoAccessTokenFromCache(profile string) (*models.SSOCache, time.Time, error) {
+func (c *RealSSOClient) GetSsoAccessTokenFromCache(profile string) (*models.SSOCache, time.Time, error) {
 	startURL, err := c.ConfigureGet("sso_start_url", profile)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("failed to get sso_start_url for profile %s: %v", profile, err)
@@ -112,7 +117,7 @@ func (c *RealSSOClient) getSsoAccessTokenFromCache(profile string) (*models.SSOC
 		if err != nil {
 			return nil, time.Time{}, fmt.Errorf("SSO login failed: %v", err)
 		}
-		selectedCache, expiryTime, err = c.getSsoAccessTokenFromCache(profile)
+		selectedCache, expiryTime, err = c.GetSsoAccessTokenFromCache(profile)
 		if err != nil {
 			return nil, time.Time{}, fmt.Errorf("failed to get token after re-login: %v", err)
 		}
@@ -130,7 +135,7 @@ func (c *RealSSOClient) GetCachedSsoAccessToken(profile string) (string, time.Ti
 		return c.TokenCache.AccessToken, c.TokenCache.Expiry, nil
 	}
 
-	cachedSSO, expiry, err := c.getSsoAccessTokenFromCache(profile)
+	cachedSSO, expiry, err := c.GetSsoAccessTokenFromCache(profile)
 	if err != nil {
 		return "", time.Time{}, err
 	}

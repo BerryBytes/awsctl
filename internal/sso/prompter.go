@@ -30,7 +30,7 @@ func (r *RealPromptRunner) RunSelect(label string, items []string) (string, erro
 	return result, err
 }
 
-var validateStartURLFunc = func(input string) error {
+var ValidateStartURLFunc = func(input string) error {
 	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
 		return fmt.Errorf("invalid URL format")
 	}
@@ -39,7 +39,7 @@ var validateStartURLFunc = func(input string) error {
 
 type PromptUI struct {
 	Prompt promptUtils.Prompter
-	runner PromptRunner
+	Runner PromptRunner
 }
 
 func handlePromptError(err error) error {
@@ -60,7 +60,7 @@ func (p *PromptUI) PromptWithDefault(label, defaultValue string) (string, error)
 		}
 		return nil
 	}
-	result, err := p.runner.RunPrompt(label, defaultValue, validate)
+	result, err := p.Runner.RunPrompt(label, defaultValue, validate)
 	err = handlePromptError(err)
 	if err != nil {
 		return "", err
@@ -89,9 +89,9 @@ func (p *PromptUI) PromptRequired(label string) (string, error) {
 		if strings.TrimSpace(input) == "" {
 			return fmt.Errorf("input is required")
 		}
-		return validateStartURLFunc(input)
+		return ValidateStartURLFunc(input)
 	}
-	result, err := p.runner.RunPrompt(label, "", validate)
+	result, err := p.Runner.RunPrompt(label, "", validate)
 	err = handlePromptError(err)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (p *PromptUI) PromptRequired(label string) (string, error) {
 }
 
 func (p *PromptUI) SelectFromList(label string, items []string) (string, error) {
-	result, err := p.runner.RunSelect(label, items)
+	result, err := p.Runner.RunSelect(label, items)
 	err = handlePromptError(err)
 	if err != nil {
 		return "", err
@@ -120,7 +120,7 @@ func (p *PromptUI) PromptYesNo(label string, defaultValue bool) (bool, error) {
 		}
 		return nil
 	}
-	result, err := p.runner.RunPrompt(label, defaultStr, validate)
+	result, err := p.Runner.RunPrompt(label, defaultStr, validate)
 	err = handlePromptError(err)
 	if err != nil {
 		return false, err
@@ -133,5 +133,5 @@ func (p *PromptUI) PromptYesNo(label string, defaultValue bool) (bool, error) {
 }
 
 func NewPrompter() Prompter {
-	return &PromptUI{runner: &RealPromptRunner{}, Prompt: promptUtils.NewPrompt()}
+	return &PromptUI{Runner: &RealPromptRunner{}, Prompt: promptUtils.NewPrompt()}
 }

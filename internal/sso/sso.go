@@ -8,11 +8,11 @@ import (
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
-func (c *RealSSOClient) SetupSSO() error {
+func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 	fmt.Println("AWS SSO Configuration Tool")
 	fmt.Println("-------------------------")
 
-	_, ssoSession, err := c.loadOrCreateSession()
+	_, ssoSession, err := c.LoadOrCreateSession(opts.Name, opts.StartURL, opts.Region)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return nil
@@ -20,11 +20,11 @@ func (c *RealSSOClient) SetupSSO() error {
 		return fmt.Errorf("failed to load or create session: %w", err)
 	}
 
-	if err := c.configureSSOSession(ssoSession.Name, ssoSession.StartURL, ssoSession.Region, ssoSession.Scopes); err != nil {
+	if err := c.ConfigureSSOSession(ssoSession.Name, ssoSession.StartURL, ssoSession.Region, ssoSession.Scopes); err != nil {
 		return fmt.Errorf("failed to configure SSO session: %w", err)
 	}
 
-	if err := c.runSSOLogin(ssoSession.Name); err != nil {
+	if err := c.RunSSOLogin(ssoSession.Name); err != nil {
 		return fmt.Errorf("failed to run SSO login: %w", err)
 	}
 
@@ -46,20 +46,20 @@ func (c *RealSSOClient) SetupSSO() error {
 
 	profileName := ssoSession.Name + "-profile"
 
-	if err := c.configureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
+	if err := c.ConfigureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
 		return fmt.Errorf("failed to configure AWS profile: %w", err)
 	}
 
 	defaultConfigured := profileName == "default"
 
 	if !defaultConfigured {
-		if err := c.configureAWSProfile("default", ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
+		if err := c.ConfigureAWSProfile("default", ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
 			return fmt.Errorf("failed to configure AWS default profile: %w", err)
 		}
 		defaultConfigured = true
 	}
 
-	printSummary(profileName, ssoSession.Name, ssoSession.StartURL, ssoSession.Region, accountID, role, "", "", "")
+	PrintSummary(profileName, ssoSession.Name, ssoSession.StartURL, ssoSession.Region, accountID, role, "", "", "")
 	fmt.Printf("\nSuccessfully configured AWS profile '%s'!\n", profileName)
 
 	if defaultConfigured {
@@ -82,14 +82,11 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 	awsProfile := c.Config.AWSProfile
 	if awsProfile == "" {
 		if len(profiles) == 0 {
-			fmt.Println("No profiles found. Configuring SSO...")
-			if err := c.SetupSSO(); err != nil {
-				if errors.Is(err, promptUtils.ErrInterrupted) {
-					return promptUtils.ErrInterrupted
-				}
-				return fmt.Errorf("failed to set up SSO: %w", err)
-			}
-			return nil
+			fmt.Println("No AWS SSO profiles found.")
+			fmt.Println("Run `awsctl sso setup` to create a new profile.")
+			fmt.Println("Run `awsctl sso setup -h` for help.")
+			var ErrNoProfiles = errors.New("no AWS SSO profiles found")
+			return ErrNoProfiles
 		}
 
 		awsProfile, err = c.Prompter.SelectFromList("Select AWS profile", profiles)

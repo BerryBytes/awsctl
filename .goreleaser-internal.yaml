@@ -24,7 +24,6 @@ release:
   github:
     owner: berrybytes
     name: awsctl
-  name_template: "{{.Version}}-beta-internal"
   extra_files:
     - glob: ./LICENSE
     - glob: ./README.md

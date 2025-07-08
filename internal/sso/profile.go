@@ -28,12 +28,12 @@ func (c *RealSSOClient) ConfigureSSOProfile(profile, region, accountID, role, ss
 	return nil
 }
 
-func (c *RealSSOClient) configureAWSProfile(profileName, sessionName, ssoRegion, ssoStartURL, accountID, roleName, region string) error {
+func (c *RealSSOClient) ConfigureAWSProfile(profileName, sessionName, ssoRegion, ssoStartURL, accountID, roleName, region string) error {
 	ssoStartURL = strings.TrimSuffix(ssoStartURL, "#")
-	if err := validateStartURL(ssoStartURL); err != nil {
+	if err := ValidateStartURL(ssoStartURL); err != nil {
 		return fmt.Errorf("invalid start URL: %w", err)
 	}
-	if err := validateAccountID(accountID); err != nil {
+	if err := ValidateAccountID(accountID); err != nil {
 		return fmt.Errorf("invalid account ID: %w", err)
 	}
 
@@ -150,7 +150,7 @@ func (c *RealSSOClient) configureAWSProfile(profileName, sessionName, ssoRegion,
 	return nil
 }
 
-func (c *RealSSOClient) promptProfileDetails(ssoRegion string) (string, string, error) {
+func (c *RealSSOClient) PromptProfileDetails(ssoRegion string) (string, string, error) {
 	profileName, err := c.Prompter.PromptWithDefault("Enter profile name to configure", "sso-profile")
 	if err != nil {
 		return "", "", fmt.Errorf("failed to prompt for profile name: %w", err)
@@ -193,7 +193,7 @@ func (c *RealSSOClient) setProfileAsDefault(profile string) error {
 		region = ssoRegion
 	}
 
-	if err := c.configureAWSProfile("default", sessionName, ssoRegion, ssoStartURL, accountID, roleName, region); err != nil {
+	if err := c.ConfigureAWSProfile("default", sessionName, ssoRegion, ssoStartURL, accountID, roleName, region); err != nil {
 		return fmt.Errorf("failed to configure AWS default profile: %w", err)
 	}
 	fmt.Println("Successfully set this profile as default!")
@@ -247,6 +247,6 @@ func (c *RealSSOClient) printProfileSummary(profile string) error {
 		expiration = expiry.Format(time.RFC3339)
 	}
 
-	printSummary(profile, sessionName, ssoStartURL, ssoRegion, accountID, roleName, accountName, roleARN, expiration)
+	PrintSummary(profile, sessionName, ssoStartURL, ssoRegion, accountID, roleName, accountName, roleARN, expiration)
 	return nil
 }

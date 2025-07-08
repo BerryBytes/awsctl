@@ -56,7 +56,7 @@ jobs:
 
           VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-beta-internal//')
           NEW_VERSION=$(semver "$VERSION" -i patch)
-          NEW_TAG="v${NEW_VERSION}"
+          NEW_TAG="v${NEW_VERSION}-beta-internal"
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "New tag: $NEW_TAG"
 
