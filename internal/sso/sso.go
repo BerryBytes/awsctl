@@ -81,16 +81,13 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 
 	awsProfile := c.Config.AWSProfile
 	if awsProfile == "" {
-		// if len(profiles) == 0 {
-		// 	fmt.Println("No profiles found. Configuring SSO...")
-		// 	if err := c.SetupSSO(); err != nil {
-		// 		if errors.Is(err, promptUtils.ErrInterrupted) {
-		// 			return promptUtils.ErrInterrupted
-		// 		}
-		// 		return fmt.Errorf("failed to set up SSO: %w", err)
-		// 	}
-		// 	return nil
-		// }
+		if len(profiles) == 0 {
+			fmt.Println("No AWS SSO profiles found.")
+			fmt.Println("Run `awsctl sso setup` to create a new profile.")
+			fmt.Println("Run `awsctl sso setup -h` for help.")
+			var ErrNoProfiles = errors.New("no AWS SSO profiles found")
+			return ErrNoProfiles
+		}
 
 		awsProfile, err = c.Prompter.SelectFromList("Select AWS profile", profiles)
 		if err != nil {
