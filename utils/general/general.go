@@ -115,3 +115,9 @@ func IsRegionValid(region string) bool {
 
 	return isValidRegionFormat(region)
 }
+
+var validNameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-_]{0,126}[a-zA-Z0-9]$`)
+
+func IsValidSessionName(name string) bool {
+	return validNameRegex.MatchString(name)
+}

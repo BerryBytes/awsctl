@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/internal/sso/config"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
@@ -29,6 +30,9 @@ func TestLoadOrCreateSession(t *testing.T) {
 	tests := []struct {
 		name           string
 		initialConfig  *models.Config
+		nameParam      string
+		startURLParam  string
+		regionParam    string
 		mockPrompts    []mockPrompt
 		wantSession    *models.SSOSession
 		wantConfigPath string
@@ -36,7 +40,22 @@ func TestLoadOrCreateSession(t *testing.T) {
 		errContains    string
 	}{
 		{
-			name: "Create new session successfully",
+			name: "Create new session with parameters",
+			initialConfig: &models.Config{
+				SSOSessions: []models.SSOSession{},
+			},
+			nameParam:     "test-session",
+			startURLParam: "https://test.awsapps.com/start",
+			regionParam:   "us-west-2",
+			wantSession: &models.SSOSession{
+				Name:     "test-session",
+				StartURL: "https://test.awsapps.com/start",
+				Region:   "us-west-2",
+				Scopes:   "sso:account:access",
+			},
+		},
+		{
+			name: "Create new session interactively",
 			initialConfig: &models.Config{
 				SSOSessions: []models.SSOSession{},
 			},
@@ -51,9 +70,7 @@ func TestLoadOrCreateSession(t *testing.T) {
 				Region:   "us-west-2",
 				Scopes:   "sso:account:access",
 			},
-			wantConfigPath: "",
 		},
-
 		{
 			name: "Region prompt error",
 			initialConfig: &models.Config{
@@ -76,7 +93,6 @@ func TestLoadOrCreateSession(t *testing.T) {
 
 			mockPrompter := mock_sso.NewMockPrompter(ctrl)
 
-			// Set up expected mock calls
 			for _, mp := range tt.mockPrompts {
 				switch mp.method {
 				case "PromptWithDefault":
@@ -94,14 +110,14 @@ func TestLoadOrCreateSession(t *testing.T) {
 				}
 			}
 
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 				Config: config.Config{
 					RawCustomConfig: tt.initialConfig,
 				},
 			}
 
-			configPath, session, err := client.loadOrCreateSession()
+			configPath, session, err := client.LoadOrCreateSession(tt.nameParam, tt.startURLParam, tt.regionParam)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -124,7 +140,6 @@ func TestLoadOrCreateSession(t *testing.T) {
 		})
 	}
 }
-
 func TestSelectSSOSession(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -223,14 +238,14 @@ func TestSelectSSOSession(t *testing.T) {
 				}
 			}
 
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 				Config: config.Config{
 					RawCustomConfig: tt.initialConfig,
 				},
 			}
 
-			session, err := client.selectSSOSession()
+			session, err := client.SelectSSOSession()
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -358,11 +373,11 @@ sso_region = us-west-2
 				tt.mockExec(mockExecutor)
 			}
 
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Executor: mockExecutor,
 			}
 
-			err := client.runSSOLogin(tt.sessionName)
+			err := client.RunSSOLogin(tt.sessionName)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -460,9 +475,9 @@ func TestGetAccessToken(t *testing.T) {
 				}
 			}()
 
-			client := &RealSSOClient{}
+			client := &sso.RealSSOClient{}
 
-			token, err := client.getAccessToken(tt.startURL)
+			token, err := client.GetAccessToken(tt.startURL)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -567,9 +582,9 @@ sso_registration_scopes = sso:account:access
 				}
 			}()
 
-			client := &RealSSOClient{}
+			client := &sso.RealSSOClient{}
 
-			err := client.configureSSOSession(tt.sessionName, tt.startURL, tt.region, tt.scopes)
+			err := client.ConfigureSSOSession(tt.sessionName, tt.startURL, tt.region, tt.scopes)
 
 			if tt.wantErr {
 				assert.Error(t, err)

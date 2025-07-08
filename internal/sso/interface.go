@@ -7,7 +7,7 @@ import (
 )
 
 type SSOClient interface {
-	SetupSSO() error
+	SetupSSO(opts SSOFlagOptions) error
 	InitSSO(refresh, noBrowser bool) error
 	ConfigureSet(key, value, profile string) error
 	ConfigureGet(key, profile string) (string, error)

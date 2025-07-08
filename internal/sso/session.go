@@ -15,73 +15,79 @@ import (
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
 )
 
-func (c *RealSSOClient) loadOrCreateSession() (string, *models.SSOSession, error) {
+func (c *RealSSOClient) LoadOrCreateSession(name, startURL, region string) (string, *models.SSOSession, error) {
 	configPath, err := config.FindConfigFile(&c.Config)
 	if err != nil && !errors.Is(err, config.ErrNoConfigFile) {
 		return "", nil, fmt.Errorf("failed to check config file: %w", err)
 	}
 
-	var ssoSession *models.SSOSession
-	if configPath != "" {
-		fileInfo, err := os.Stat(configPath)
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to stat config file: %w", err)
-		}
-		if fileInfo.Size() > 0 && len(c.Config.RawCustomConfig.SSOSessions) > 0 {
-			fmt.Printf("Loaded existing configuration from '%s'\n", configPath)
-			if len(c.Config.RawCustomConfig.SSOSessions) == 1 {
-				ssoSession = &c.Config.RawCustomConfig.SSOSessions[0]
-				ssoSession.StartURL = strings.TrimSuffix(ssoSession.StartURL, "#")
-				if ssoSession.Scopes == "" {
-					ssoSession.Scopes = "sso:account:access"
-				}
-				fmt.Printf("Using SSO session: %s (Start URL: %s, Region: %s)\n",
-					ssoSession.Name, ssoSession.StartURL, ssoSession.Region)
-			} else {
-				ssoSession, err = c.selectSSOSession()
-
-				if err != nil {
-					if errors.Is(err, promptUtils.ErrInterrupted) {
-						return "", nil, promptUtils.ErrInterrupted
-					}
-					return "", nil, fmt.Errorf("failed to select SSO session: %w", err)
-				}
-			}
-		}
-	}
-
-	if ssoSession == nil || ssoSession.Name == "" || ssoSession.StartURL == "" || ssoSession.Region == "" {
-		fmt.Println("Setting up a new AWS SSO configuration...")
-		name, err := c.Prompter.PromptWithDefault("SSO session name", "default-sso")
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to prompt for SSO session name: %w", err)
-		}
-		startURL, err := c.Prompter.PromptRequired("SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)")
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to prompt for SSO start URL: %w", err)
-		}
-
-		region, err := c.Prompter.PromptForRegion("us-east-1")
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to prompt for SSO region: %w", err)
-		}
-
-		scopes := "sso:account:access"
-
-		ssoSession = &models.SSOSession{
+	if name != "" && startURL != "" && region != "" {
+		ssoSession := &models.SSOSession{
 			Name:     name,
 			StartURL: strings.TrimSuffix(startURL, "#"),
 			Region:   region,
-			Scopes:   scopes,
+			Scopes:   "sso:account:access",
 		}
 
 		c.Config.RawCustomConfig.SSOSessions = append(c.Config.RawCustomConfig.SSOSessions, *ssoSession)
+		return configPath, ssoSession, nil
 	}
 
+	if configPath != "" && len(c.Config.RawCustomConfig.SSOSessions) > 0 {
+		fmt.Printf("Loaded existing configuration from '%s'\n", configPath)
+
+		if len(c.Config.RawCustomConfig.SSOSessions) == 1 && name == "" && startURL == "" && region == "" {
+			ssoSession := &c.Config.RawCustomConfig.SSOSessions[0]
+			ssoSession.StartURL = strings.TrimSuffix(ssoSession.StartURL, "#")
+			if ssoSession.Scopes == "" {
+				ssoSession.Scopes = "sso:account:access"
+			}
+			fmt.Printf("Using SSO session: %s (Start URL: %s, Region: %s)\n",
+				ssoSession.Name, ssoSession.StartURL, ssoSession.Region)
+			return configPath, ssoSession, nil
+		}
+
+		ssoSession, err := c.SelectSSOSession()
+		if err != nil {
+			if errors.Is(err, promptUtils.ErrInterrupted) {
+				return "", nil, promptUtils.ErrInterrupted
+			}
+			return "", nil, fmt.Errorf("failed to select SSO session: %w", err)
+		}
+		if ssoSession != nil {
+			return configPath, ssoSession, nil
+		}
+	}
+
+	fmt.Println("Setting up a new AWS SSO configuration...")
+
+	name, err = c.Prompter.PromptWithDefault("SSO session name", "default-sso")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to prompt for SSO session name: %w", err)
+	}
+
+	startURL, err = c.Prompter.PromptRequired("SSO start URL (e.g., https://my-sso-portal.awsapps.com/start)")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to prompt for SSO start URL: %w", err)
+	}
+
+	region, err = c.Prompter.PromptForRegion("us-east-1")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to prompt for SSO region: %w", err)
+	}
+
+	ssoSession := &models.SSOSession{
+		Name:     name,
+		StartURL: strings.TrimSuffix(startURL, "#"),
+		Region:   region,
+		Scopes:   "sso:account:access",
+	}
+
+	c.Config.RawCustomConfig.SSOSessions = append(c.Config.RawCustomConfig.SSOSessions, *ssoSession)
 	return configPath, ssoSession, nil
 }
 
-func (c *RealSSOClient) selectSSOSession() (*models.SSOSession, error) {
+func (c *RealSSOClient) SelectSSOSession() (*models.SSOSession, error) {
 	options := make([]string, 0, len(c.Config.RawCustomConfig.SSOSessions)+1)
 	sessionMap := make(map[string]*models.SSOSession)
 	for i := range c.Config.RawCustomConfig.SSOSessions {
@@ -123,7 +129,7 @@ func (c *RealSSOClient) selectSSOSession() (*models.SSOSession, error) {
 	return ssoSession, nil
 }
 
-func (c *RealSSOClient) configureSSOSession(sessionName, startURL, region, scopes string) error {
+func (c *RealSSOClient) ConfigureSSOSession(sessionName, startURL, region, scopes string) error {
 	fmt.Println("\nConfiguring AWS SSO session in ~/.aws/config...")
 	startURL = strings.TrimSuffix(startURL, "#")
 
@@ -225,7 +231,7 @@ func (c *RealSSOClient) configureSSOSession(sessionName, startURL, region, scope
 	return nil
 }
 
-func (c *RealSSOClient) runSSOLogin(sessionName string) error {
+func (c *RealSSOClient) RunSSOLogin(sessionName string) error {
 	if err := c.validateAWSConfig(sessionName); err != nil {
 		return fmt.Errorf("invalid SSO configuration: %w", err)
 	}
@@ -259,7 +265,7 @@ func (c *RealSSOClient) validateAWSConfig(sessionName string) error {
 	return nil
 }
 
-func (c *RealSSOClient) getAccessToken(startURL string) (string, error) {
+func (c *RealSSOClient) GetAccessToken(startURL string) (string, error) {
 	startURL = strings.TrimSuffix(startURL, "#")
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
