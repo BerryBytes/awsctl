@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - develop
-    paths-ignore:
-      - "**.md"
+    # paths-ignore:
+    #   - "**.md"
   workflow_dispatch:
 
 # concurrency:
