@@ -161,6 +161,12 @@ The following table summarizes the available `awsctl` commands:
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more details.
 
+---
+
+## 👥 Community
+
+Join our vibrant [Discord community](https://discord.gg/g4a3P9af) to connect with contributors and maintainers. Engage in meaningful discussions, collaborate on ideas, and stay updated on the latest developments!
+
 ### Code Review Automation
 
 This project uses [Coderabbit AI](https://www.coderabbit.ai/) to assist with pull request reviews.
@@ -185,6 +191,6 @@ Special thanks to [Berrybytes](https://www.berrybytes.com) for bringing this pro
 
 ## License
 
-AWS CLI Tools is open-source software licensed under the [MIT License](LICENSE).
+AWSCTL CLI Tools is open-source software licensed under the [MIT License](LICENSE).
 
 This revised README is more visually appealing and user-friendly while maintaining its clarity and professionalism.
