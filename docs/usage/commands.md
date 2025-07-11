@@ -14,11 +14,11 @@ awsctl sso setup [flags]
 
 #### Flags
 
-| Flag          | Description                                    | Required | Example                                        |
-| ------------- | ---------------------------------------------- | -------- | ---------------------------------------------- |
-| `--name`      | SSO session name                               | No       | `--name my-sso-session`                        |
-| `--start-url` | AWS SSO start URL (must begin with `https://`) | No       | `--start-url https://my-sso.awsapps.com/start` |
-| `--region`    | AWS region for the SSO session                 | No       | `--region us-east-1`                           |
+| Flag          | Description                                    | Example                                        |
+| ------------- | ---------------------------------------------- | ---------------------------------------------- |
+| `--name`      | SSO session name                               | `--name my-sso-session`                        |
+| `--start-url` | AWS SSO start URL (must begin with `https://`) | `--start-url https://my-sso.awsapps.com/start` |
+| `--region`    | AWS region for the SSO session                 | `--region us-east-1`                           |
 
 #### Behavior
 
