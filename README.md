@@ -71,13 +71,13 @@ AWS CLI leverages the powerful [Cobra](https://github.com/spf13/cobra) framework
 1. To install the latest version.
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash
 ```
 
 2. To install specific version (e.g: `v0.0.1`)
 
 ```
-curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/develop/installer.sh | bash -s -- v0.0.1
+curl -sS https://raw.githubusercontent.com/berrybytes/awsctl/main/installer.sh | bash -s -- v0.0.1
 ```
 
 ### Manual
