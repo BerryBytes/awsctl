@@ -7,21 +7,21 @@ import (
 	"strings"
 )
 
-func validateAccountID(accountID string) error {
+func ValidateAccountID(accountID string) error {
 	if len(accountID) != 12 || !regexp.MustCompile(`^\d{12}$`).MatchString(accountID) {
 		return fmt.Errorf("invalid account ID: %s (must be 12 digits)", accountID)
 	}
 	return nil
 }
 
-func validateStartURL(startURL string) error {
+func ValidateStartURL(startURL string) error {
 	if !strings.HasPrefix(startURL, "https://") {
 		return fmt.Errorf("invalid start URL: %s (must start with https://)", startURL)
 	}
 	return nil
 }
 
-func printSummary(profileName, sessionName, ssoStartURL, ssoRegion, accountID, roleName, accountName, roleARN, expiration string) {
+func PrintSummary(profileName, sessionName, ssoStartURL, ssoRegion, accountID, roleName, accountName, roleARN, expiration string) {
 	fmt.Println("\nAWS SSO Configuration Summary:")
 	fmt.Printf("Profile Name:  %s\n", profileName)
 	fmt.Printf("SSO Session:   %s\n", sessionName)
@@ -41,7 +41,7 @@ func printSummary(profileName, sessionName, ssoStartURL, ssoRegion, accountID, r
 }
 
 func (c *RealSSOClient) listSSOAccounts(region, startURL string) ([]string, error) {
-	accessToken, err := c.getAccessToken(startURL)
+	accessToken, err := c.GetAccessToken(startURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
@@ -91,7 +91,7 @@ func (c *RealSSOClient) listSSOAccounts(region, startURL string) ([]string, erro
 }
 
 func (c *RealSSOClient) listSSORoles(region, startURL, accountID string) ([]string, error) {
-	accessToken, err := c.getAccessToken(startURL)
+	accessToken, err := c.GetAccessToken(startURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
@@ -146,7 +146,7 @@ func (c *RealSSOClient) selectAccount(region, startURL string) (string, error) {
 	}
 
 	accountID := strings.SplitN(selectedAccount, " ", 2)[0]
-	if err := validateAccountID(accountID); err != nil {
+	if err := ValidateAccountID(accountID); err != nil {
 		return "", err
 	}
 	return accountID, nil

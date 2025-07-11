@@ -7,8 +7,9 @@ BINARY_NAME="awsctl"
 BUILD_DIR="$(pwd)/bin"
 INSTALL_DIR="$HOME/awsctl"
 GC_FLAGS="all=-N -l"
-LD_FLAGS="-s -w"
 
+VERSION=$(git tag --sort=-v:refname | head -n 1 | sed 's/^v//' || echo "0.2.0")
+LD_FLAGS="-X 'main.Version=$VERSION' -s -w"
 # Detect shell
 detect_shell() {
   case "$SHELL" in

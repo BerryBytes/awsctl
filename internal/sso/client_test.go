@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	"github.com/BerryBytes/awsctl/models"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
@@ -27,13 +28,13 @@ func TestNewSSOClient(t *testing.T) {
 		mockPrompter := mock_sso.NewMockPrompter(ctrl)
 		mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
-		client, err := NewSSOClient(mockPrompter, mockExecutor)
+		client, err := sso.NewSSOClient(mockPrompter, mockExecutor)
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
 
 	t.Run("nil prompter returns error", func(t *testing.T) {
-		client, err := NewSSOClient(nil, nil)
+		client, err := sso.NewSSOClient(nil, nil)
 		assert.Error(t, err)
 		assert.Nil(t, client)
 		assert.Equal(t, "prompter cannot be nil", err.Error())
@@ -46,10 +47,10 @@ func TestNewSSOClient_NilExecutor(t *testing.T) {
 
 		mockPrompter := mock_sso.NewMockPrompter(ctrl)
 
-		client, err := NewSSOClient(mockPrompter, nil)
+		client, err := sso.NewSSOClient(mockPrompter, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
-		assert.IsType(t, &common.RealCommandExecutor{}, client.(*RealSSOClient).Executor)
+		assert.IsType(t, &common.RealCommandExecutor{}, client.(*sso.RealSSOClient).Executor)
 	})
 }
 
@@ -61,7 +62,7 @@ func TestGetCachedSsoAccessToken(t *testing.T) {
 	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
 	t.Run("returns cached token if valid", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 			TokenCache: models.TokenCache{
@@ -96,7 +97,7 @@ func TestGetCachedSsoAccessToken(t *testing.T) {
 		mockExecutor.EXPECT().RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
 			Return([]byte("https://example.awsapps.com/start"), nil)
 
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 			TokenCache: models.TokenCache{
@@ -127,7 +128,7 @@ func TestAwsSTSGetCallerIdentity(t *testing.T) {
 	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
 	t.Run("successful identity retrieval", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -147,7 +148,7 @@ func TestAwsSTSGetCallerIdentity(t *testing.T) {
 	})
 
 	t.Run("command failure", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -218,7 +219,7 @@ func TestSSOLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 				Executor: mockExecutor,
 			}
@@ -242,7 +243,7 @@ func TestGetSSOAccountName(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		setup         func(client *RealSSOClient)
+		setup         func(client *sso.RealSSOClient)
 		accountID     string
 		profile       string
 		expectedName  string
@@ -251,7 +252,7 @@ func TestGetSSOAccountName(t *testing.T) {
 	}{
 		{
 			name: "successful account name retrieval with cache hit",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				client.TokenCache.AccessToken = "test-token"
 				client.TokenCache.Expiry = time.Now().Add(1 * time.Hour)
 
@@ -272,7 +273,7 @@ func TestGetSSOAccountName(t *testing.T) {
 		},
 		{
 			name: "successful account name retrieval with cache miss",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				tempDir := t.TempDir()
 				cacheDir := filepath.Join(tempDir, ".aws", "sso", "cache")
 				require.NoError(t, os.MkdirAll(cacheDir, 0755))
@@ -315,7 +316,7 @@ func TestGetSSOAccountName(t *testing.T) {
 		},
 		{
 			name: "account not found",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				tempDir := t.TempDir()
 				cacheDir := filepath.Join(tempDir, ".aws", "sso", "cache")
 				require.NoError(t, os.MkdirAll(cacheDir, 0755))
@@ -358,7 +359,7 @@ func TestGetSSOAccountName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Executor: mockExecutor,
 				Prompter: mockPrompter,
 			}
@@ -387,7 +388,7 @@ func TestGetRoleCredentials(t *testing.T) {
 	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
 	t.Run("successful credentials retrieval", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -423,7 +424,7 @@ func TestGetRoleCredentials(t *testing.T) {
 	})
 
 	t.Run("command failure", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -440,7 +441,7 @@ func TestGetRoleCredentials(t *testing.T) {
 	})
 
 	t.Run("invalid JSON response", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -469,7 +470,7 @@ func TestGetCachedSsoAccessToken_ErrorCases(t *testing.T) {
 			RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "bad-profile").
 			Return(nil, errors.New("config error"))
 
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -505,7 +506,7 @@ func TestGetCachedSsoAccessToken_ErrorCases(t *testing.T) {
 			_ = os.Setenv("HOME", oldHome)
 		})
 
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -524,7 +525,7 @@ func TestGetSSOAccountName_ErrorCases(t *testing.T) {
 	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
 
 	t.Run("error getting access token", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -539,7 +540,7 @@ func TestGetSSOAccountName_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("error listing accounts", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 			TokenCache: models.TokenCache{
@@ -558,7 +559,7 @@ func TestGetSSOAccountName_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("invalid accounts JSON", func(t *testing.T) {
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 			TokenCache: models.TokenCache{
@@ -586,14 +587,14 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		setup         func(*RealSSOClient)
+		setup         func(*sso.RealSSOClient)
 		profile       string
 		expectedError string
 		expectError   bool
 	}{
 		{
 			name: "error getting start URL",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "bad-profile").
 					Return(nil, errors.New("config error"))
@@ -604,7 +605,7 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 		},
 		{
 			name: "error getting home directory",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
 					Return([]byte("https://example.com"), nil)
@@ -623,7 +624,7 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 		},
 		{
 			name: "cache directory not exists",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
 					Return([]byte("https://example.com"), nil)
@@ -643,7 +644,7 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 		},
 		{
 			name: "no matching cache file",
-			setup: func(client *RealSSOClient) {
+			setup: func(client *sso.RealSSOClient) {
 				mockExecutor.EXPECT().
 					RunCommand("aws", "configure", "get", "sso_start_url", "--profile", "test-profile").
 					Return([]byte("https://example.com"), nil)
@@ -677,13 +678,13 @@ func TestGetSsoAccessTokenFromCache_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 				Executor: mockExecutor,
 			}
 			tt.setup(client)
 
-			cache, _, err := client.getSsoAccessTokenFromCache(tt.profile)
+			cache, _, err := client.GetSsoAccessTokenFromCache(tt.profile)
 
 			if tt.expectError {
 				require.Error(t, err)

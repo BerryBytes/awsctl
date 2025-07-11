@@ -1,0 +1,33 @@
+version: 2
+project_name: awsctl
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod verify
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: awsctl
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}}-beta-internal
+
+release:
+  github:
+    owner: berrybytes
+    name: awsctl
+  extra_files:
+    - glob: ./LICENSE
+    - glob: ./README.md
+  footer: >-
+    ---
+    BETA RELEASE - FOR TESTING ONLY
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

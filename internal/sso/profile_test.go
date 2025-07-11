@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	"github.com/golang/mock/gomock"
@@ -29,7 +30,7 @@ func TestConfigureSSOProfile(t *testing.T) {
 		mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "region", "us-west-2", "--profile", "test-profile").Return(nil, nil)
 		mockExecutor.EXPECT().RunCommand("aws", "configure", "set", "output", "json", "--profile", "test-profile").Return(nil, nil)
 
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -45,7 +46,7 @@ func TestConfigureSSOProfile(t *testing.T) {
 
 		mockExecutor.EXPECT().RunCommand(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-		client := &RealSSOClient{
+		client := &sso.RealSSOClient{
 			Prompter: mockPrompter,
 			Executor: mockExecutor,
 		}
@@ -180,12 +181,12 @@ func TestConfigureAWSProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 				Executor: mockExecutor,
 			}
 
-			err := client.configureAWSProfile(tt.profileName, tt.sessionName, tt.ssoRegion, tt.ssoStartURL, tt.accountID, tt.roleName, tt.region)
+			err := client.ConfigureAWSProfile(tt.profileName, tt.sessionName, tt.ssoRegion, tt.ssoStartURL, tt.accountID, tt.roleName, tt.region)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -257,11 +258,11 @@ func TestPromptProfileDetails(t *testing.T) {
 					Return(tt.mockResponses[2], tt.mockResponses[3])
 			}
 
-			client := &RealSSOClient{
+			client := &sso.RealSSOClient{
 				Prompter: mockPrompter,
 			}
 
-			name, region, err := client.promptProfileDetails(tt.ssoRegion)
+			name, region, err := client.PromptProfileDetails(tt.ssoRegion)
 
 			if tt.expectError {
 				assert.Error(t, err)

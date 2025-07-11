@@ -1,4 +1,4 @@
-package sso
+package sso_test
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BerryBytes/awsctl/internal/sso"
 	mock_awsctl "github.com/BerryBytes/awsctl/tests/mock"
 	mock_sso "github.com/BerryBytes/awsctl/tests/mock/sso"
 	promptUtils "github.com/BerryBytes/awsctl/utils/prompt"
@@ -101,7 +102,7 @@ func TestPromptUI_PromptWithDefault(t *testing.T) {
 				RunPrompt(tt.label, tt.defaultValue, gomock.Any()).
 				Return(tt.input, tt.inputErr)
 
-			p := &PromptUI{runner: mockRunner}
+			p := &sso.PromptUI{Runner: mockRunner}
 			result, err := p.PromptWithDefault(tt.label, tt.defaultValue)
 
 			if tt.wantErr {
@@ -173,7 +174,7 @@ func TestPromptUI_SelectFromList(t *testing.T) {
 				RunSelect(tt.label, tt.items).
 				Return(tt.input, tt.inputErr)
 
-			p := &PromptUI{runner: mockRunner}
+			p := &sso.PromptUI{Runner: mockRunner}
 			result, err := p.SelectFromList(tt.label, tt.items)
 
 			if tt.wantErr {
@@ -282,7 +283,7 @@ func TestPromptUI_PromptYesNo(t *testing.T) {
 				RunPrompt(tt.label, defaultStr, gomock.Any()).
 				Return(tt.input, tt.inputErr)
 
-			p := &PromptUI{runner: mockRunner}
+			p := &sso.PromptUI{Runner: mockRunner}
 			result, err := p.PromptYesNo(tt.label, tt.defaultValue)
 
 			if tt.wantErr {
@@ -300,9 +301,9 @@ func TestPromptUI_PromptYesNo(t *testing.T) {
 }
 
 func TestPromptUI_PromptRequired(t *testing.T) {
-	originalValidateStartURL := validateStartURLFunc
-	validateStartURLFunc = mockValidateStartURL
-	defer func() { validateStartURLFunc = originalValidateStartURL }()
+	originalValidateStartURL := sso.ValidateStartURLFunc
+	sso.ValidateStartURLFunc = mockValidateStartURL
+	defer func() { sso.ValidateStartURLFunc = originalValidateStartURL }()
 
 	tests := []struct {
 		name        string
@@ -369,7 +370,7 @@ func TestPromptUI_PromptRequired(t *testing.T) {
 				RunPrompt(tt.label, "", gomock.Any()).
 				Return(tt.input, tt.inputErr)
 
-			p := &PromptUI{runner: mockRunner}
+			p := &sso.PromptUI{Runner: mockRunner}
 			result, err := p.PromptRequired(tt.label)
 
 			if tt.wantErr {
@@ -466,7 +467,7 @@ func TestPromptUI_PromptForRegion(t *testing.T) {
 					Return(tt.input, tt.inputErr)
 			}
 
-			p := &PromptUI{Prompt: mockPrompter}
+			p := &sso.PromptUI{Prompt: mockPrompter}
 			result, err := p.PromptForRegion(tt.defaultRegion)
 
 			if tt.wantErr {
@@ -522,7 +523,7 @@ func TestValidateStartURLFunc(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateStartURLFunc(tt.input)
+			err := sso.ValidateStartURLFunc(tt.input)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errContains != "" {
@@ -536,8 +537,8 @@ func TestValidateStartURLFunc(t *testing.T) {
 }
 
 func TestNewPrompter(t *testing.T) {
-	prompter := NewPrompter()
+	prompter := sso.NewPrompter()
 	assert.NotNil(t, prompter)
-	_, ok := prompter.(*PromptUI)
-	assert.True(t, ok, "NewPrompter should return a *PromptUI")
+	_, ok := prompter.(*sso.PromptUI)
+	assert.True(t, ok, "NewPrompter should return a *sso.PromptUI")
 }

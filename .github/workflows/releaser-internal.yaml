@@ -1,0 +1,116 @@
+name: Beta Release on Develop
+
+on:
+  push:
+    branches:
+      - develop
+    # paths-ignore:
+    #   - "**.md"
+  workflow_dispatch:
+
+# concurrency:
+#   group: release-develop
+#   cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: "contains(github.event.head_commit.message, '[release]') || github.event_name == 'workflow_dispatch'"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          npm install --global semver
+          sudo apt-get -y install gh
+
+      - name: Get current tag
+        id: tags
+        run: |
+          CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+      - name: Determine new version
+        id: new_version
+        run: |
+          CURRENT_TAG=${{ steps.tags.outputs.current_tag }}
+          echo "Current tag: ${CURRENT_TAG:-<none>}"
+          if [ -z "$CURRENT_TAG" ]; then
+            echo "First release - creating v0.1.0-beta-internal"
+            echo "new_tag=v0.1.0-beta-internal" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-beta-internal//')
+          NEW_VERSION=$(semver "$VERSION" -i patch)
+          NEW_TAG="v${NEW_VERSION}-beta-internal"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "New tag: $NEW_TAG"
+
+      - name: Create release tag
+        if: steps.new_version.outputs.new_tag
+        run: |
+          echo "Creating tag: ${{ steps.new_version.outputs.new_tag }}"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "${{ steps.new_version.outputs.new_tag }}" -m "Release ${{ steps.new_version.outputs.new_tag }}"
+          git push origin "${{ steps.new_version.outputs.new_tag }}"
+          echo "Tag pushed successfully"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Release Notes
+        if: steps.new_version.outputs.new_tag
+        env:
+          RELEASE_TAG: ${{ steps.new_version.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.tags.outputs.current_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Make script executable
+          chmod +x .github/scripts/generate-changelog.sh
+
+          # Generate notes
+          .github/scripts/generate-changelog.sh --notes-only
+
+          # Add beta header to existing file (instead of renaming)
+          echo -e "## 🧪 BETA RELEASE\n*For testing purposes only*\n\n$(cat RELEASE_NOTES.md)" > RELEASE_NOTES.md
+
+          # Store for GoReleaser (multi-line safe)
+          {
+            echo "NOTES<<EOF"
+            cat RELEASE_NOTES.md
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+          # Keep your prettier formatting
+          if command -v prettier >/dev/null 2>&1; then
+            prettier --write RELEASE_NOTES.md
+            # Update the env variable if formatting changed it
+            {
+              echo "NOTES<<EOF"
+              cat RELEASE_NOTES.md
+              echo "EOF"
+            } >> $GITHUB_ENV
+          fi
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.9.0
+          args: release --clean -f ./.goreleaser-internal.yaml --release-notes RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

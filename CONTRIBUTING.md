@@ -34,5 +34,7 @@ Your contributions help make awsctl better for everyone. We appreciate your supp
 ### Contributors
 
 - [Mousam Dahal](https://github.com/mousamdahal)
-- [Sanjog Llama](https://github.com/sanjog-lama)
+- [Sanjog Lama](https://github.com/sanjog-lama)
+- [Sanjog Lama](https://github.com/sawnjordan)
 - [Konika Sitoula](https://github.com/konika-sitoula)
+- [Umesh Khatiwada](https://github.com/umesh-khatiwada)

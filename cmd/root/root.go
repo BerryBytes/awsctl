@@ -27,6 +27,7 @@ type RootDependencies struct {
 	RDSService     rds.RDSServiceInterface
 	EKSService     eks.EKSServiceInterface
 	ECRService     ecr.ECRServiceInterface
+	Version        string
 }
 
 func NewRootCmd(deps RootDependencies) *cobra.Command {
@@ -37,7 +38,9 @@ func NewRootCmd(deps RootDependencies) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Version: deps.Version,
 	}
+	rootCmd.SetVersionTemplate(`{{printf "%s version %s\n" .Name .Version}}`)
 
 	rootCmd.AddCommand(cmdSSO.NewSSOCommands(cmdSSO.SSODependencies{
 		SetupClient:    deps.SSOSetupClient,

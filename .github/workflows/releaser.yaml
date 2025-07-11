@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - develop
+      # - develop
   workflow_dispatch:
 
 concurrency:
@@ -168,7 +168,7 @@ jobs:
             --head ${{ steps.create_branch.outputs.branch_name }} \
             --title "Release ${{ steps.new_version.outputs.new_tag }}" \
             --body "Automated release PR for ${{ steps.new_version.outputs.new_tag }}" \
-            --reviewer mousamdahal || echo "PR creation failed, possibly no changes or reviewer issue"
+            --reviewer sarosejoshi || echo "PR creation failed, possibly no changes or reviewer issue"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	sso "github.com/BerryBytes/awsctl/internal/sso"
 	models "github.com/BerryBytes/awsctl/models"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -212,17 +213,17 @@ func (mr *MockSSOClientMockRecorder) SSOLogin(awsProfile, refresh, noBrowser int
 }
 
 // SetupSSO mocks base method.
-func (m *MockSSOClient) SetupSSO() error {
+func (m *MockSSOClient) SetupSSO(opts sso.SSOFlagOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetupSSO")
+	ret := m.ctrl.Call(m, "SetupSSO", opts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetupSSO indicates an expected call of SetupSSO.
-func (mr *MockSSOClientMockRecorder) SetupSSO() *gomock.Call {
+func (mr *MockSSOClientMockRecorder) SetupSSO(opts interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetupSSO", reflect.TypeOf((*MockSSOClient)(nil).SetupSSO))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetupSSO", reflect.TypeOf((*MockSSOClient)(nil).SetupSSO), opts)
 }
 
 // ValidProfiles mocks base method.
