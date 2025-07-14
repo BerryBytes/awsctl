@@ -37,6 +37,6 @@ This is our first release, and we’d love your input! Report issues or suggest 
 
 ### Technical Changelog
 
-For a complete list of changes, see the [Changelog](https://github.com/berrybytes/awsctl/blob/develop/CHANGELOG.md).
+For a complete list of changes, see the [Changelog](https://github.com/berrybytes/awsctl/blob/main/CHANGELOG.md).
 
 Thank you for using `awsctl`!
