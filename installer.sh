@@ -56,8 +56,6 @@ if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
   exit 1
 fi
 
-# Remove 'v' prefix if present for URL consistency
-
 case "$OS_NAME" in
   Darwin|Linux)
     FILENAME="awsctl_${OS_NAME}_${ARCH}"
@@ -70,13 +68,11 @@ case "$OS_NAME" in
 esac
 
 DOWNLOAD_URL="https://github.com/BerryBytes/awsctl/releases/download/${VERSION}/${FILENAME}"
+trap 'echo; echo "Download interrupted."; exit 1' INT
+
 echo "Downloading awsctl ${VERSION} for ${OS_NAME}/${ARCH}..."
 
-# Create download directory if it doesn't exist
-mkdir -p "$HOME/awsctl"
-
-# Download with progress, timeout, and retries
-if ! curl -fL --progress-bar --retry 3 --retry-delay 2 --connect-timeout 30 "$DOWNLOAD_URL" -o "$HOME/awsctl/awsctl"; then
+if ! curl -fL --retry 3 --retry-delay 2 --connect-timeout 30 "$DOWNLOAD_URL" -o "$HOME/awsctl/awsctl"; then
   echo "Error: Download failed (URL: $DOWNLOAD_URL)"
   echo "Possible reasons:"
   echo "1. Version $VERSION doesn't exist"
