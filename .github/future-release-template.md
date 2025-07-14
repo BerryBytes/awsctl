@@ -14,6 +14,6 @@ Report issues or suggest features on our [GitHub Issues page](https://github.com
 
 ### Technical Changelog
 
-For a complete list of changes, see the [Changelog](https://github.com/berrybytes/awsctl/blob/develop/CHANGELOG.md).
+For a complete list of changes, see the [Changelog](https://github.com/berrybytes/awsctl/blob/main/CHANGELOG.md).
 
 Thank you for using `awsctl`!
