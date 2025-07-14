@@ -17,15 +17,6 @@ else
   echo "Created $awsctlpath folder."
 fi
 
-printf "Downloading awsctl."
-print_dots() {
-  while true; do
-    printf "."
-    sleep 1
-  done
-}
-print_dots &
-
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
   ARCH="arm64"
