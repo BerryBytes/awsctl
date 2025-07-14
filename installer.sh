@@ -107,7 +107,7 @@ CURRENT_SHELL="$SHELL"
 if [[ "$CURRENT_SHELL" = "/bin/bash" || "$CURRENT_SHELL" = "/usr/bin/bash" ]]; then
   echo "Detected Bash shell."
   CONFIG_FILE="$HOME/.bashrc"
-  if grep -q "awsctl" "$CONFIG_FILE"; then
+  if grep -q '^[^#]*awsctl' "$CONFIG_FILE"; then
     echo "The PATH is already set in $CONFIG_FILE."
   else
     echo "export PATH=\"$HOME/awsctl:\$PATH\"" >>"$CONFIG_FILE"
@@ -116,7 +116,7 @@ if [[ "$CURRENT_SHELL" = "/bin/bash" || "$CURRENT_SHELL" = "/usr/bin/bash" ]]; t
 elif [[ "$CURRENT_SHELL" = "/bin/zsh" || "$CURRENT_SHELL" = "/usr/bin/zsh" ]]; then
   echo "Detected Zsh shell."
   CONFIG_FILE="$HOME/.zshrc"
-  if grep -q "awsctl" "$CONFIG_FILE"; then
+  if grep -q '^[^#]*awsctl' "$CONFIG_FILE"; then
     echo "The PATH is already set in $CONFIG_FILE."
   else
     echo "export PATH=\"$HOME/awsctl:\$PATH\"" >>"$CONFIG_FILE"
