@@ -8,7 +8,7 @@ print_error_message() {
 
 trap 'if [ $? -ne 0 ]; then print_error_message; fi' EXIT
 
-awsctlpath="$HOME/.awsctl/"
+awsctlpath="$HOME/awsctl/"
 printf "\\e[1mINSTALLATION\\e[0m\\n"
 if [ -d "$awsctlpath" ]; then
   echo "Previous installation detected."
@@ -38,34 +38,63 @@ fi
 
 OS_NAME=$(uname -s)
 VERSION=${1:-latest} # Accept version as an argument, default to 'latest' if not provided
-if [ "$OS_NAME" = "Darwin" ]; then
-  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/download/${VERSION}/awsctl_Darwin_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
-    kill "$!" 2>/dev/null
-    echo ""
-    echo "Download completed"
-  else
-    kill "$!" 2>/dev/null
-    echo "Downloading failed. Check your internet connection."
+
+if [ "$VERSION" = "latest" ]; then
+  # Use latest release API to avoid redirects
+  LATEST_TAG=$(curl -s https://api.github.com/repos/BerryBytes/awsctl/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
+  if [ -z "$LATEST_TAG" ]; then
+    echo "Error: Could not fetch latest version"
     exit 1
   fi
-elif [ "$OS_NAME" = "Linux" ]; then
-  if curl -sS -L "https://github.com/berrybytes/awsctl/releases/download/${VERSION}/awsctl_Linux_${ARCH}" -o "$HOME/.awsctl/awsctl"; then
-    kill "$!" 2>/dev/null
-    echo ""
-    echo "Download completed"
-  else
-    kill "$!" 2>/dev/null
-    echo "Downloading failed. Check your internet connection."
-    exit 1
-  fi
-else
-  kill "$!" 2>/dev/null
-  echo "Direct installer for $OS_NAME is not yet supported: Check GITHUB RELEASES for manual installation"
-  echo "RELEASES: https://github.com/berrybytes/awsctl/releases"
+  VERSION=$LATEST_TAG
+fi
+
+# Validate version format
+if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+  echo "Error: Invalid version format '$VERSION'"
+  echo "Please use format like: v1.2.3 or latest"
   exit 1
 fi
 
-chmod +x "$HOME/.awsctl/awsctl"
+# Remove 'v' prefix if present for URL consistency
+
+case "$OS_NAME" in
+  Darwin|Linux)
+    FILENAME="awsctl_${OS_NAME}_${ARCH}"
+    ;;
+  *)
+    echo "Error: Unsupported OS '$OS_NAME'"
+    echo "Check releases: https://github.com/BerryBytes/awsctl/releases"
+    exit 1
+    ;;
+esac
+
+DOWNLOAD_URL="https://github.com/BerryBytes/awsctl/releases/download/${VERSION}/${FILENAME}"
+echo "Downloading awsctl ${VERSION} for ${OS_NAME}/${ARCH}..."
+
+# Create download directory if it doesn't exist
+mkdir -p "$HOME/awsctl"
+
+# Download with progress, timeout, and retries
+if ! curl -fL --progress-bar --retry 3 --retry-delay 2 --connect-timeout 30 "$DOWNLOAD_URL" -o "$HOME/awsctl/awsctl"; then
+  echo "Error: Download failed (URL: $DOWNLOAD_URL)"
+  echo "Possible reasons:"
+  echo "1. Version $VERSION doesn't exist"
+  echo "2. No build for ${OS_NAME}/${ARCH}"
+  echo "3. Network issues"
+  echo "Check available releases: https://github.com/BerryBytes/awsctl/releases"
+  exit 1
+fi
+
+# Verify the downloaded file
+if [ ! -s "$HOME/awsctl/awsctl" ]; then
+  echo "Error: Downloaded file is empty or missing"
+  exit 1
+fi
+
+echo "Download completed successfully"
+
+chmod +x "$HOME/awsctl/awsctl"
 if [ $? -eq 0 ]; then
   echo ""
 else
@@ -78,25 +107,25 @@ CURRENT_SHELL="$SHELL"
 if [[ "$CURRENT_SHELL" = "/bin/bash" || "$CURRENT_SHELL" = "/usr/bin/bash" ]]; then
   echo "Detected Bash shell."
   CONFIG_FILE="$HOME/.bashrc"
-  if grep -q ".awsctl" "$CONFIG_FILE"; then
+  if grep -q "awsctl" "$CONFIG_FILE"; then
     echo "The PATH is already set in $CONFIG_FILE."
   else
-    echo "export PATH=\"$HOME/.awsctl:\$PATH\"" >>"$CONFIG_FILE"
+    echo "export PATH=\"$HOME/awsctl:\$PATH\"" >>"$CONFIG_FILE"
     source "$CONFIG_FILE"
   fi
 elif [[ "$CURRENT_SHELL" = "/bin/zsh" || "$CURRENT_SHELL" = "/usr/bin/zsh" ]]; then
   echo "Detected Zsh shell."
   CONFIG_FILE="$HOME/.zshrc"
-  if grep -q ".awsctl" "$CONFIG_FILE"; then
+  if grep -q "awsctl" "$CONFIG_FILE"; then
     echo "The PATH is already set in $CONFIG_FILE."
   else
-    echo "export PATH=\"$HOME/.awsctl:\$PATH\"" >>"$CONFIG_FILE"
+    echo "export PATH=\"$HOME/awsctl:\$PATH\"" >>"$CONFIG_FILE"
     echo ""
     zsh
   fi
 elif [[ "$CURRENT_SHELL" = "/bin/fish" || "$CURRENT_SHELL" = "/usr/bin/fish" ]]; then
   echo "Detected Fish shell."
-  fish -c "set -U fish_user_paths \"$HOME/.awsctl\" \$fish_user_paths"
+  fish -c "set -U fish_user_paths \"$HOME/awsctl\" \$fish_user_paths"
 else
   printf "\\e[1mFAILURE\\e[0m\\n"
   echo "Unsupported shell detected: $CURRENT_SHELL"
@@ -114,10 +143,10 @@ printf "\\e[1mUSAGE\\e[0m\\n"
 echo "    awsctl --help"
 echo ""
 printf "\\e[1mUNINSTALL\\e[0m\\n"
-echo "    everything is installed into ~/.awsctl/,"
+echo "    everything is installed into ~/awsctl/,"
 echo "    so you can remove it like so:"
 echo ""
-echo "    rm -rf ~/.awsctl/"
+echo "    rm -rf ~/awsctl/"
 echo ""
 printf "\\e[1mTIP\\e[0m\\n"
 printf "    Inorder to use awsctl in this terminal, please run \\e[34msource ~/.bashrc\\e[0m or your own shell CONFIG_FILE\n"
