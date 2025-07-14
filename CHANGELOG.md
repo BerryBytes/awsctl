@@ -1,3 +1,28 @@
+# awsctl - v0.5.0
+
+## Changes since v0.4.0
+
+- [83629b8](https://github.com/BerryBytes/awsctl/commit/83629b87b51b18bd3232619c2bc1e1d95db6bd4f) Changed changelog link from develop to main (sawnjordan <sawnjordan@gmail.com>)
+- [9219378](https://github.com/BerryBytes/awsctl/commit/921937893b86b5810d0dbb592487d8da3eddb7aa) Changed the workflow for main (sawnjordan <sawnjordan@gmail.com>)
+- [10291ea](https://github.com/BerryBytes/awsctl/commit/10291eaf8a125db89712a7dd13f3db6757e29972) Changed the installation URL on install.sh script to main branch (sawnjordan <sawnjordan@gmail.com>)
+- [9c86314](https://github.com/BerryBytes/awsctl/commit/9c863149b7007b6d5d6e37a4c499f46a4d376a5e) Changed doc for release (sawnjordan <sawnjordan@gmail.com>)
+- [6f2348a](https://github.com/BerryBytes/awsctl/commit/6f2348a8a0ccce65c18a4784daf87a1e919a08f1) Changed the command usage doc (sawnjordan <sawnjordan@gmail.com>)
+- [86bc9bc](https://github.com/BerryBytes/awsctl/commit/86bc9bcc457694b9a1cd856efa977fac5f0462ef) Changed the local installation script to fetch the pre-release version (sawnjordan <sawnjordan@gmail.com>)
+- [8b2144e](https://github.com/BerryBytes/awsctl/commit/8b2144e2aa3eb65ebe574df0b1eabd5a620961ef) Changed internal release workflow (sawnjordan <sawnjordan@gmail.com>)
+- [e75b530](https://github.com/BerryBytes/awsctl/commit/e75b530fa347470eb2d50e387f674e7abd7240af) Changed readme and command.md with the added flags on the setup command (sawnjordan <sawnjordan@gmail.com>)
+- [c173278](https://github.com/BerryBytes/awsctl/commit/c173278c14e479998c0acb782ffeb340f141147f) Removed the sso init to trigger sso setup function when no profiles found (sawnjordan <sawnjordan@gmail.com>)
+- [adff76e](https://github.com/BerryBytes/awsctl/commit/adff76ec748eca9f891aa496cfb101707a891864) Added name, region, start url on sso setup command (sawnjordan <sawnjordan@gmail.com>)
+- [bf9c2d5](https://github.com/BerryBytes/awsctl/commit/bf9c2d5db7a0ec1ce2b0693c3a46dba508f749e5) Added test fix to test release note for int release (sawnjordan <sawnjordan@gmail.com>)
+- [f517635](https://github.com/BerryBytes/awsctl/commit/f51763580eabfc798dd1b18918a2f9f1f41575d2) Added test feat to test release note for int release (sawnjordan <sawnjordan@gmail.com>)
+- [00f46e8](https://github.com/BerryBytes/awsctl/commit/00f46e88f9618efcb48fce8b21aaee1d050db934) Added release note for beta release (sawnjordan <sawnjordan@gmail.com>)
+- [23de57e](https://github.com/BerryBytes/awsctl/commit/23de57eef709b8c47b2e569062db0a475e8f43cd) Added test fix to test release note for int release (sawnjordan <sawnjordan@gmail.com>)
+- [2a83c89](https://github.com/BerryBytes/awsctl/commit/2a83c89240e8d8d41be5dac3b6496bc124e02293) Added test feat to test release note for int release (sawnjordan <sawnjordan@gmail.com>)
+- [5d1c754](https://github.com/BerryBytes/awsctl/commit/5d1c754ba62e8b2162cc5e120fb9a837235e2349) Changed the generate changelog script to use flag for generating release notes only (sawnjordan <sawnjordan@gmail.com>)
+- [9957876](https://github.com/BerryBytes/awsctl/commit/99578766b8ba3d1eaa1053d6f1998ef9f0627be6) Removed prompt to set profile as default on sso init (sawnjordan <sawnjordan@gmail.com>)
+- [e7223da](https://github.com/BerryBytes/awsctl/commit/e7223dabd232019ffe7ff0da34bd80774548c4ad) Test beta release workflow on develop branch (sawnjordan <sawnjordan@gmail.com>)
+
+Generated on 2025-07-14T07:21:30Z
+
 # awsctl - v0.4.0
 
 ## Changes since v0.3.0
