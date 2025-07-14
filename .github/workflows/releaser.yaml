@@ -45,9 +45,12 @@ jobs:
       - name: Get current and previous tags
         id: tags
         run: |
-          CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          CURRENT_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "")
           if [ -n "$CURRENT_TAG" ]; then
-            PREV_TAG=$(git describe --tags --abbrev=0 "$CURRENT_TAG"^ 2>/dev/null || echo "")
+            # PREV_TAG=$(git describe --tags --abbrev=0 "$CURRENT_TAG"^ 2>/dev/null || echo "")
+            PREV_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n 2p || echo "")
+
           else
             PREV_TAG=""
           fi
@@ -65,7 +68,8 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          COMMIT_COUNT=$(git rev-list --count "$CURRENT_TAG..HEAD" --no-merges)
+          git fetch origin main --tags
+          COMMIT_COUNT=$(git rev-list --count "$CURRENT_TAG..origin/main" --no-merges)
           if [ "$COMMIT_COUNT" -eq 0 ]; then
             echo "No new commits since $CURRENT_TAG. Skipping release."
             echo "skip=true" >> $GITHUB_OUTPUT
