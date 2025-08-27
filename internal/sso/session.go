@@ -267,6 +267,7 @@ func (c *RealSSOClient) validateAWSConfig(sessionName string) error {
 
 func (c *RealSSOClient) GetAccessToken(startURL string) (string, error) {
 	startURL = strings.TrimSuffix(startURL, "#")
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
@@ -277,6 +278,10 @@ func (c *RealSSOClient) GetAccessToken(startURL string) (string, error) {
 		return "", fmt.Errorf("failed to read SSO cache directory: %w", err)
 	}
 
+	var latestToken string
+	var latestExpiry time.Time
+	foundExpired := false
+
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -286,6 +291,7 @@ func (c *RealSSOClient) GetAccessToken(startURL string) (string, error) {
 		if err != nil {
 			continue
 		}
+
 		var cache struct {
 			StartURL    string `json:"startUrl"`
 			AccessToken string `json:"accessToken"`
@@ -294,16 +300,34 @@ func (c *RealSSOClient) GetAccessToken(startURL string) (string, error) {
 		if err := json.Unmarshal(data, &cache); err != nil {
 			continue
 		}
+
 		if cache.StartURL == startURL && cache.AccessToken != "" {
-			expireTime, err := time.Parse(time.RFC3339, cache.ExpiresAt)
+			expireStr := strings.Replace(cache.ExpiresAt, "UTC", "Z", 1)
+			expireTime, err := time.Parse(time.RFC3339, expireStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid expiration time: %w", err)
 			}
+
 			if time.Now().After(expireTime) {
-				return "", fmt.Errorf("access token expired for start URL: %s", startURL)
+				foundExpired = true
+				continue
 			}
-			return cache.AccessToken, nil
+
+			// keep the latest valid token
+			if expireTime.After(latestExpiry) {
+				latestExpiry = expireTime
+				latestToken = cache.AccessToken
+			}
 		}
 	}
+
+	if latestToken != "" {
+		return latestToken, nil
+	}
+
+	if foundExpired {
+		return "", fmt.Errorf("access token expired for start URL: %s", startURL)
+	}
+
 	return "", fmt.Errorf("no valid access token found for start URL: %s", startURL)
 }
