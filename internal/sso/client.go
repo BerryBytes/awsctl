@@ -224,6 +224,20 @@ func (c *RealSSOClient) GetRoleCredentials(accessToken, roleName, accountID stri
 }
 
 func (c *RealSSOClient) AwsSTSGetCallerIdentity(profile string) (string, error) {
+	identityArn, err := c.TryGetCallerIdentity(profile)
+	if err == nil {
+		return identityArn, nil
+	}
+
+	// If error attempt re-login automatically
+	if loginErr := c.SSOLogin(profile, true, false); loginErr != nil {
+		return "", fmt.Errorf("failed to refresh SSO session for profile %q: %w", profile, loginErr)
+	}
+
+	return c.TryGetCallerIdentity(profile)
+}
+
+func (c *RealSSOClient) TryGetCallerIdentity(profile string) (string, error) {
 	output, err := c.Executor.RunCommand("aws", "sts", "get-caller-identity", "--profile", profile)
 	if err != nil {
 		return "", fmt.Errorf("failed to get caller identity: %w", err)
@@ -233,7 +247,7 @@ func (c *RealSSOClient) AwsSTSGetCallerIdentity(profile string) (string, error) 
 		Arn string `json:"Arn"`
 	}
 	if err := json.Unmarshal(output, &identity); err != nil {
-		return "", fmt.Errorf("failed to parse identity JSON: %w", err)
+		return "", fmt.Errorf("failed to parse identity json: %w", err)
 	}
 
 	return identity.Arn, nil

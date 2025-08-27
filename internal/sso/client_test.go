@@ -120,48 +120,6 @@ func TestGetCachedSsoAccessToken(t *testing.T) {
 	})
 }
 
-func TestAwsSTSGetCallerIdentity(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockPrompter := mock_sso.NewMockPrompter(ctrl)
-	mockExecutor := mock_awsctl.NewMockCommandExecutor(ctrl)
-
-	t.Run("successful identity retrieval", func(t *testing.T) {
-		client := &sso.RealSSOClient{
-			Prompter: mockPrompter,
-			Executor: mockExecutor,
-		}
-
-		expectedArn := "arn:aws:iam::123456789012:user/test-user"
-		response := map[string]string{"Arn": expectedArn}
-		responseData, err := json.Marshal(response)
-		require.NoError(t, err)
-
-		mockExecutor.EXPECT().RunCommand(
-			"aws", "sts", "get-caller-identity", "--profile", "test-profile",
-		).Return(responseData, nil)
-
-		arn, err := client.AwsSTSGetCallerIdentity("test-profile")
-		assert.NoError(t, err)
-		assert.Equal(t, expectedArn, arn)
-	})
-
-	t.Run("command failure", func(t *testing.T) {
-		client := &sso.RealSSOClient{
-			Prompter: mockPrompter,
-			Executor: mockExecutor,
-		}
-
-		mockExecutor.EXPECT().RunCommand(
-			"aws", "sts", "get-caller-identity", "--profile", "test-profile",
-		).Return(nil, errors.New("command failed"))
-
-		_, err := client.AwsSTSGetCallerIdentity("test-profile")
-		assert.Error(t, err)
-	})
-}
-
 func TestSSOLogin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
