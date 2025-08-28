@@ -28,7 +28,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 		return fmt.Errorf("failed to run SSO login: %w", err)
 	}
 
-	accountID, err := c.selectAccount(ssoSession.Region, ssoSession.StartURL)
+	accountID, accountName, err := c.selectAccount(ssoSession.Region, ssoSession.StartURL)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return nil
@@ -37,6 +37,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 	}
 
 	role, err := c.selectRole(ssoSession.Region, ssoSession.StartURL, accountID)
+	fmt.Printf("Selected role: %s\n", role)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return nil
@@ -44,7 +45,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 		return fmt.Errorf("failed to select role: %w", err)
 	}
 
-	profileName := ssoSession.Name + "-profile"
+	profileName := c.generateProfileName(ssoSession.Name, accountName, role)
 
 	if err := c.ConfigureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
 		return fmt.Errorf("failed to configure AWS profile: %w", err)
