@@ -130,26 +130,34 @@ func (c *RealSSOClient) listSSORoles(region, startURL, accountID string) ([]stri
 	return roles, nil
 }
 
-func (c *RealSSOClient) selectAccount(region, startURL string) (string, error) {
+func (c *RealSSOClient) selectAccount(region, startURL string) (string, string, error) {
 	fmt.Println("\nFetching available AWS accounts...")
 	accounts, err := c.listSSOAccounts(region, startURL)
 	if err != nil {
-		return "", fmt.Errorf("error listing accounts: %w", err)
+		return "", "", fmt.Errorf("error listing accounts: %w", err)
 	}
 	if len(accounts) == 0 {
-		return "", fmt.Errorf("no AWS accounts found")
+		return "", "", fmt.Errorf("no AWS accounts found")
 	}
 
 	selectedAccount, err := c.Prompter.SelectFromList("Select an AWS account:", accounts)
 	if err != nil {
-		return "", fmt.Errorf("failed to select account: %w", err)
+		return "", "", fmt.Errorf("failed to select account: %w", err)
 	}
 
-	accountID := strings.SplitN(selectedAccount, " ", 2)[0]
-	if err := ValidateAccountID(accountID); err != nil {
-		return "", err
+	parts := strings.SplitN(selectedAccount, " ", 2)
+	accountID := parts[0]
+	accountName := ""
+	if len(parts) > 1 {
+		accountName = parts[1]
 	}
-	return accountID, nil
+	accountName = strings.Trim(accountName, "()")
+
+	if err := ValidateAccountID(accountID); err != nil {
+		return "", "", err
+	}
+
+	return accountID, accountName, nil
 }
 
 func (c *RealSSOClient) selectRole(region, startURL, accountID string) (string, error) {
@@ -167,4 +175,74 @@ func (c *RealSSOClient) selectRole(region, startURL, accountID string) (string, 
 		return "", fmt.Errorf("failed to select role: %w", err)
 	}
 	return role, nil
+}
+
+func (c *RealSSOClient) generateProfileName(session, account, role string) string {
+	sessionSlug := strings.ToLower(strings.ReplaceAll(session, " ", "-"))
+	sessionSlug = strings.Trim(sessionSlug, "-")
+
+	accountParts := strings.Split(strings.ToLower(account), "-")
+	meaningfulParts := []string{}
+	for _, part := range accountParts {
+		if part != "" && part != "and" && part != "the" && part != "of" {
+			meaningfulParts = append(meaningfulParts, part)
+			if len(meaningfulParts) >= 3 {
+				break
+			}
+		}
+	}
+	acctSlug := strings.Join(meaningfulParts, "-")
+
+	roleWords := strings.FieldsFunc(strings.ToLower(role), func(r rune) bool {
+		return r == ' ' || r == '-'
+	})
+	roleParts := []string{}
+
+	roleAbbreviations := map[string]string{
+		"administrator":          "adm",
+		"administration":         "adm",
+		"admin":                  "adm",
+		"readonly":               "ro",
+		"read-only":              "ro",
+		"read":                   "ro",
+		"only":                   "",
+		"write":                  "wr",
+		"full":                   "full",
+		"access":                 "acc",
+		"management":             "mgmt",
+		"manager":                "mgr",
+		"developer":              "dev",
+		"operations":             "ops",
+		"system":                 "sys",
+		"network":                "net",
+		"database":               "db",
+		"security":               "sec",
+		"support":                "sup",
+		"production":             "prod",
+		"professional":           "prof",
+		"awsadministratoraccess": "aws-admin-acc",
+		"datalake":               "dl",
+	}
+
+	for _, word := range roleWords {
+		word = strings.ToLower(word)
+		if abbrev, exists := roleAbbreviations[word]; exists {
+			if abbrev != "" {
+				roleParts = append(roleParts, abbrev)
+			}
+			continue
+		}
+
+		if len(word) <= 3 {
+			roleParts = append(roleParts, word)
+		} else {
+			roleParts = append(roleParts, word[:3])
+		}
+	}
+
+	roleSlug := strings.Join(roleParts, "-")
+
+	profileName := sessionSlug + "-" + acctSlug + "-" + roleSlug
+
+	return profileName
 }
