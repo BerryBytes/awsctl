@@ -8,7 +8,11 @@ BUILD_DIR="$(pwd)/bin"
 INSTALL_DIR="$HOME/awsctl"
 GC_FLAGS="all=-N -l"
 
-VERSION=$(git tag --sort=-v:refname | head -n 1 | sed 's/^v//' || echo "0.2.0")
+# Fetch all tags
+git fetch --tags --force --prune
+
+# Get most recent tag by creation date
+VERSION=$(git for-each-ref --sort=-creatordate --count=1 --format '%(refname:short)' refs/tags | sed 's/^v//')
 LD_FLAGS="-X 'main.Version=$VERSION' -s -w"
 # Detect shell
 detect_shell() {
