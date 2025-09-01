@@ -181,7 +181,10 @@ func (c *RealSSOClient) generateProfileName(session, account, role string) strin
 	sessionSlug := strings.ToLower(strings.ReplaceAll(session, " ", "-"))
 	sessionSlug = strings.Trim(sessionSlug, "-")
 
-	accountParts := strings.Split(strings.ToLower(account), "-")
+	accountSlug := strings.ToLower(strings.ReplaceAll(account, " ", "-"))
+	accountSlug = strings.Trim(accountSlug, "-")
+
+	accountParts := strings.Split(accountSlug, "-")
 	meaningfulParts := []string{}
 	for _, part := range accountParts {
 		if part != "" && part != "and" && part != "the" && part != "of" {
@@ -191,6 +194,7 @@ func (c *RealSSOClient) generateProfileName(session, account, role string) strin
 			}
 		}
 	}
+
 	acctSlug := strings.Join(meaningfulParts, "-")
 
 	roleWords := strings.FieldsFunc(strings.ToLower(role), func(r rune) bool {
