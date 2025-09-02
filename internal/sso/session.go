@@ -36,17 +36,6 @@ func (c *RealSSOClient) LoadOrCreateSession(name, startURL, region string) (stri
 	if configPath != "" && len(c.Config.RawCustomConfig.SSOSessions) > 0 {
 		fmt.Printf("Loaded existing configuration from '%s'\n", configPath)
 
-		if len(c.Config.RawCustomConfig.SSOSessions) == 1 && name == "" && startURL == "" && region == "" {
-			ssoSession := &c.Config.RawCustomConfig.SSOSessions[0]
-			ssoSession.StartURL = strings.TrimSuffix(ssoSession.StartURL, "#")
-			if ssoSession.Scopes == "" {
-				ssoSession.Scopes = "sso:account:access"
-			}
-			fmt.Printf("Using SSO session: %s (Start URL: %s, Region: %s)\n",
-				ssoSession.Name, ssoSession.StartURL, ssoSession.Region)
-			return configPath, ssoSession, nil
-		}
-
 		ssoSession, err := c.SelectSSOSession()
 		if err != nil {
 			if errors.Is(err, promptUtils.ErrInterrupted) {
