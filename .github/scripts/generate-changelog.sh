@@ -92,7 +92,7 @@ generate_release_notes() {
   sed -i "s/{{ .Date }}/$RELEASE_DATE/g" "$TEMP_RELEASE_NOTES"
 
   local EXCLUDE_PATTERNS="^docs\\(internal\\)|^test|^chore(?!.*golangci)|^ci|^build|^style|^refactor|^wip|^merge"
-  local INTERNAL_PATTERNS="\[internal\]|\[ci\]|\[wip\]|\[skip ci\]|\[release\]"
+  local INTERNAL_PATTERNS='\[internal\]|\[ci\]|\[wip\]|\[skip ci\]'
 
   if ! git describe --exact-match "$RELEASE_TAG" >/dev/null 2>&1; then
     local LOG_RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}HEAD"
