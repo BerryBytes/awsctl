@@ -21,6 +21,7 @@ type SSOClient interface {
 	SSOLogin(awsProfile string, refresh, noBrowser bool) error
 	GetRoleCredentials(accessToken, roleName, accountID string) (*models.AWSCredentials, error)
 	AwsSTSGetCallerIdentity(profile string) (string, error)
+	TryGetCallerIdentity(profile string) (string, error)
 }
 
 type Prompter interface {

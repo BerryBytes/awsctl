@@ -28,7 +28,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 		return fmt.Errorf("failed to run SSO login: %w", err)
 	}
 
-	accountID, err := c.selectAccount(ssoSession.Region, ssoSession.StartURL)
+	accountID, accountName, err := c.selectAccount(ssoSession.Region, ssoSession.StartURL)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return nil
@@ -37,6 +37,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 	}
 
 	role, err := c.selectRole(ssoSession.Region, ssoSession.StartURL, accountID)
+	fmt.Printf("Selected role: %s\n", role)
 	if err != nil {
 		if errors.Is(err, promptUtils.ErrInterrupted) {
 			return nil
@@ -44,7 +45,7 @@ func (c *RealSSOClient) SetupSSO(opts SSOFlagOptions) error {
 		return fmt.Errorf("failed to select role: %w", err)
 	}
 
-	profileName := ssoSession.Name + "-profile"
+	profileName := c.generateProfileName(ssoSession.Name, accountName, role)
 
 	if err := c.ConfigureAWSProfile(profileName, ssoSession.Name, ssoSession.Region, ssoSession.StartURL, accountID, role, ssoSession.Region); err != nil {
 		return fmt.Errorf("failed to configure AWS profile: %w", err)
@@ -105,15 +106,28 @@ func (c *RealSSOClient) InitSSO(refresh, noBrowser bool) error {
 		return fmt.Errorf("invalid profile: %s", awsProfile)
 	}
 
-	if _, _, err := c.GetCachedSsoAccessToken(awsProfile); err != nil {
-		fmt.Printf("SSO token expired or missing for profile %s. Logging in...\n", awsProfile)
+	// Handle refresh flag
+	if refresh {
+		fmt.Printf("Refresh flag set. Forcing re-login for profile %s...\n", awsProfile)
 		if err := c.SSOLogin(awsProfile, refresh, noBrowser); err != nil {
-			return fmt.Errorf("failed to login: %w", err)
+			return fmt.Errorf("failed to login with refresh: %w", err)
 		}
 		if _, _, err = c.GetCachedSsoAccessToken(awsProfile); err != nil {
-			return fmt.Errorf("failed to get SSO token after login: %w", err)
+			return fmt.Errorf("failed to get SSO token after refresh login: %w", err)
+		}
+	} else {
+
+		if _, _, err := c.GetCachedSsoAccessToken(awsProfile); err != nil {
+			fmt.Printf("SSO token expired or missing for profile %s. Logging in...\n", awsProfile)
+			if err := c.SSOLogin(awsProfile, refresh, noBrowser); err != nil {
+				return fmt.Errorf("failed to login: %w", err)
+			}
+			if _, _, err = c.GetCachedSsoAccessToken(awsProfile); err != nil {
+				return fmt.Errorf("failed to get SSO token after login: %w", err)
+			}
 		}
 	}
+
 	fmt.Printf("SSO token validated for profile %s\n", awsProfile)
 
 	return c.printProfileSummary(awsProfile)
