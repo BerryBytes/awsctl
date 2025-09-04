@@ -1,3 +1,18 @@
+# awsctl - v0.6.0
+
+## Changes since v0.5.0
+
+- [6b1feca](https://github.com/BerryBytes/awsctl/commit/6b1fecac61184338269cc42072d5b5f1f8384264) Included release commit on the release note (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [264b1c2](https://github.com/BerryBytes/awsctl/commit/264b1c268d5c33deb188b0782b9a0b339e1a3b60) Fixed the sso profile name to replace space with dashes (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [713e347](https://github.com/BerryBytes/awsctl/commit/713e3471dbda607aa37ae5a9c80c9bf701f44be4) Profile name based on session name, account and role (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [0435507](https://github.com/BerryBytes/awsctl/commit/0435507b54df5d0224bef65f9e6d8a081191edcd) Fixed sso init fail on subsequent runs (sanjog-lama <sanjog.gomden@berrybytes.com>)
+- [bae32e2](https://github.com/BerryBytes/awsctl/commit/bae32e264367a87b7fb0dc35c6c5a68cfbb895aa) Removed the print dot function from installer (sawnjordan <sawnjordan@gmail.com>)
+- [093f8e5](https://github.com/BerryBytes/awsctl/commit/093f8e571311757ed4aaf83ba26dcbdaeb230244) Fixed pulic repo installation with curl (sawnjordan <sawnjordan@gmail.com>)
+- [f5a2d14](https://github.com/BerryBytes/awsctl/commit/f5a2d1469c2c365445345ae941d41c9ecd9bd2ab) Chagned installer script for public repo (sawnjordan <sawnjordan@gmail.com>)
+- [9f97bef](https://github.com/BerryBytes/awsctl/commit/9f97bef5ce59216ca562eef3272e9188aa45f4e1) Changed installer script for public repo (sawnjordan <sawnjordan@gmail.com>)
+
+Generated on 2025-09-04T10:09:14Z
+
 # awsctl - v0.5.0
 
 ## Changes since v0.4.0
