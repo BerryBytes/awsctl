@@ -33,6 +33,17 @@ jobs:
           go install golang.org/x/tools/cmd/goimports@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
+      - name: Add Go bin to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Install golangci-lint v2.7.2
+        run: |
+          curl -sSL https://github.com/golangci/golangci-lint/releases/download/v2.7.2/golangci-lint-2.7.2-linux-amd64.tar.gz \
+            | tar -xz -C $HOME/go/bin --strip-components=1
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
